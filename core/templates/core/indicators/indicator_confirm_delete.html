@@ -1,0 +1,19 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Delete KPI - {{ project.name }}{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm" style="padding: 20px;">
+  <h2>🗑 Delete KPI</h2>
+  <p>
+    Are you sure you want to delete the KPI:
+    <strong>{{ indicator.name }}</strong> from <strong>{{ project.name }}</strong>?
+  </p>
+
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">Yes, Delete</button>
+    <a href="{% url 'project_detail' project.pk %}" class="btn btn-secondary">Cancel</a>
+  </form>
+</div>
+{% endblock %}

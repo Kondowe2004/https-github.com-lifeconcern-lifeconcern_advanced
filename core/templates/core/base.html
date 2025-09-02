@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}Life Concern{% endblock %}</title>
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'styles.css' %}">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Optional: Chart.js datalabels plugin -->
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background-color: #f4f6f9;
+    }
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
+    /* Sidebar */
+    .sidebar {
+      width: 200px;
+      background: linear-gradient(180deg, #0d6efd, #084298);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1.5rem 1rem;
+      box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+    }
+    .sidebar .brand {
+      font-size: 1.3rem;
+      font-weight: bold;
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+    .sidebar .nav {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      width: 100%;
+    }
+    .sidebar .nav a,
+    .sidebar .nav form button {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 10px;
+      padding: 12px 15px;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      font-size: 0.95rem;
+      transition: background 0.3s ease, transform 0.1s ease;
+    }
+    .sidebar .nav a i,
+    .sidebar .nav button i {
+      font-size: 1.2rem;
+      width: 20px;
+      text-align: center;
+    }
+    .sidebar .nav a.active,
+    .sidebar .nav a:hover,
+    .sidebar .nav button:hover {
+      background: rgba(255,255,255,0.15);
+      transform: translateX(3px);
+    }
+    .sidebar .nav button {
+      background: none;
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      width: 100%;
+      text-align: left;
+    }
+
+    /* Main content */
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Topbar */
+    .topbar {
+      background: #fff;
+      padding: 0.8rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #dee2e6;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .topbar h1 {
+      font-size: 1.25rem;
+      margin: 0;
+      font-weight: 600;
+      color: #333;
+    }
+    .topbar .user-info {
+      font-size: 0.9rem;
+      color: #555;
+    }
+
+    /* Page body */
+    .page-body {
+      flex: 1;
+      padding: 2rem;
+      background: #f4f6f9;
+    }
+
+    /* Card styling */
+    .card {
+      border-radius: 14px;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+      background: #fff;
+      margin-bottom: 1.5rem;
+      border: none;
+    }
+    .card-header {
+      font-weight: 600;
+      font-size: 1rem;
+      background: transparent;
+      border-bottom: 1px solid #eee;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    {% if request.resolver_match.url_name != "login" %}
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="brand">Life Concern</div>
+        <nav class="nav">
+          <a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+            <i class="fas fa-home"></i> Dashboard
+          </a>
+          <a href="{% url 'projects' %}" class="{% if request.resolver_match.url_name == 'projects' %}active{% endif %}">
+            <i class="fas fa-folder-open"></i> Projects
+          </a>
+          <a href="{% url 'reports' %}" class="{% if request.resolver_match.url_name == 'reports' %}active{% endif %}">
+            <i class="fas fa-chart-line"></i> Reports
+          </a>
+          <a href="{% url 'profile' %}" class="{% if request.resolver_match.url_name == 'profile' %}active{% endif %}">
+            <i class="fas fa-user"></i> Profile
+          </a>
+          <a href="{% url 'admin:index' %}" target="_blank">
+            <i class="fas fa-database"></i> Admin
+          </a>
+          <a href="https://www.licomw.org" target="_blank">
+            <i class="fas fa-globe"></i> Website
+          </a>
+          <a href="https:web.facebook.com/LifeConcernMalawi" target="_blank">
+            <i class="fab fa-facebook"></i> Facebook
+          </a>
+          <!-- Logout -->
+          <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit">
+              <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+          </form>
+        </nav>
+      </aside>
+    {% endif %}
+
+    <!-- Main Content -->
+    <div class="content">
+      {% if request.resolver_match.url_name != "login" %}
+        <div class="topbar">
+          <h1>{% block page_title %}{% endblock %}</h1>
+          <div class="user-info">
+            {{ request.user.username }}
+          </div>
+        </div>
+      {% endif %}
+
+      <main class="page-body">
+        <!-- Messages -->
+        {% if messages %}
+          <div class="container mb-3">
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <div class="container-fluid">
+          {% block content %}{% endblock %}
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Chart Download Helper -->
+  <script>
+    function downloadChart(chartId, format = "png") {
+      const chartCanvas = document.getElementById(chartId);
+      if (!chartCanvas) return;
+      const link = document.createElement("a");
+      link.download = chartId + "." + format;
+      link.href = chartCanvas.toDataURL("image/" + format);
+      link.click();
+    }
+  </script>
+
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

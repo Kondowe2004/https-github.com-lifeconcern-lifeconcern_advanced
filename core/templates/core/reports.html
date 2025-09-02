@@ -1,0 +1,598 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% load custom_tags %}
+
+{% block title %}Reports - Life Concern{% endblock %}
+
+{% block content %}
+<div class="container">
+  <h2 class="mb-4">📊 Summary Reports</h2>
+  <div class="mb-6 flex items-center gap-3">
+  <form method="get" action="" class="flex items-center space-x-2">
+    <label for="year" class="font-semibold">Select Year:</label>
+    <select name="year" id="year" class="border rounded px-3 py-1"
+            onchange="this.form.submit()">
+      {% for y in years %}
+        <option value="{{ y }}" {% if y == year %}selected{% endif %}>
+          {{ y }}
+        </option>
+      {% endfor %}
+    </select>
+  </form>
+</div>
+<h2 class="text-lg font-semibold text-gray-700 mt-2">
+  Showing Reports for {{ year }}
+</h2>
+
+
+  <!-- small, unobtrusive scrollbars for table wrappers -->
+  <style>
+    .table-scroll {
+      max-height: 380px;
+      overflow: auto;
+    }
+    .table-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
+    .table-scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,.2); border-radius: 8px; }
+    @media (max-width: 576px) {
+      .table-scroll { max-height: 260px; }
+    }
+
+    /* pill card look (Bootstrap-friendly) */
+    .pill-card {
+      border-radius: 1rem;
+      border: 1px solid rgba(0,0,0,.05);
+    }
+    .pill-card .table thead th {
+      background: #f8f9fa;
+    }
+    .pill-card .table-striped tbody tr:nth-of-type(odd) {
+      background-color: rgba(0,0,0,.02);
+    }
+    .pill-card .table td, .pill-card .table th {
+      vertical-align: middle;
+    }
+  </style>
+
+  <!-- ================= Indicator Drilldown (always visible) ================= -->
+  <div class="card mb-4 p-3 shadow-sm">
+    <h4>🎯 Indicator Drilldown</h4>
+    <form method="get" class="row mb-3">
+      <div class="col-md-6">
+        <label for="unitSelect" class="form-label">Select Unit</label>
+        <select name="unit" id="unitSelect" class="form-select" onchange="this.form.submit()">
+          <option value="">-- Choose a Unit --</option>
+          {% for unit in units %}
+            <option value="{{ unit }}" {% if unit == selected_unit %}selected{% endif %}>{{ unit }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label for="indicatorSelect" class="form-label">Select Indicator(s)</label>
+        <select name="indicators" id="indicatorSelect" class="form-select" multiple size="5" onchange="this.form.submit()">
+          {% for indicator in indicators %}
+            {% if not selected_unit or indicator.unit == selected_unit %}
+              <option value="{{ indicator.id }}"
+                      {% if selected_indicators and indicator.id|stringformat:"s" in selected_indicators %}selected{% endif %}>
+                {{ indicator.name }}
+              </option>
+            {% endif %}
+          {% endfor %}
+        </select>
+        <small class="text-muted">Hold Ctrl (Windows) or Cmd (Mac) to select multiple indicators</small>
+      </div>
+    </form>
+
+    <canvas id="indicatorChart" height="80"></canvas>
+
+    {% if selected_unit and selected_indicators_data %}
+      <table class="table table-sm table-hover mt-3">
+        <thead><tr><th>Indicator</th><th class="text-end">Value</th></tr></thead>
+        <tbody>
+          {% for ind in selected_indicators_data %}
+            <tr>
+              <td>{{ ind.name }}</td>
+              <td class="text-end">{{ ind.value }}</td>
+            </tr>
+          {% endfor %}
+          <tr class="table-secondary fw-bold">
+            <td>Overall Total</td>
+            <td class="text-end">{{ overall_total }}</td>
+          </tr>
+        </tbody>
+      </table>
+    {% endif %}
+  </div>
+
+  <!-- ================= Dashboard Tabs ================= -->
+  <ul class="nav nav-pills justify-content-center mb-4" id="reportTabs" role="tablist" style="gap:0.5rem;">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active rounded-pill px-4 py-2 shadow-sm" id="ytd-tab" data-bs-toggle="pill" data-bs-target="#ytd" type="button" role="tab">📊 Year-to-Date</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link rounded-pill px-4 py-2 shadow-sm" id="monthly-tab" data-bs-toggle="pill" data-bs-target="#monthly" type="button" role="tab">📅 Monthly</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link rounded-pill px-4 py-2 shadow-sm" id="quarterly-tab" data-bs-toggle="pill" data-bs-target="#quarterly" type="button" role="tab">📊 Quarterly</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link rounded-pill px-4 py-2 shadow-sm" id="project-tab" data-bs-toggle="pill" data-bs-target="#project" type="button" role="tab">🥧 Project Totals</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link rounded-pill px-4 py-2 shadow-sm" id="trends-tab" data-bs-toggle="pill" data-bs-target="#trends" type="button" role="tab">📌 Project Trends</button>
+    </li>
+  </ul>
+
+  <div class="tab-content" id="reportTabsContent">
+
+    <!-- ================= Year-to-Date ================= -->
+    <div class="tab-pane fade show active" id="ytd" role="tabpanel">
+      <div class="card p-3 shadow-sm pill-card">
+        <div class="d-flex justify-content-between align-items-center">
+          <h4>📊 Year-to-Date Totals</h4>
+          <button class="btn btn-sm btn-outline-secondary" onclick="downloadChart('ytdChart')">⬇️ Download</button>
+        </div>
+        <canvas id="ytdChart" height="80"></canvas>
+
+        <!-- totals table -->
+<div class="table-responsive table-scroll mt-3">
+  <table class="table table-sm table-hover table-striped align-middle">
+    <thead class="table-light"><tr><th>Indicator</th><th class="text-end">YTD</th></tr></thead>
+    <tbody>
+      {% if ytd_indicator_totals %}
+        {% for row in ytd_indicator_totals %}
+          <tr>
+            <td>{{ row.name }}</td>
+            <td class="text-end">{{ row.value|default:"0" }}</td>
+          </tr>
+        {% endfor %}
+        <tr class="fw-bold table-secondary">
+          <td>Total</td>
+          <td class="text-end">{{ ytd_total|default:"0" }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="2" class="text-center text-muted">No YTD data</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
+
+        <!-- OPTIONAL: per-indicator YTD breakdown -->
+        {% if ytd_indicator_totals %}
+          <hr class="my-3">
+          <div class="d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 text-primary">Per-Indicator YTD Breakdown</h6>
+            <button class="btn btn-sm btn-outline-secondary" onclick="downloadChart('ytdIndicatorChart')">⬇️ Download</button>
+          </div>
+          <canvas id="ytdIndicatorChart" height="70" class="mt-2"></canvas>
+          <div class="table-responsive table-scroll mt-3">
+            <table class="table table-sm table-hover table-striped align-middle">
+              <thead class="table-light"><tr><th>Indicator</th><th class="text-end">YTD</th></tr></thead>
+              <tbody>
+                {% for row in ytd_indicator_totals %}
+                  <tr><td>{{ row.name }}</td><td class="text-end">{{ row.value }}</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- ================= Monthly ================= -->
+    <div class="tab-pane fade" id="monthly" role="tabpanel">
+      <div class="card p-3 shadow-sm pill-card">
+        <div class="d-flex justify-content-between align-items-center">
+          <h4>📅 Monthly Totals</h4>
+          <button class="btn btn-sm btn-outline-secondary" onclick="downloadChart('monthlyChart')">⬇️ Download</button>
+        </div>
+        <canvas id="monthlyChart" height="80"></canvas>
+
+        <div class="table-responsive table-scroll mt-3">
+          <table class="table table-sm table-hover table-striped align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Indicator (Unit)</th>
+                {% if monthly_labels %}
+                  {% for m in monthly_labels %}
+                    <th class="text-end">{{ m }}</th>
+                  {% endfor %}
+                {% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% if monthly_data %}
+                {% for row in monthly_data %}
+                  <tr>
+                    <td class="fw-medium">{{ row.indicator }}{% if row.unit %} ({{ row.unit }}){% endif %}</td>
+                    {% for v in row.values %}
+                      <td class="text-end">{{ v|default:"-" }}</td>
+                    {% endfor %}
+                  </tr>
+                {% endfor %}
+              {% else %}
+                <tr><td colspan="{{ monthly_labels|length|add:1 }}" class="text-center text-muted">No monthly data</td></tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= Quarterly ================= -->
+    <div class="tab-pane fade" id="quarterly" role="tabpanel">
+      <div class="card p-3 shadow-sm pill-card">
+        <div class="d-flex justify-content-between align-items-center">
+          <h4>📊 Quarterly Totals</h4>
+          <button class="btn btn-sm btn-outline-secondary" onclick="downloadChart('quarterlyChart')">⬇️ Download</button>
+        </div>
+        <canvas id="quarterlyChart" height="80"></canvas>
+
+        <div class="table-responsive table-scroll mt-3">
+          <table class="table table-sm table-hover table-striped align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Indicator (Unit)</th>
+                {% if quarterly_labels %}
+                  {% for q in quarterly_labels %}
+                    <th class="text-end">{{ q }}</th>
+                  {% endfor %}
+                {% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% if quarterly_data %}
+                {% for row in quarterly_data %}
+                  <tr>
+                    <td class="fw-medium">{{ row.indicator }}{% if row.unit %} ({{ row.unit }}){% endif %}</td>
+                    {% for v in row.values %}
+                      <td class="text-end">{{ v|default:"-" }}</td>
+                    {% endfor %}
+                  </tr>
+                {% endfor %}
+              {% else %}
+                <tr><td colspan="{{ quarterly_labels|length|add:1 }}" class="text-center text-muted">No quarterly data</td></tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= Project Totals ================= -->
+    <div class="tab-pane fade" id="project" role="tabpanel">
+      <div class="card p-3 shadow-sm pill-card">
+        <div class="d-flex justify-content-between align-items-center">
+          <h4>🥧 Project Totals</h4>
+          <button class="btn btn-sm btn-outline-secondary" onclick="downloadChart('projectChart')">⬇️ Download</button>
+        </div>
+
+        <!-- Pie will be built from per-project sums below -->
+        <canvas id="projectChart" height="80"></canvas>
+
+        {% if project_totals %}
+          <div class="table-responsive table-scroll mt-3">
+            <table class="table table-sm table-hover table-striped align-middle">
+              <thead class="table-light"><tr><th>Project</th><th class="text-end">Total</th></tr></thead>
+              <tbody>
+                {% for proj_name, items in project_totals.items %}
+                  {% with 0 as ptotal %}
+                    {% for row in items %}
+                      {% with ptotal|add:row.total as ptotal %}{% endwith %}
+                    {% endfor %}
+                    <tr>
+                      <td class="fw-medium">{{ proj_name }}</td>
+                      <td class="text-end">{{ ptotal }}</td>
+                    </tr>
+                  {% endwith %}
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="alert alert-light mt-2 mb-0">No project totals available for the current filters/year.</div>
+        {% endif %}
+
+        <!-- OPTIONAL: per-project indicator breakdowns (uses project_totals_chart) -->
+        {% if project_totals_chart %}
+          <hr class="my-3">
+          <h5 class="mb-3">📋 Per-Indicator Breakdown by Project</h5>
+          {% for proj_name, items in project_totals_chart.items %}
+            <div class="mb-4">
+              <div class="d-flex justify-content-between align-items-center">
+                <h6 class="text-primary mb-0">{{ proj_name }}</h6>
+                <button class="btn btn-sm btn-outline-secondary" onclick="downloadChart('projectIndicatorsChart{{ forloop.counter }}')">⬇️ Download</button>
+              </div>
+              <canvas id="projectIndicatorsChart{{ forloop.counter }}" height="70" class="mt-2"></canvas>
+              <div class="table-responsive table-scroll mt-3">
+                <table class="table table-sm table-hover table-striped align-middle">
+                  <thead class="table-light"><tr><th>Indicator</th><th class="text-end">Total</th></tr></thead>
+                  <tbody>
+                    {% for row in items %}
+                      <tr><td>{{ row.indicator }}</td><td class="text-end">{{ row.value }}</td></tr>
+                    {% empty %}
+                      <tr><td colspan="2" class="text-center text-muted">No data</td></tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- ================= Project Trends ================= -->
+    <div class="tab-pane fade" id="trends" role="tabpanel">
+      <div class="card p-3 shadow-sm pill-card">
+        <h4>📌 Project Trends</h4>
+        {% if project_trends %}
+          {% for project, series_list in project_trends.items %}
+            <div class="mb-4">
+              <div class="d-flex justify-content-between align-items-center">
+                <h6 class="text-primary">{{ project }}</h6>
+                <button class="btn btn-sm btn-outline-secondary" onclick="downloadChart('trendChart{{ forloop.counter }}')">⬇️ Download</button>
+              </div>
+              <canvas id="trendChart{{ forloop.counter }}" height="70"></canvas>
+
+              <!-- Matrix table: indicators as rows, months as columns -->
+              <div class="table-responsive table-scroll mt-3">
+                <table class="table table-sm table-hover table-striped align-middle">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Indicator</th>
+                      {% with first=series_list.0 %}
+                        {% if first %}
+                          {% for m in first.months %}
+                            <th class="text-end">{{ m }}</th>
+                          {% endfor %}
+                        {% endif %}
+                      {% endwith %}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for s in series_list %}
+                      <tr>
+                        <td class="fw-medium">{{ s.indicator }}</td>
+                        {% for v in s.values %}
+                          <td class="text-end">{{ v|default:"-" }}</td>
+                        {% endfor %}
+                      </tr>
+                    {% empty %}
+                      <tr><td colspan="2" class="text-center text-muted">No data</td></tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-muted">No data available yet.</p>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ================= Scripts ================= -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  function downloadChart(chartId) {
+    const chartCanvas = document.getElementById(chartId);
+    if (!chartCanvas) return;
+    const link = document.createElement("a");
+    link.href = chartCanvas.toDataURL("image/jpeg", 1.0);
+    link.download = chartId + ".jpeg";
+    link.click();
+  }
+
+  /* ---- Drilldown chart ---- */
+  {% if selected_unit and selected_indicators_data %}
+    (function() {
+      const ctx = document.getElementById("indicatorChart").getContext("2d");
+      new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: [{% for ind in selected_indicators_data %}"{{ ind.name|escapejs }}",{% endfor %}"Overall Total"],
+          datasets: [{
+            label: "{{ selected_unit|escapejs }}",
+            data: [{% for ind in selected_indicators_data %}{{ ind.value|floatformat:"-2" }},{% endfor %}{{ overall_total|floatformat:"-2" }}],
+            backgroundColor: "rgba(54, 162, 235, 0.6)"
+          }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+      });
+    })();
+  {% endif %}
+
+     /* ---- YTD (bars per indicator + overall) ---- */
+  (function() {
+    const el = document.getElementById("ytdChart");
+    if (!el) return;
+    const ctx = el.getContext("2d");
+
+    {% if ytd_totals %}
+      const labels = [
+        {% for row in ytd_totals %}"{{ row.indicator__name|escapejs }}",{% endfor %}
+        "Overall Total"
+      ];
+      const data = [
+        {% for row in ytd_totals %}{{ row.total|default:0|floatformat:"-2" }},{% endfor %}
+        {{ overall_total|default:0|floatformat:"-2" }}
+      ];
+    {% else %}
+      const labels = ["YTD Total"];
+      const data = [{{ overall_total|default:0|floatformat:"-2" }}];
+    {% endif %}
+
+    new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: labels,
+        datasets: [{
+          label: "YTD",
+          data: data,
+          backgroundColor: [
+            {% for row in ytd_totals %}"rgba(54, 162, 235, 0.6)",{% endfor %}
+            "rgba(255, 99, 132, 0.6)"
+          ]
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true } }
+      }
+    });
+  })();
+
+
+
+  /* ---- Per-indicator YTD ---- */
+  {% if ytd_indicator_totals %}
+    (function() {
+      const el = document.getElementById("ytdIndicatorChart");
+      if (!el) return;
+      const labels = [{% for row in ytd_indicator_totals %}"{{ row.name|escapejs }}",{% endfor %}];
+      const data = [{% for row in ytd_indicator_totals %}{{ row.value|default:0|floatformat:"-2" }},{% endfor %}];
+      new Chart(el.getContext("2d"), {
+        type: "bar",
+        data: { labels: labels, datasets: [{ label: "YTD by Indicator", data: data, backgroundColor: "rgba(255, 205, 86, 0.6)" }] },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+      });
+    })();
+  {% endif %}
+
+  /* ---- Monthly (multi-dataset) ---- */
+  (function() {
+    const ctx = document.getElementById("monthlyChart").getContext("2d");
+    const labels = [{% for m in monthly_labels %}"{{ m }}",{% endfor %}];
+    const datasets = [
+      {% for row in monthly_data %}
+        {
+          label: "{{ row.indicator|escapejs }}",
+          data: [{% for v in row.values %}{{ v|default:0|floatformat:"-2" }},{% endfor %}],
+          fill: false,
+          borderWidth: 2,
+        },
+      {% endfor %}
+    ];
+    new Chart(ctx, {
+      type: "line",
+      data: { labels, datasets },
+      options: { responsive: true, interaction: { mode: 'index', intersect: false } }
+    });
+  })();
+
+  /* ---- Quarterly (multi-dataset) ---- */
+  (function() {
+    const ctx = document.getElementById("quarterlyChart").getContext("2d");
+    const labels = [{% for q in quarterly_labels %}"{{ q }}",{% endfor %}];
+    const datasets = [
+      {% for row in quarterly_data %}
+        {
+          label: "{{ row.indicator|escapejs }}",
+          data: [{% for v in row.values %}{{ v|default:0|floatformat:"-2" }},{% endfor %}],
+          fill: false,
+          borderWidth: 2,
+        },
+      {% endfor %}
+    ];
+    new Chart(ctx, {
+      type: "line",
+      data: { labels, datasets },
+      options: { responsive: true, interaction: { mode: 'index', intersect: false } }
+    });
+  })();
+
+  /* ---- Project totals pie (sum items per project) ---- */
+  (function() {
+    const canvas = document.getElementById("projectChart");
+    if (!canvas) return;
+
+    const labels = [
+      {% if project_totals %}
+        {% for proj_name, items in project_totals.items %}
+          "{{ proj_name|escapejs }}",
+        {% endfor %}
+      {% endif %}
+    ];
+
+    const values = [
+      {% if project_totals %}
+        {% for proj_name, items in project_totals.items %}
+          {% with 0 as ptotal %}
+            {% for row in items %}
+              {% with ptotal|add:row.total as ptotal %}{% endwith %}
+            {% endfor %}
+            {{ ptotal|default:0|floatformat:"-2" }},
+          {% endwith %}
+        {% endfor %}
+      {% endif %}
+    ];
+
+    if (labels.length && values.length) {
+      new Chart(canvas.getContext("2d"), {
+        type: "pie",
+        data: { labels: labels, datasets: [{ data: values }] }
+      });
+    } else {
+      canvas.style.display = "none";
+    }
+  })();
+
+  /* ---- Per-project indicator charts (uses project_totals_chart) ---- */
+  {% if project_totals_chart %}
+    {% for proj_name, items in project_totals_chart.items %}
+      (function() {
+        const el = document.getElementById("projectIndicatorsChart{{ forloop.counter }}");
+        if (!el) return;
+        const labels = [{% for row in items %}"{{ row.indicator|escapejs }}",{% endfor %}];
+        const data = [{% for row in items %}{{ row.value|default:0|floatformat:"-2" }},{% endfor %}];
+        new Chart(el.getContext("2d"), {
+          type: "bar",
+          data: { labels: labels, datasets: [{ label: "{{ proj_name|escapejs }}", data: data }] },
+          options: { responsive: true, plugins: { legend: { display: false } } }
+        });
+      })();
+    {% endfor %}
+  {% endif %}
+
+  /* ---- Project trends (multi-dataset per project) ---- */
+  {% if project_trends %}
+    {% for project, series_list in project_trends.items %}
+      (function() {
+        const el = document.getElementById("trendChart{{ forloop.counter }}");
+        if (!el) return;
+
+        const labels = [
+          {% with first=series_list.0 %}
+            {% if first %}
+              {% for m in first.months %}"{{ m }}",{% endfor %}
+            {% endif %}
+          {% endwith %}
+        ];
+
+        const datasets = [
+          {% for s in series_list %}
+            {
+              label: "{{ s.indicator|escapejs }}",
+              data: [{% for v in s.values %}{{ v|default:0|floatformat:"-2" }},{% endfor %}],
+              fill: false,
+              borderWidth: 2,
+              tension: 0.3
+            },
+          {% endfor %}
+        ];
+
+        new Chart(el.getContext("2d"), {
+          type: "line",
+          data: { labels: labels, datasets: datasets },
+          options: { responsive: true, interaction: { mode: 'index', intersect: false } }
+        });
+      })();
+    {% endfor %}
+  {% endif %}
+</script>
+{% endblock %}

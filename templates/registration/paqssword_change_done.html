@@ -1,0 +1,12 @@
+{% extends "core/base.html" %}
+{% block title %}Password Changed{% endblock %}
+
+{% block content %}
+<div class="login-wrapper">
+  <div class="login-card">
+    <h2>Password Updated</h2>
+    <p class="text-muted">Your password has been successfully changed.</p>
+    <a href="{% url 'dashboard' %}" class="btn-login">Go to Dashboard</a>
+  </div>
+</div>
+{% endblock %}

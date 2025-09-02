@@ -1,0 +1,12 @@
+{% extends "core/base.html" %}
+{% block title %}Logged Out - Life Concern{% endblock %}
+
+{% block content %}
+<div class="login-wrapper">
+  <div class="login-card">
+    <h2>You have logged out</h2>
+    <p class="text-muted">Thank you for using Life Concern Data Management System.</p>
+    <a href="{% url 'login' %}" class="btn-login">Log In Again</a>
+  </div>
+</div>
+{% endblock %}

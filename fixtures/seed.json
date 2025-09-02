@@ -1,0 +1,112 @@
+[
+  {
+    "model": "core.project",
+    "pk": 1,
+    "fields": {
+      "name": "Education Support",
+      "description": "School-based interventions",
+      "start_year": 2023,
+      "end_year": 2026,
+      "active": true
+    }
+  },
+  {
+    "model": "core.project",
+    "pk": 2,
+    "fields": {
+      "name": "Health Outreach",
+      "description": "Health facilities & outreach",
+      "start_year": 2024,
+      "end_year": 2027,
+      "active": true
+    }
+  },
+  {
+    "model": "core.indicator",
+    "pk": 1,
+    "fields": {
+      "project": 1,
+      "name": "Students Reached",
+      "unit": "people",
+      "target": "5000"
+    }
+  },
+  {
+    "model": "core.indicator",
+    "pk": 2,
+    "fields": {
+      "project": 1,
+      "name": "Teacher Trainings",
+      "unit": "sessions",
+      "target": "120"
+    }
+  },
+  {
+    "model": "core.indicator",
+    "pk": 3,
+    "fields": {
+      "project": 2,
+      "name": "Clinics Conducted",
+      "unit": "sessions",
+      "target": "200"
+    }
+  },
+  {
+    "model": "core.indicator",
+    "pk": 4,
+    "fields": {
+      "project": 2,
+      "name": "Patients Served",
+      "unit": "people",
+      "target": "10000"
+    }
+  },
+  {
+    "model": "core.monthlyentry",
+    "pk": 1,
+    "fields": {
+      "indicator": 1,
+      "year": 2025,
+      "month": 1,
+      "value": "120.0",
+      "notes": "demo",
+      "created_by": null
+    }
+  },
+  {
+    "model": "core.monthlyentry",
+    "pk": 2,
+    "fields": {
+      "indicator": 1,
+      "year": 2025,
+      "month": 2,
+      "value": "230.0",
+      "notes": "demo",
+      "created_by": null
+    }
+  },
+  {
+    "model": "core.monthlyentry",
+    "pk": 3,
+    "fields": {
+      "indicator": 2,
+      "year": 2025,
+      "month": 1,
+      "value": "5.0",
+      "notes": "demo",
+      "created_by": null
+    }
+  },
+  {
+    "model": "core.monthlyentry",
+    "pk": 4,
+    "fields": {
+      "indicator": 3,
+      "year": 2025,
+      "month": 1,
+      "value": "8.0",
+      "notes": "demo",
+      "created_by": null
+    }
+  }
+]

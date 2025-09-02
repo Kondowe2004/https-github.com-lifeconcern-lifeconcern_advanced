@@ -1,0 +1,22 @@
+{% extends "core/base.html" %}
+
+{% block title %}Delete Project{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm" style="max-width: 600px; margin: auto; padding: 20px;">
+  <h2 style="color: #b30000;">⚠️ Confirm Delete</h2>
+  <p>
+    Are you sure you want to delete the project:
+    <strong>{{ project.name }}</strong>?
+  </p>
+  <p style="color: #777;">This action cannot be undone.</p>
+
+  <form method="post">
+    {% csrf_token %}
+    <div style="margin-top: 20px; display: flex; gap: 10px;">
+      <button type="submit" class="btn btn-danger">🗑 Yes, Delete</button>
+      <a href="{% url 'project_detail' project.id %}" class="btn btn-secondary">↩ Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

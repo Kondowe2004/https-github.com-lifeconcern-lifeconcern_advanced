@@ -1,0 +1,131 @@
+{% extends "core/base.html" %}
+
+{% block title %}Profile - Life Concern{% endblock %}
+
+{% block content %}
+<!-- Organisation Info -->
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-body">
+    <div class="d-flex align-items-center mb-3">
+      <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width:50px; height:50px;">
+        <i class="fas fa-building fa-lg"></i>
+      </div>
+      <h2 class="h4 fw-bold ms-3 mb-0">Life Concern</h2>
+    </div>
+    <p class="text-muted">
+      Life Concern (LICO) is a non-governmental, community-centered initiative dedicated to improving the quality of life for vulnerable groups through sustainable health, education, and social programs. Founded on the belief that every person has the right to live with dignity, LICO works with partners to address pressing challenges such as poverty, HIV and AIDS, gender-based violence, and limited access to essential health services which affect the communities. The organisation also places a strong emphasis on empowering youth and women, creating opportunities for education, economic independence, and leadership within their communities. By fostering collaboration among local structures and promoting innovative solutions, LICO seeks to build resilience and long-lasting positive change. Its vision is a healthier, empowered society where communities take ownership of their development and individuals are supported to achieve their full potential. 
+    </p>
+    <p class="text-muted">
+      🌍 Official website: 
+      <a href="https://www.licomw.org" target="_blank" class="fw-semibold text-decoration-none">
+        www.licomw.org
+      </a>
+    </p>
+  </div>
+</div>
+
+<!-- User Profile Card -->
+<div class="card shadow-sm border-0">
+  <div class="card-body text-center">
+    <!-- Avatar (initials) -->
+    <div class="bg-gradient rounded-circle d-flex align-items-center justify-content-center text-white fw-bold mb-3 mx-auto"
+         style="width:100px; height:100px; font-size:2rem;
+                background: linear-gradient(135deg, #007bff, #6f42c1);">
+      {{ user.first_name|default:user.username|slice:":1" }}
+    </div>
+
+    <h2 class="h5 fw-bold mb-1">{{ user.first_name|default:user.username }} {{ user.last_name }}</h2>
+
+    <!-- Member since -->
+    <p class="text-muted mb-1">
+      <i class="fas fa-calendar-alt me-1 text-success"></i>
+      Member since:
+      <span class="badge rounded-pill px-3 py-2"
+            style="background: linear-gradient(90deg, #16a085, #1abc9c); color: white; font-weight: 500;">
+        {{ user.date_joined|date:"F Y" }}
+      </span>
+    </p>
+
+    <!-- Last login -->
+    <p class="text-muted mb-3">
+      <i class="fas fa-clock me-1 text-primary"></i>
+      Last login:
+      <span id="last-login" data-login="{{ user.last_login|date:'c' }}"
+            class="badge rounded-pill px-3 py-2"
+            style="background: linear-gradient(90deg, #2980b9, #3498db); color: white; font-weight: 500;">
+        {{ user.last_login|date:"F j, Y, g:i a" }}
+      </span>
+    </p>
+
+    <!-- Profile Details -->
+    <div class="row g-3 mb-4 text-start">
+      <div class="col-md-6">
+        <div class="p-3 border rounded bg-light">
+          <strong><i class="fas fa-user me-2 text-primary"></i>Username:</strong> {{ user.username }}
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="p-3 border rounded bg-light">
+          <strong><i class="fas fa-envelope me-2 text-success"></i>Email:</strong> {{ user.email|default:"Not provided" }}
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="p-3 border rounded bg-light">
+          <strong><i class="fas fa-id-card me-2 text-warning"></i>First name:</strong> {{ user.first_name|default:"-" }}
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="p-3 border rounded bg-light">
+          <strong><i class="fas fa-id-card me-2 text-danger"></i>Last name:</strong> {{ user.last_name|default:"-" }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="d-flex flex-wrap gap-2 justify-content-center">
+      <a href="{% url 'password_change' %}" class="btn btn-warning text-white">
+        <i class="fas fa-key me-2"></i>Change Password
+      </a>
+      <a href="{% url 'logout' %}" class="btn btn-outline-danger">
+        <i class="fas fa-sign-out-alt me-2"></i>Logout
+      </a>
+    </div>
+  </div>
+</div>
+
+<style>
+  .card {
+    border-radius: 12px;
+  }
+  .bg-gradient {
+    background: linear-gradient(135deg, #007bff, #6f42c1);
+  }
+</style>
+
+<!-- Convert Last Login to Local Time with Timezone -->
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const el = document.getElementById("last-login");
+    if (el) {
+      const utcDate = el.getAttribute("data-login");
+      if (utcDate) {
+        const localDate = new Date(utcDate);
+
+        // Format with timezone abbreviation
+        const formatted = localDate.toLocaleString(undefined, {
+          weekday: "short",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          timeZoneName: "short"
+        });
+
+        el.textContent = formatted;
+      }
+    }
+  });
+</script>
+{% endblock %}

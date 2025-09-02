@@ -1,0 +1,209 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+
+<!-- Top-right live date & time -->
+<div class="position-absolute top-0 end-0 p-2">
+  <div id="live-clock"
+       class="px-2 py-1 rounded shadow-sm text-white fw-normal fs-6 clock-widget">
+  </div>
+</div>
+
+<script>
+  function updateClock() {
+    const now = new Date();
+    const options = {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+      timeZoneName: 'short'
+    };
+    document.getElementById("live-clock").textContent =
+      now.toLocaleString("en-US", options);
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+</script>
+
+<style>
+  .clock-widget {
+    background: linear-gradient(90deg, #28a745, #007bff, #6f42c1);
+    border-radius: 6px;
+    font-size: 0.85rem;
+  }
+</style>
+
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div class="d-flex align-items-center">
+    <img src="{% static 'logo/logo.png' %}" alt="Logo" style="height:50px;" class="me-3">
+    <div>
+      <h1 class="h3 fw-bold mb-1">Dashboard</h1>
+      <p class="text-muted mb-0">Overview of your organisation’s performance and activities.</p>
+    </div>
+  </div>
+  <div>
+    <a href="{% url 'reports' %}" class="btn btn-primary">
+      <i class="fas fa-chart-line me-2"></i> View Reports
+    </a>
+  </div>
+</div>
+
+<!-- Welcome Card -->
+<div class="card mb-4 p-3">
+  <h4 class="fw-semibold">
+    👋 Welcome, <a href="{% url 'profile' %}">{{ user.first_name|default:user.username }}</a>
+  </h4>
+  <p class="text-muted mt-1 mb-0">Here’s a quick summary of your progress today.</p>
+</div>
+
+<!-- Quick Stats -->
+<div class="row g-4">
+  <div class="col-md-3 col-sm-6">
+    <div class="card text-center p-3 shadow-sm">
+      <div class="mb-2"><i class="fas fa-folder-open text-primary fa-2x"></i></div>
+      <h3 class="fw-bold"><a href="{% url 'projects' %}" class="text-decoration-none">{{ total_projects }}</a></h3>
+      <p class="text-muted mb-0">Projects</p>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <div class="card text-center p-3 shadow-sm">
+      <div class="mb-2"><i class="fas fa-bullseye text-success fa-2x"></i></div>
+      <h3 class="fw-bold"><a href="{% url 'projects' %}" class="text-decoration-none">{{ total_indicators }}</a></h3>
+      <p class="text-muted mb-0">Indicators</p>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <div class="card text-center p-3 shadow-sm">
+      <div class="mb-2"><i class="fas fa-calendar-alt text-warning fa-2x"></i></div>
+      <h3 class="fw-bold">{{ annual_total }}</h3>
+      <p class="text-muted mb-0">Annual Total ({{ current_year }})</p>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <div class="card text-center p-3 shadow-sm">
+      <div class="mb-2"><i class="fas fa-users text-danger fa-2x"></i></div>
+      <h3 class="fw-bold">{{ user_count }}</h3>
+      <p class="text-muted mb-0">Active Users</p>
+    </div>
+  </div>
+</div>
+
+<!-- Project List -->
+<div class="card mt-4 p-3 border-0 shadow-lg rounded-3">
+  <h5 class="fw-semibold mb-3 text-primary">
+    📋 Active Projects
+  </h5>
+  <div class="row g-3">
+    {% for project in projects %}
+      <div class="col-md-4 col-sm-6">
+        <a href="{% url 'project_detail' project.id %}" class="text-decoration-none">
+          <div class="p-4 rounded-3 project-card h-100">
+            <h6 class="fw-bold text-dark mb-2">
+              <i class="fas fa-folder-open text-primary me-2"></i>{{ project.name }}
+            </h6>
+            <p class="text-muted small mb-0">
+              {{ project.description|truncatechars:80 }}
+            </p>
+          </div>
+        </a>
+      </div>
+    {% empty %}
+      <p class="text-muted">No projects available</p>
+    {% endfor %}
+  </div>
+</div>
+
+<style>
+  .project-card {
+    background: linear-gradient(135deg, #f9fafb, #eef2ff);
+    border: 1px solid #e2e8f0;
+    transition: all 0.3s ease;
+  }
+  .project-card:hover {
+    background: linear-gradient(135deg, #e0f2fe, #f0f9ff);
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+  }
+</style>
+
+<!-- Quick Actions -->
+<div class="card mt-4 p-3 border-0 shadow-lg rounded-3">
+  <h5 class="fw-semibold text-success">⚡ Quick Actions</h5>
+  <div class="d-flex flex-wrap gap-3 mt-3">
+    <a href="{% url 'projects' %}" class="btn quick-btn">
+      <i class="fas fa-tasks me-2"></i> Manage Projects
+    </a>
+    <a href="{% url 'reports' %}" class="btn quick-btn">
+      <i class="fas fa-file-alt me-2"></i> View Reports
+    </a>
+    <a href="{% url 'profile' %}" class="btn quick-btn">
+      <i class="fas fa-user-circle me-2"></i> My Profile
+    </a>
+  </div>
+</div>
+
+<style>
+  .quick-btn {
+    background: linear-gradient(90deg, #007bff, #00c6ff);
+    color: #fff !important;
+    font-weight: 500;
+    border-radius: 8px;
+    padding: 10px 18px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transition: all 0.25s ease-in-out;
+  }
+  .quick-btn:hover {
+    background: linear-gradient(90deg, #0056b3, #0099cc);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+  }
+</style>
+
+<!-- Recent Activity -->
+<div class="card mt-4 p-3">
+  <h5 class="fw-semibold mb-3">🕒 Recent Activity</h5>
+  <ul class="timeline list-unstyled">
+    {% for activity in recent_activities %}
+      <li class="mb-3 d-flex">
+        <div class="me-3 text-primary">
+          <i class="fas fa-check-circle"></i>
+        </div>
+        <div>
+          <p class="mb-1 fw-semibold">{{ activity.message }}</p>
+          <small class="text-muted">{{ activity.timestamp|date:"M d, Y H:i" }}</small>
+        </div>
+      </li>
+    {% empty %}
+      <p class="text-muted">No recent activity.</p>
+    {% endfor %}
+  </ul>
+</div>
+
+<style>
+  .timeline li {
+    border-left: 2px solid #007bff;
+    padding-left: 10px;
+    position: relative;
+  }
+  .timeline li::before {
+    content: '';
+    position: absolute;
+    left: -6px;
+    top: 6px;
+    width: 12px;
+    height: 12px;
+    background: #007bff;
+    border-radius: 50%;
+  }
+</style>
+
+{% endblock %}

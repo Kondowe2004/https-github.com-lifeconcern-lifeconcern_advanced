@@ -1,0 +1,17 @@
+{% extends 'core/base.html' %}
+
+{% block title %}{{ title }} - {{ project.name }}{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm" style="padding: 20px;">
+  <h2>{{ title }}</h2>
+  <p><strong>Project:</strong> {{ project.name }}</p>
+
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-success">💾 Save</button>
+    <a href="{% url 'project_detail' project.pk %}" class="btn btn-secondary">↩ Back</a>
+  </form>
+</div>
+{% endblock %}

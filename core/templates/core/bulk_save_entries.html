@@ -1,0 +1,99 @@
+{% extends "core/base.html" %}
+
+{% block title %}Bulk Save KPI Entries{% endblock %}
+
+{% block content %}
+<div class="card shadow-lg border-0">
+  <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+    <h3 class="mb-0">📥 Bulk Save KPI Entries</h3>
+    <small class="text-light">Enter values for indicators below</small>
+  </div>
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+
+      <!-- Year & Month -->
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <label for="year" class="form-label fw-semibold">Year</label>
+          <input type="number" id="year" name="year" value="{{ year }}" required 
+                 class="form-control shadow-sm">
+        </div>
+        <div class="col-md-6">
+          <label for="month" class="form-label fw-semibold">Month</label>
+          <input type="number" id="month" name="month" value="{{ month }}" min="1" max="12" required 
+                 class="form-control shadow-sm">
+        </div>
+      </div>
+
+      <hr>
+
+      <!-- 🔎 Search Bar -->
+      <div class="mb-3">
+        <input type="text" id="searchInput" class="form-control shadow-sm" 
+               placeholder="🔎 Search indicators..." onkeyup="filterIndicators()">
+      </div>
+
+      <!-- Indicators -->
+      <div class="row g-3" id="indicatorList">
+        {% for indicator in indicators %}
+          <div class="col-md-6 indicator-item">
+            <label for="indicator_{{ indicator.id }}" class="form-label fw-semibold">
+              {{ indicator.name }}
+            </label>
+            <input type="number" step="any" id="indicator_{{ indicator.id }}" 
+                   name="indicator_{{ indicator.id }}" 
+                   class="form-control shadow-sm"
+                   placeholder="Enter value for {{ indicator.name }}">
+          </div>
+        {% endfor %}
+      </div>
+
+      <!-- Save Button -->
+      <div class="mt-4 text-center">
+        <button type="submit" class="btn btn-success btn-lg px-5 shadow-sm">
+          💾 Save Entries
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 🔎 JavaScript Search -->
+<script>
+function filterIndicators() {
+  let input = document.getElementById("searchInput");
+  let filter = input.value.toLowerCase();
+  let items = document.getElementsByClassName("indicator-item");
+
+  for (let i = 0; i < items.length; i++) {
+    let label = items[i].getElementsByTagName("label")[0];
+    let textValue = label.textContent || label.innerText;
+    items[i].style.display = textValue.toLowerCase().indexOf(filter) > -1 ? "" : "none";
+  }
+}
+
+// ✅ Highlight filled inputs
+document.addEventListener("input", function(e) {
+  if (e.target.tagName === "INPUT" && e.target.type === "number") {
+    if (e.target.value.trim() !== "") {
+      e.target.classList.add("filled");
+    } else {
+      e.target.classList.remove("filled");
+    }
+  }
+});
+</script>
+
+<!-- Extra Styling -->
+<style>
+  .form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 6px rgba(13,110,253,0.25);
+  }
+  .indicator-item input.filled {
+    background-color: #e9f7ef !important;
+    border-color: #198754 !important;
+  }
+</style>
+{% endblock %}

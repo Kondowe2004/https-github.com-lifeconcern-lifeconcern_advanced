@@ -1,0 +1,143 @@
+{% extends 'core/base.html' %}
+{% load dict_extras %}
+{% load custom_tags %}
+
+{% block title %}{{ project.name }} - KPI Grid{% endblock %}
+
+{% block content %}
+<div class="container-fluid" style="max-width: 1100px; margin: 0 auto;"> 
+  <!-- 🔹 Limit width to 1100px and center -->
+
+  <!-- Page Header -->
+  <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap">
+    <div>
+      <h1 class="h5 fw-bold mb-1">{{ project.name }}</h1>
+      <p class="text-muted mb-2">{{ project.description|default:"No description provided." }}</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{% url 'project_kpis' project.id %}" class="btn btn-info btn-sm">
+        <i class="fas fa-chart-line me-1"></i> View KPIs
+      </a>
+      <a href="{% url 'indicator_add' project.pk %}" class="btn btn-success btn-sm">
+        <i class="fas fa-plus me-1"></i> Add KPI
+      </a>
+      <a href="{% url 'bulk_save_entries' project.id %}?year={{ year }}" class="btn btn-primary btn-sm">
+        <i class="fas fa-file-alt me-1"></i> Bulk Save Entries
+      </a>
+    </div>
+  </div>
+
+  <!-- Year Selector -->
+  <div class="card shadow-sm p-3 mb-4">
+    <form method="get" class="d-flex align-items-center flex-wrap gap-3">
+      <div>
+        <label class="form-label fw-semibold mb-0">Select Year:</label>
+        <input type="number" name="year" value="{{ year }}" min="2000" max="2100"
+               class="form-control d-inline-block w-auto ms-2">
+      </div>
+      <button class="btn btn-primary btn-sm" type="submit">
+        <i class="fas fa-search me-1"></i> Go
+      </button>
+    </form>
+  </div>
+
+  <!-- Indicators Table (Inline Bulk Save) -->
+  <form method="post" action="{% url 'bulk_save_entries' project.id %}">
+    {% csrf_token %}
+    <input type="hidden" name="year" value="{{ year }}">
+
+    <div class="card shadow-sm p-3">
+      <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h3 class="h6 fw-bold mb-0">📊 Monthly KPI Entry Grid ({{ year }})</h3>
+
+        <!-- Zoom Control -->
+        <div class="d-flex align-items-center gap-2">
+          <label class="form-label mb-0 small fw-semibold">Zoom:</label>
+          <input type="range" id="zoomSlider" min="50" max="150" value="100" step="10"
+                 class="form-range w-100" style="max-width:150px;">
+          <span id="zoomValue" class="small text-muted">100%</span>
+        </div>
+      </div>
+
+      <div class="table-responsive" id="zoomContainer">
+        <table class="table table-bordered table-striped align-middle text-center table-sm" 
+               style="table-layout: fixed; font-size: 0.8rem; width: 100%;">
+          <thead class="table-light">
+            <tr>
+              <th class="text-start" style="min-width: 150px;">Indicator</th>
+              {% for m in months %}
+                <th style="width: 55px;">{{ m|get_month_name|slice:":3" }}</th> <!-- ✅ now shows Jan, Feb -->
+              {% endfor %}
+              <th style="min-width: 100px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for ind in indicators %}
+            <tr>
+              <td class="text-start">
+                <strong>{{ ind.name }}</strong><br>
+                <small class="text-muted">Unit: {{ ind.unit }}</small>
+                {% if ind.is_kpi %}
+                  <span class="badge bg-success ms-2">KPI</span>
+                {% endif %}
+              </td>
+              {% for m in months %}
+                {% with val=grid|get_item:ind.id|get_item:m %}
+                <td>
+                  <input type="number" step="0.01"
+                         name="val_{{ ind.id }}_{{ m }}"
+                         value="{{ val|default:'' }}"
+                         class="form-control form-control-sm text-center {% if val %}bg-success bg-opacity-10{% endif %}"
+                         style="width: 55px; font-size: 0.75rem; padding: 2px;">
+                </td>
+                {% endwith %}
+              {% endfor %}
+              <td class="text-nowrap">
+                <a href="{% url 'indicator_edit' project.pk ind.pk %}" class="btn btn-warning btn-sm me-1">
+                  <i class="fas fa-edit"></i>
+                </a>
+                <a href="{% url 'indicator_delete' project.pk ind.pk %}" 
+                   class="btn btn-danger btn-sm"
+                   onclick="return confirm('Are you sure you want to delete this KPI?');">
+                  <i class="fas fa-trash-alt"></i>
+                </a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="{{ months|length|add:2 }}" class="text-center py-4 text-muted">
+                🚀 No KPIs available for this project.
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Save Button -->
+      <div class="mt-4">
+        <button class="btn btn-success w-100 py-2 fs-6" type="submit">
+          💾 Save All
+        </button>
+      </div>
+      <p class="text-muted small mt-2">
+        <strong>Tip:</strong> Leave a cell blank to keep it unchanged. Re-enter a value to update it.
+      </p>
+    </div>
+  </form>
+</div> <!-- /container-fluid -->
+
+<!-- Zoom Script -->
+<script>
+  const zoomSlider = document.getElementById("zoomSlider");
+  const zoomValue = document.getElementById("zoomValue");
+  const zoomContainer = document.getElementById("zoomContainer");
+
+  zoomSlider.addEventListener("input", () => {
+    const scale = zoomSlider.value / 100;
+    zoomContainer.style.transform = `scale(${scale})`;
+    zoomContainer.style.transformOrigin = "top left";
+    zoomValue.textContent = zoomSlider.value + "%";
+  });
+</script>
+{% endblock %}

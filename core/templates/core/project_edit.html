@@ -1,0 +1,15 @@
+{% extends "core/base.html" %}
+
+{% block title %}Edit Project - {{ project.name }}{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h2>Edit Project</h2>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button class="btn btn-primary" type="submit">💾 Save</button>
+    <a href="{% url 'projects' %}" class="btn btn-secondary">Cancel</a>
+  </form>
+</div>
+{% endblock %}

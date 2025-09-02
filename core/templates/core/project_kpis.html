@@ -1,0 +1,123 @@
+{% extends 'core/base.html' %}
+{% load dict_extras %}
+{% load custom_tags %}
+
+{% block title %}{{ project.name }} - KPI Data Entry{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm mb-4 border-0">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center">
+      <h2 class="fw-bold text-primary mb-0">{{ project.name }}</h2>
+      <p class="text-muted mb-0">{{ project.description|default:"No description provided." }}</p>
+    </div>
+
+    <!-- Year Selector -->
+    <form method="get" class="mt-3 d-flex align-items-center">
+      <label class="me-2 fw-semibold">Select Year:</label>
+      <input type="number" name="year" value="{{ year }}" min="2000" max="2100" 
+             class="form-control w-auto me-2 shadow-sm">
+      <button class="btn btn-sm btn-primary shadow-sm" type="submit">
+        <i class="fas fa-calendar-alt me-1"></i> Go
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- KPI Entry Form -->
+<form method="post" action="{% url 'project_kpis' project.id %}">
+  {% csrf_token %}
+  <input type="hidden" name="year" value="{{ year }}">
+
+  <div class="card shadow-lg border-0">
+    <div class="card-header bg-gradient text-white" 
+         style="background: linear-gradient(90deg, #0d6efd, #0a58ca);">
+      <h3 class="fw-bold mb-0">
+        📊 Monthly KPI Entry Grid ({{ year }})
+      </h3>
+    </div>
+
+    <div class="card-body">
+      <!-- 🔎 Search Bar -->
+      <div class="input-group mb-3 shadow-sm">
+        <span class="input-group-text bg-light">
+          <i class="fas fa-search text-secondary"></i>
+        </span>
+        <input 
+          type="text" 
+          id="searchInput" 
+          class="form-control" 
+          placeholder="Search indicators..." 
+          onkeyup="filterTable()">
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-hover align-middle text-center" id="kpiTable">
+          <thead class="table-primary">
+            <tr>
+              <th style="width: 20%">Indicator</th>
+              {% for m in months %}
+                <th>{{ m|get_month_name }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+          {% for ind in indicators %}
+            <tr class="table-light">
+              <td class="text-start">
+                <strong class="text-dark">{{ ind.name }}</strong><br>
+                <small class="text-muted">Unit: {{ ind.unit }}</small>
+              </td>
+              {% for m in months %}
+                {% with val=grid|get_item:ind.id|get_item:m %}
+                <td>
+                  <input type="number" step="0.01" min="0"
+                         name="val_{{ ind.id }}_{{ m }}"
+                         value="{{ val|default:'' }}"
+                         class="form-control form-control-sm text-end shadow-sm 
+                                {% if val %}bg-success-subtle{% endif %}">
+                </td>
+                {% endwith %}
+              {% endfor %}
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="{{ months|length|add:1 }}" class="text-center py-3">
+                <em class="text-muted">No KPIs available for this project.</em>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="mt-4 text-center">
+        <button class="btn btn-lg btn-success px-5 shadow-lg" type="submit">
+          <i class="fas fa-save me-2"></i> Save All Entries
+        </button>
+      </div>
+      <p class="text-muted small mt-3 text-center">
+        <strong>Tip:</strong> Leave a cell blank to keep it unchanged. Re-enter a value to update it.
+      </p>
+    </div>
+  </div>
+</form>
+
+<!-- 🔎 JavaScript filter function -->
+<script>
+function filterTable() {
+  let input = document.getElementById("searchInput");
+  let filter = input.value.toLowerCase();
+  let table = document.getElementById("kpiTable");
+  let rows = table.getElementsByTagName("tr");
+
+  for (let i = 1; i < rows.length; i++) { // skip header
+    let firstCol = rows[i].getElementsByTagName("td")[0];
+    if (firstCol) {
+      let textValue = firstCol.textContent || firstCol.innerText;
+      rows[i].style.display = textValue.toLowerCase().indexOf(filter) > -1 ? "" : "none";
+    }
+  }
+}
+</script>
+{% endblock %}
