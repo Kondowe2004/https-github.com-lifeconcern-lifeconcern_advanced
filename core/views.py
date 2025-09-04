@@ -4,19 +4,14 @@ from django.contrib import messages
 from django.db import transaction
 from django.http import HttpResponse
 import datetime
-from collections import defaultdict
 from django.db.models import Sum
-from django.db.models.functions import ExtractMonth   # ✅ Needed for monthly grouping
 from django.contrib.auth.models import User
-
+from collections import defaultdict
+import csv
 from .models import Project, Indicator, MonthlyEntry
-from .forms import ProjectForm
-from .forms import IndicatorForm   # <-- NEW import
+from .forms import ProjectForm, IndicatorForm
 
 
-# -------------------------
-# DASHBOARD
-# -------------------------
 # -------------------------
 # DASHBOARD
 # -------------------------
@@ -30,9 +25,13 @@ def dashboard(request):
 
     # 🔹 Extra KPIs
     current_year = datetime.date.today().year
-    annual_total = MonthlyEntry.objects.filter(year=current_year).aggregate(
-        total=Sum("value")
-    )["total"] or 0
+    # ✅ Only count People Reached
+    annual_total = (
+        MonthlyEntry.objects.filter(
+            year=current_year,
+            indicator__unit__iexact="People Reached"   # case-insensitive match
+        ).aggregate(total=Sum("value"))["total"] or 0
+    )
 
     user_count = User.objects.filter(is_active=True).count()
 
@@ -81,7 +80,6 @@ def dashboard(request):
 @login_required
 def project_detail(request, pk):
     project = get_object_or_404(Project, pk=pk)
-
     indicators = Indicator.objects.filter(project=project)
     months = list(range(1, 13))
     year = int(request.GET.get("year", datetime.datetime.now().year))
@@ -103,7 +101,7 @@ def project_detail(request, pk):
 
 
 # -------------------------
-# KPI Data Entry (Bulk Save)
+# KPI Data Entry (Bulk Save + Totals)
 # -------------------------
 @login_required
 def project_kpis(request, pk):
@@ -130,6 +128,7 @@ def project_kpis(request, pk):
                         month=month,
                         defaults={"value": val, "created_by": request.user},
                     )
+                # Update indicator progress
                 total_val = MonthlyEntry.objects.filter(indicator=ind, year=year).aggregate(
                     total=Sum("value")
                 )["total"] or 0
@@ -139,12 +138,28 @@ def project_kpis(request, pk):
         messages.success(request, "KPI data saved successfully!")
         return redirect("project_kpis", pk=project.id)
 
-    grid = {}
+    # -------------------------
+    # Build grid + totals
+    # -------------------------
+    grid = defaultdict(dict)
+    totals = {}           # ✅ Row totals per indicator
+    monthly_totals = {}   # ✅ Column totals across indicators
+    grand_total = 0       # ✅ Bottom-right grand total
+
+    # Build grid and row totals
     for ind in indicators:
-        grid[ind.id] = {}
+        row_total = 0
         for month in months:
             entry = MonthlyEntry.objects.filter(indicator=ind, year=year, month=month).first()
-            grid[ind.id][month] = entry.value if entry else None
+            val = entry.value if entry else 0
+            grid[ind.id][month] = val if val != 0 else None
+            row_total += val
+        totals[ind.id] = row_total
+        grand_total += row_total
+
+    # Build column totals
+    for month in months:
+        monthly_totals[month] = sum(grid[ind.id].get(month, 0) or 0 for ind in indicators)
 
     return render(request, "core/project_kpis.html", {
         "project": project,
@@ -152,6 +167,9 @@ def project_kpis(request, pk):
         "months": months,
         "year": year,
         "grid": grid,
+        "totals": totals,              # 👈 Row totals
+        "monthly_totals": monthly_totals,  # 👈 Column totals
+        "grand_total": grand_total,    # 👈 Grand total
     })
 
 
@@ -450,144 +468,34 @@ def reports(request):
     }
     return render(request, "core/reports.html", context)
 
+def export_project_kpis(request, pk):
+    project = Project.objects.get(pk=pk)
+    year = int(request.GET.get("year", 2025))  # fallback year
 
-    # -------------------------
-    # Indicator Drilldown / Totals
-    # -------------------------
-    indicator_totals = (
-        base_qs.values("indicator__id", "indicator__name", "indicator__unit")
-        .annotate(total=Sum("value"))
-        .order_by("indicator__name")
-    )
-    selected_indicators_data, overall_total = [], 0
-    for row in indicator_totals:
-        val = row["total"] or 0
-        selected_indicators_data.append({
-            "id": row["indicator__id"],
-            "name": row["indicator__name"],
-            "unit": row["indicator__unit"],
-            "value": val
-        })
-        overall_total += val
+    # Prepare HTTP response
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = f'attachment; filename="{project.name}_kpis_{year}.csv"'
 
-    # -------------------------
-    # Year-to-Date Totals
-    # -------------------------
-    ytd_totals = indicator_totals
+    writer = csv.writer(response)
+    # Header row
+    months = range(1, 13)
+    header = ["Indicator", "Unit"] + [f"{m:02d}" for m in months] + ["Total"]
+    writer.writerow(header)
 
-    # -------------------------
-    # Monthly Breakdown
-    # -------------------------
-    monthly_labels = list(range(1, 13))
-    monthly_data = []
+    # Data rows
+    indicators = project.indicators.all()
     for ind in indicators:
-        ind_series = [
-            base_qs.filter(indicator=ind, month=m).aggregate(total=Sum("value"))["total"] or 0
-            for m in monthly_labels
-        ]
-        if any(ind_series):
-            monthly_data.append({
-                "indicator": ind.name,
-                "unit": ind.unit,
-                "values": ind_series,
-            })
+        row = [ind.name, ind.unit]
+        total = 0
+        for m in months:
+            entry = MonthlyEntry.objects.filter(indicator=ind, year=year, month=m).first()
+            val = entry.value if entry else 0
+            row.append(val)
+            total += val
+        row.append(total)
+        writer.writerow(row)
 
-    # -------------------------
-    # Quarterly Breakdown
-    # -------------------------
-    quarterly_labels = ["Q1", "Q2", "Q3", "Q4"]
-    quarterly_data = []
-    for ind in indicators:
-        ind_monthly = [
-            base_qs.filter(indicator=ind, month=m).aggregate(total=Sum("value"))["total"] or 0
-            for m in monthly_labels
-        ]
-        if any(ind_monthly):
-            quarterly_data.append({
-                "indicator": ind.name,
-                "unit": ind.unit,
-                "values": [
-                    sum(ind_monthly[0:3]),
-                    sum(ind_monthly[3:6]),
-                    sum(ind_monthly[6:9]),
-                    sum(ind_monthly[9:12]),
-                ]
-            })
-
-    # -------------------------
-    # Project Totals (table + chart)
-    # -------------------------
-    project_totals = {}
-    project_totals_chart = {}
-    for project in projects:
-        proj_qs = base_qs.filter(indicator__project=project)
-        proj_rows = (
-            proj_qs.values("indicator__id", "indicator__name", "indicator__unit")
-            .annotate(total=Sum("value"))
-            .order_by("indicator__name")
-        )
-        if proj_rows:
-            project_totals[project.name] = list(proj_rows)
-            # For chart: name + value only
-            project_totals_chart[project.name] = [
-                {
-                    "indicator": r["indicator__name"],
-                    "unit": r["indicator__unit"],
-                    "value": r["total"] or 0,
-                }
-                for r in proj_rows
-            ]
-
-    # -------------------------
-    # Project Trends (monthly series per indicator in project)
-    # -------------------------
-    project_trends = {}
-    for project in projects:
-        proj_qs = base_qs.filter(indicator__project=project)
-        trend_data = []
-        for ind in indicators.filter(project=project):
-            ind_series = [
-                proj_qs.filter(indicator=ind, month=m).aggregate(total=Sum("value"))["total"] or 0
-                for m in monthly_labels
-            ]
-            if any(ind_series):
-                trend_data.append({
-                    "indicator": ind.name,
-                    "unit": ind.unit,
-                    "months": monthly_labels,
-                    "values": ind_series,
-                })
-        if trend_data:
-            project_trends[project.name] = trend_data
-
-    context = {
-        "year": year,
-        "projects": projects,
-        "indicators": indicators,
-        "units": units,
-        "selected_unit": selected_unit,
-        "selected_indicators": selected_indicator_ids,
-
-        # Totals per indicator
-        "indicator_totals": indicator_totals,
-        "selected_indicators_data": selected_indicators_data,
-        "overall_total": overall_total,
-        "ytd_totals": ytd_totals,
-
-        # Monthly / Quarterly
-        "monthly_labels": monthly_labels,
-        "monthly_data": monthly_data,
-        "quarterly_labels": quarterly_labels,
-        "quarterly_data": quarterly_data,
-
-        # Project-based
-        "project_totals": project_totals,
-        "project_totals_chart": project_totals_chart,
-        "project_trends": project_trends,
-    }
-    return render(request, "core/reports.html", context)
-
-
+    return response
 
 # -------------------------
 # EXPORT CSV
@@ -599,3 +507,4 @@ def reports_export_csv(request):
     response.write("indicator,value\n")
     response.write("Sample Indicator,123\n")
     return response
+

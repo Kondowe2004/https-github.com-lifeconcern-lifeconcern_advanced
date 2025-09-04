@@ -19,6 +19,9 @@ urlpatterns = [
     path('projects/<int:project_pk>/indicators/<int:pk>/edit/', views.indicator_edit, name='indicator_edit'),
     path('projects/<int:project_pk>/indicators/<int:pk>/delete/', views.indicator_delete, name='indicator_delete'),
 
+    # ✅ Project KPI Export
+    path('projects/<int:pk>/export/csv/', views.export_project_kpis, name='export_project_kpis'),
+
     # Reports
     path('reports/', views.reports, name='reports'),
     path('reports/export/', views.reports_export_csv, name='reports_export_csv'),
