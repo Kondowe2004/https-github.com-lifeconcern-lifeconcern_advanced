@@ -5,10 +5,17 @@
 
 {% block content %}
 
+<!-- Full Page Gradient Background -->
+<style>
+  body {
+    background: linear-gradient(135deg, #f0f4f8, #e0f7fa);
+  }
+</style>
+
 <!-- Top-right live date & time -->
 <div class="position-absolute top-0 end-0 p-2">
   <div id="live-clock"
-       class="px-2 py-1 rounded shadow-sm text-white fw-normal fs-6 clock-widget">
+       class="px-3 py-1 rounded-3 shadow clock-widget">
   </div>
 </div>
 
@@ -35,73 +42,159 @@
 
 <style>
   .clock-widget {
-    background: linear-gradient(90deg, #28a745, #007bff, #6f42c1);
-    border-radius: 6px;
+    background: linear-gradient(90deg, #ff512f, #dd2476);
+    color: white;
+    font-weight: 600;
     font-size: 0.85rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+
+  /* Stat Cards */
+  .stat-card {
+    border-radius: 15px;
+    color: #fff;
+    padding: 20px;
+    transition: all 0.3s ease, box-shadow 0.3s ease;
+    cursor: pointer;
+  }
+  .stat-card:hover {
+    transform: translateY(-6px) scale(1.04);
+    box-shadow: 0 12px 28px rgba(0,0,0,0.28), 0 0 10px rgba(255,255,255,0.2);
+  }
+  .icon-animate {
+    animation: float 2s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+
+  /* Project Cards */
+  .project-card {
+    background: linear-gradient(135deg, #f9fafb, #eef2ff);
+    border-radius: 15px;
+    border: 1px solid #e2e8f0;
+    transition: all 0.3s ease, box-shadow 0.3s ease;
+    height: 100%;
+  }
+  .project-card:hover {
+    background: linear-gradient(135deg, #6a11cb, #2575fc);
+    color: #fff;
+    transform: translateY(-6px) scale(1.03);
+    box-shadow: 0 12px 28px rgba(0,0,0,0.25), 0 0 15px rgba(255,255,255,0.2);
+  }
+
+  /* Quick Action Buttons */
+  .quick-btn {
+    background: linear-gradient(90deg, #f12711, #f5af19);
+    color: #fff !important;
+    font-weight: 600;
+    border-radius: 10px;
+    padding: 10px 18px;
+    transition: all 0.25s ease-in-out;
+  }
+  .quick-btn:hover {
+    background: linear-gradient(90deg, #ff512f, #dd2476);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+  }
+
+  /* Timeline */
+  .timeline li {
+    border-left: 3px solid #007bff;
+    padding-left: 12px;
+    position: relative;
+    margin-bottom: 15px;
+  }
+  .timeline li::before {
+    content: '';
+    position: absolute;
+    left: -7px;
+    top: 6px;
+    width: 14px;
+    height: 14px;
+    background: #007bff;
+    border-radius: 50%;
+  }
+  .timeline li.report::before { background: #28a745; }
+  .timeline li.kpi::before { background: #007bff; }
+
+  /* Logo container */
+  .logo-container {
+    background: #fff;
+    border-radius: 8px;
+    padding: 5px 8px;
+    display: inline-block;
   }
 </style>
 
 <!-- Page Header -->
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <div class="d-flex align-items-center">
-    <img src="{% static 'logo/logo.png' %}" alt="Logo" style="height:50px;" class="me-3">
-    <div>
-      <h1 class="h3 fw-bold mb-1">Dashboard</h1>
-      <p class="text-muted mb-0">Overview of your organisation’s performance and activities.</p>
+<div class="dashboard-header p-4 mb-4 text-white rounded-3" style="background: linear-gradient(90deg, #007bff, #00c6ff);">
+  <div class="d-flex justify-content-between align-items-center">
+    <div class="d-flex align-items-center">
+      <div class="logo-container me-3">
+        <img src="{% static 'logo/logo.png' %}" alt="Logo" style="height:50px;">
+      </div>
+      <div>
+        <h1 class="h3 fw-bold mb-1">Dashboard</h1>
+        <p class="mb-0">Overview of your organisation’s performance and activities.</p>
+      </div>
     </div>
-  </div>
-  <div>
-    <a href="{% url 'reports' %}" class="btn btn-primary">
-      <i class="fas fa-chart-line me-2"></i> View Reports
-    </a>
+    <div>
+      <a href="{% url 'reports' %}" class="btn btn-light">
+        <i class="fas fa-chart-line me-2"></i> View Reports
+      </a>
+    </div>
   </div>
 </div>
 
 <!-- Welcome Card -->
-<div class="card mb-4 p-3">
-  <h4 class="fw-semibold">
-    👋 Welcome, <a href="{% url 'profile' %}">{{ user.first_name|default:user.username }}</a>
-  </h4>
+<div class="card mb-4 p-3 shadow-sm rounded-3">
+  <h4 class="fw-semibold">👋 Welcome, <a href="{% url 'profile' %}">{{ user.first_name|default:user.username }}</a></h4>
   <p class="text-muted mt-1 mb-0">Here’s a quick summary of your progress today.</p>
 </div>
 
 <!-- Quick Stats -->
 <div class="row g-4">
   <div class="col-md-3 col-sm-6">
-    <div class="card text-center p-3 shadow-sm">
-      <div class="mb-2"><i class="fas fa-folder-open text-primary fa-2x"></i></div>
-      <h3 class="fw-bold"><a href="{% url 'projects' %}" class="text-decoration-none">{{ total_projects }}</a></h3>
-      <p class="text-muted mb-0">Projects</p>
-    </div>
+    <a href="{% url 'projects' %}" class="text-decoration-none">
+      <div class="card stat-card text-center" style="background: linear-gradient(135deg, #6a11cb, #2575fc);">
+        <div class="mb-2"><i class="fas fa-folder-open fa-2x icon-animate"></i></div>
+        <h3 class="fw-bold">{{ total_projects }}</h3>
+        <p class="mb-0">Projects</p>
+      </div>
+    </a>
   </div>
   <div class="col-md-3 col-sm-6">
-    <div class="card text-center p-3 shadow-sm">
-      <div class="mb-2"><i class="fas fa-bullseye text-success fa-2x"></i></div>
-      <h3 class="fw-bold"><a href="{% url 'projects' %}" class="text-decoration-none">{{ total_indicators }}</a></h3>
-      <p class="text-muted mb-0">Indicators</p>
-    </div>
+    <a href="{% url 'projects' %}" class="text-decoration-none">
+      <div class="card stat-card text-center" style="background: linear-gradient(135deg, #11998e, #38ef7d);">
+        <div class="mb-2"><i class="fas fa-bullseye fa-2x icon-animate"></i></div>
+        <h3 class="fw-bold">{{ total_indicators }}</h3>
+        <p class="mb-0">Indicators</p>
+      </div>
+    </a>
   </div>
   <div class="col-md-3 col-sm-6">
-    <div class="card text-center p-3 shadow-sm">
-      <div class="mb-2"><i class="fas fa-calendar-alt text-warning fa-2x"></i></div>
+    <div class="card stat-card text-center" style="background: linear-gradient(135deg, #f7971e, #ffd200);">
+      <div class="mb-2"><i class="fas fa-calendar-alt fa-2x icon-animate"></i></div>
       <h3 class="fw-bold">{{ annual_total }}</h3>
-      <p class="text-muted mb-0">People Reached ({{ current_year }})</p>
+      <p class="mb-0">People Reached ({{ current_year }})</p>
     </div>
   </div>
   <div class="col-md-3 col-sm-6">
-    <div class="card text-center p-3 shadow-sm">
-      <div class="mb-2"><i class="fas fa-users text-danger fa-2x"></i></div>
-      <h3 class="fw-bold">{{ user_count }}</h3>
-      <p class="text-muted mb-0">Active Users</p>
-    </div>
+    <a href="{% url 'profile' %}" class="text-decoration-none">
+      <div class="card stat-card text-center" style="background: linear-gradient(135deg, #ff416c, #ff4b2b);">
+        <div class="mb-2"><i class="fas fa-users fa-2x icon-animate"></i></div>
+        <h3 class="fw-bold">{{ user_count }}</h3>
+        <p class="mb-0">Active Users</p>
+      </div>
+    </a>
   </div>
 </div>
 
 <!-- Project List -->
-<div class="card mt-4 p-3 border-0 shadow-lg rounded-3">
-  <h5 class="fw-semibold mb-3 text-primary">
-    📋 Active Projects
-  </h5>
+<div class="card mt-4 p-3 shadow-lg rounded-3">
+  <h5 class="fw-semibold mb-3 text-primary">📋 Active Projects</h5>
   <div class="row g-3">
     {% for project in projects %}
       <div class="col-md-4 col-sm-6">
@@ -110,9 +203,7 @@
             <h6 class="fw-bold text-dark mb-2">
               <i class="fas fa-folder-open text-primary me-2"></i>{{ project.name }}
             </h6>
-            <p class="text-muted small mb-0">
-              {{ project.description|truncatechars:80 }}
-            </p>
+            <p class="text-muted small mb-0">{{ project.description|truncatechars:80 }}</p>
           </div>
         </a>
       </div>
@@ -122,88 +213,44 @@
   </div>
 </div>
 
-<style>
-  .project-card {
-    background: linear-gradient(135deg, #f9fafb, #eef2ff);
-    border: 1px solid #e2e8f0;
-    transition: all 0.3s ease;
-  }
-  .project-card:hover {
-    background: linear-gradient(135deg, #e0f2fe, #f0f9ff);
-    transform: translateY(-4px) scale(1.02);
-    box-shadow: 0 6px 18px rgba(0,0,0,0.12);
-  }
-</style>
-
 <!-- Quick Actions -->
-<div class="card mt-4 p-3 border-0 shadow-lg rounded-3">
+<div class="card mt-4 p-3 shadow-lg rounded-3">
   <h5 class="fw-semibold text-success">⚡ Quick Actions</h5>
   <div class="d-flex flex-wrap gap-3 mt-3">
-    <a href="{% url 'projects' %}" class="btn quick-btn">
-      <i class="fas fa-tasks me-2"></i> Manage Projects
-    </a>
-    <a href="{% url 'reports' %}" class="btn quick-btn">
-      <i class="fas fa-file-alt me-2"></i> View Reports
-    </a>
-    <a href="{% url 'profile' %}" class="btn quick-btn">
-      <i class="fas fa-user-circle me-2"></i> My Profile
-    </a>
+    <a href="{% url 'projects' %}" class="btn quick-btn"><i class="fas fa-tasks me-2"></i> Manage Projects</a>
+    <a href="{% url 'reports' %}" class="btn quick-btn"><i class="fas fa-file-alt me-2"></i> View Reports</a>
+    <a href="{% url 'profile' %}" class="btn quick-btn"><i class="fas fa-user-circle me-2"></i> My Profile</a>
   </div>
 </div>
 
-<style>
-  .quick-btn {
-    background: linear-gradient(90deg, #007bff, #00c6ff);
-    color: #fff !important;
-    font-weight: 500;
-    border-radius: 8px;
-    padding: 10px 18px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    transition: all 0.25s ease-in-out;
-  }
-  .quick-btn:hover {
-    background: linear-gradient(90deg, #0056b3, #0099cc);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0,0,0,0.15);
-  }
-</style>
-
 <!-- Recent Activity -->
-<div class="card mt-4 p-3">
+<div class="card mt-4 p-3 shadow-sm rounded-3">
   <h5 class="fw-semibold mb-3">🕒 Recent Activity</h5>
   <ul class="timeline list-unstyled">
-    {% for activity in recent_activities %}
-      <li class="mb-3 d-flex">
-        <div class="me-3 text-primary">
-          <i class="fas fa-check-circle"></i>
-        </div>
+    {% for entry in recent_entries %}
+      <li class="mb-3 d-flex kpi">
+        <div class="me-3 text-primary"><i class="fas fa-chart-line"></i></div>
         <div>
-          <p class="mb-1 fw-semibold">{{ activity.message }}</p>
-          <small class="text-muted">{{ activity.timestamp|date:"M d, Y H:i" }}</small>
+          <p class="mb-1 fw-semibold">{{ entry.indicator.name }} ({{ entry.indicator.project.name }}): {{ entry.value }}</p>
+          <small class="text-muted">{{ entry.created_at|date:"M d, Y H:i" }} by {{ entry.created_by.get_full_name|default:entry.created_by.username }}</small>
         </div>
       </li>
     {% empty %}
-      <p class="text-muted">No recent activity.</p>
+      <p class="text-muted">No recent KPI entries.</p>
+    {% endfor %}
+
+    {% for report in recent_reports %}
+      <li class="mb-3 d-flex report">
+        <div class="me-3 text-success"><i class="fas fa-file-alt"></i></div>
+        <div>
+          <p class="mb-1 fw-semibold">{{ report.title }}</p>
+          <small class="text-muted">{{ report.created_at|date:"M d, Y H:i" }} by {{ report.user.get_full_name|default:report.user.username }}</small>
+        </div>
+      </li>
+    {% empty %}
+      <p class="text-muted">No recent reports.</p>
     {% endfor %}
   </ul>
 </div>
-
-<style>
-  .timeline li {
-    border-left: 2px solid #007bff;
-    padding-left: 10px;
-    position: relative;
-  }
-  .timeline li::before {
-    content: '';
-    position: absolute;
-    left: -6px;
-    top: 6px;
-    width: 12px;
-    height: 12px;
-    background: #007bff;
-    border-radius: 50%;
-  }
-</style>
 
 {% endblock %}

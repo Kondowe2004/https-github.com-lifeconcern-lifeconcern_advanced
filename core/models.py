@@ -48,9 +48,16 @@ class MonthlyEntry(models.Model):
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)  # Reference to User
     created_at = models.DateTimeField(auto_now_add=True)
 
+
+class Report(models.Model):
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
     class Meta:
-        unique_together = ('indicator', 'year', 'month')
-        ordering = ['indicator', 'year', 'month']
+        ordering = ['-created_at']  # safe ordering
 
     def __str__(self):
-        return f"{self.indicator} {self.year}-{self.month:02d}"
+        return f"{self.title} by {self.user.username}"
+

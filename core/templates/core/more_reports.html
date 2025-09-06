@@ -1,0 +1,124 @@
+{% extends 'core/base.html' %}
+{% load custom_tags %}
+
+{% block title %}More Reports{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">More Reports</h2>
+
+<!-- Combined Year + Pivot Filters -->
+<form method="get" id="pivotFilterForm" class="row g-3 mb-4">
+  <div class="col-md-2">
+    <label for="year" class="form-label">Year</label>
+    <select name="year" id="year" class="form-select">
+      {% for y in years %}
+        <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="col-md-2">
+    <label for="unit" class="form-label">Unit</label>
+    <select name="unit" id="unit" class="form-select">
+      <option value="">All</option>
+      {% for u in units %}
+        <option value="{{ u }}" {% if selected_unit == u %}selected{% endif %}>{{ u }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="col-md-2">
+    <label for="project" class="form-label">Project</label>
+    <select name="project" id="project" class="form-select">
+      <option value="">All</option>
+      {% for p in projects %}
+        <option value="{{ p.id }}" {% if selected_project|default:'' == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="col-md-2">
+    <label for="indicator" class="form-label">Indicator</label>
+    <select name="indicator" id="indicator" class="form-select">
+      <option value="">All</option>
+      {% for i in indicators %}
+        <option value="{{ i.id }}" {% if selected_indicator|default:'' == i.id|stringformat:"s" %}selected{% endif %}>{{ i.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="col-md-2 align-self-end">
+    <a id="download-csv" href="{% url 'more_reports_export_csv' %}?year={{ selected_year }}&unit={{ selected_unit }}&project={{ selected_project }}&indicator={{ selected_indicator }}" class="btn btn-success">Download CSV</a>
+  </div>
+</form>
+
+<!-- Custom Pivot Table Reports -->
+<h4 class="mt-5">Custom Reports (Pivot Table)</h4>
+<table class="table table-bordered table-striped">
+  <thead class="table-dark">
+    <tr>
+      <th>Indicator</th>
+      <th>Unit</th>
+      {% for m in month_headers %}
+        <th>{{ m }}</th>
+      {% endfor %}
+      <th>Total</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in pivot_data %}
+      <tr>
+        <td>{{ row.indicator }}</td>
+        <td>{{ row.unit }}</td>
+        {% for val in row.values %}
+          <td>{{ val }}</td>
+        {% endfor %}
+        <td>{{ row.total }}</td>
+      </tr>
+    {% empty %}
+      <tr>
+        <td colspan="{{ 2|add:month_headers|length|add:1 }}" class="text-center">No data available.</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr>
+      <th colspan="2">Column Totals</th>
+      {% for m in months %}
+        <th>{{ column_totals|get_item:m }}</th>
+      {% endfor %}
+      <th>{{ grand_total }}</th>
+    </tr>
+  </tfoot>
+</table>
+
+<!-- Auto-refresh & CSV link update JS -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('pivotFilterForm');
+    const selects = form.querySelectorAll('select');
+    const csvLink = document.getElementById('download-csv');
+
+    function updateCsvLink() {
+      const params = new URLSearchParams({
+        year: document.getElementById('year').value,
+        unit: document.getElementById('unit').value,
+        project: document.getElementById('project').value,
+        indicator: document.getElementById('indicator').value
+      });
+      csvLink.href = `{% url 'more_reports_export_csv' %}?` + params.toString();
+    }
+
+    selects.forEach(function(select) {
+      select.addEventListener('change', function() {
+        updateCsvLink();
+        form.submit();
+      });
+    });
+
+    // Initialize CSV link on page load
+    updateCsvLink();
+  });
+</script>
+
+{% endblock %}

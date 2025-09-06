@@ -8,8 +8,15 @@ from django.db.models import Sum
 from django.contrib.auth.models import User
 from collections import defaultdict
 import csv
+from django.db.models.functions import TruncMonth
 from .models import Project, Indicator, MonthlyEntry
 from .forms import ProjectForm, IndicatorForm
+from django.shortcuts import render
+from django.contrib.auth.models import User
+from django.db.models import Count
+from core.models import Report  # adjust if your Report model is in another app
+from core.templatetags.custom_tags import get_month_name
+import calendar
 
 
 # -------------------------
@@ -57,6 +64,15 @@ def dashboard(request):
     by_project_labels = [p["indicator__project__name"] for p in by_project]
     by_project_data = [p["total"] for p in by_project]
 
+    # 🔹 Recent activity (last 5 entries)
+    recent_entries = (
+        MonthlyEntry.objects.select_related("indicator", "indicator__project", "created_by")
+        .order_by("-created_at")[:5]
+    )
+
+    # Optional: Include recent reports too
+    recent_reports = Report.objects.select_related("user").order_by("-created_at")[:5]
+
     return render(request, "core/dashboard.html", {
         "projects": projects,
         "total_projects": total_projects,
@@ -71,6 +87,10 @@ def dashboard(request):
         "monthly_data": monthly_data,
         "by_project_labels": by_project_labels,
         "by_project_data": by_project_data,
+
+        # 👇 Recent activity
+        "recent_entries": recent_entries,
+        "recent_reports": recent_reports,  # optional, if you want reports too
     })
 
 
@@ -399,7 +419,7 @@ def reports(request):
             })
 
     # -------------------------
-    # Project Totals (table + chart)
+    # Project Totals (per project summary + per-indicator breakdown)
     # -------------------------
     project_totals = {}
     project_totals_chart = {}
@@ -420,6 +440,15 @@ def reports(request):
                 }
                 for r in proj_rows
             ]
+
+    # ✅ Fix: aggregate per project (not empty anymore)
+    project_totals_summary = (
+        base_qs.values("indicator__project__id", "indicator__project__name")
+        .annotate(total=Sum("value"))
+        .order_by("indicator__project__name")
+    )
+    project_totals_labels = [p["indicator__project__name"] for p in project_totals_summary]
+    project_totals_data = [p["total"] or 0 for p in project_totals_summary]
 
     # -------------------------
     # Project Trends
@@ -464,9 +493,12 @@ def reports(request):
 
         "project_totals": project_totals,
         "project_totals_chart": project_totals_chart,
+        "project_totals_labels": project_totals_labels,
+        "project_totals_data": project_totals_data,
         "project_trends": project_trends,
     }
     return render(request, "core/reports.html", context)
+
 
 def export_project_kpis(request, pk):
     project = Project.objects.get(pk=pk)
@@ -498,6 +530,188 @@ def export_project_kpis(request, pk):
     return response
 
 # -------------------------
+# MORE REPORTS (UPDATED YEAR-SENSITIVE)
+# -------------------------
+@login_required
+def more_reports(request):
+
+
+    # -------------------------
+    # Year filter
+    # -------------------------
+    current_year = datetime.datetime.now().year
+    selected_year = request.GET.get("year")
+    try:
+        selected_year = int(selected_year)
+    except (TypeError, ValueError):
+        selected_year = current_year
+
+    # Reports per Staff
+    reports_per_staff = (
+        Report.objects.filter(created_at__year=selected_year)
+        .values("user__username")
+        .annotate(total=Count("id"))
+        .order_by("-total")
+    )
+
+    # Reports per Month
+    reports_per_month = (
+        Report.objects.filter(created_at__year=selected_year)
+        .annotate(month=TruncMonth("created_at"))
+        .values("month")
+        .annotate(total=Count("id"))
+        .order_by("month")
+    )
+
+    # Full Reports List (year filtered)
+    reports = Report.objects.filter(created_at__year=selected_year).order_by("-created_at")
+
+    # Pivot Table Filters
+    units = Indicator.objects.values_list("unit", flat=True).distinct()
+    projects = Project.objects.all()
+    indicators = Indicator.objects.all()
+
+    selected_unit = request.GET.get("unit") or None
+    selected_project = request.GET.get("project")
+    selected_project = int(selected_project) if selected_project and selected_project.isdigit() else None
+    selected_indicator = request.GET.get("indicator")
+    selected_indicator = int(selected_indicator) if selected_indicator and selected_indicator.isdigit() else None
+
+    # -------------------------
+    # Pivot QuerySet (YEAR FILTERED)
+    # -------------------------
+    pivot_qs = MonthlyEntry.objects.filter(year=selected_year)
+    if selected_unit:
+        pivot_qs = pivot_qs.filter(indicator__unit=selected_unit)
+    if selected_project:
+        pivot_qs = pivot_qs.filter(indicator__project_id=selected_project)
+    if selected_indicator:
+        pivot_qs = pivot_qs.filter(indicator_id=selected_indicator)
+
+    # -------------------------
+    # Build pivot table
+    # -------------------------
+    months = list(range(1, 13))
+    month_headers = [calendar.month_abbr[m] for m in months]  # Short month names Jan, Feb, ...
+    pivot_data = []
+    column_totals = {m: 0 for m in months}
+    grand_total = 0
+
+    for ind in indicators:
+        if selected_unit and ind.unit != selected_unit:
+            continue
+        if selected_project and ind.project.id != selected_project:
+            continue
+        if selected_indicator and ind.id != selected_indicator:
+            continue
+
+        row_total = 0
+        row_values = []
+        for m in months:
+            val = pivot_qs.filter(indicator=ind, month=m).aggregate(total=Sum("value"))["total"] or 0
+            row_values.append(val)
+            row_total += val
+            column_totals[m] += val
+        grand_total += row_total
+        if row_total > 0:
+            pivot_data.append({
+                "indicator": ind.name,
+                "unit": ind.unit,
+                "values": row_values,
+                "total": row_total
+            })
+
+    # -------------------------
+    # List of available years for dropdown
+    # -------------------------
+    years = MonthlyEntry.objects.values_list("year", flat=True).distinct().order_by("-year")
+    if not years:
+        years = [current_year]
+
+    context = {
+        "selected_year": selected_year,
+        "years": years,  # send to template
+        "reports_per_staff": reports_per_staff,
+        "reports_per_month": reports_per_month,
+        "reports": reports,
+        "units": units,
+        "projects": projects,
+        "indicators": indicators,
+        "selected_unit": selected_unit,
+        "selected_project": selected_project,
+        "selected_indicator": selected_indicator,
+        "months": months,
+        "month_headers": month_headers,
+        "pivot_data": pivot_data,
+        "column_totals": column_totals,
+        "grand_total": grand_total,
+    }
+
+    return render(request, "core/more_reports.html", context)
+
+
+
+
+# -------------------------
+# EXPORT CSV FOR MORE REPORTS
+# -------------------------
+@login_required
+def more_reports_export_csv(request):
+    selected_unit = request.GET.get("unit") or None
+    selected_project = request.GET.get("project")
+    selected_project = int(selected_project) if selected_project and selected_project.isdigit() else None
+    selected_indicator = request.GET.get("indicator")
+    selected_indicator = int(selected_indicator) if selected_indicator and selected_indicator.isdigit() else None
+
+    pivot_qs = MonthlyEntry.objects.all()
+    if selected_unit:
+        pivot_qs = pivot_qs.filter(indicator__unit=selected_unit)
+    if selected_project:
+        pivot_qs = pivot_qs.filter(indicator__project_id=selected_project)
+    if selected_indicator:
+        pivot_qs = pivot_qs.filter(indicator_id=selected_indicator)
+
+    indicators = Indicator.objects.all()
+    if selected_unit:
+        indicators = indicators.filter(unit=selected_unit)
+    if selected_project:
+        indicators = indicators.filter(project_id=selected_project)
+    if selected_indicator:
+        indicators = indicators.filter(id=selected_indicator)
+
+    months = list(range(1, 13))
+    month_headers = [get_month_name(m) for m in months]  # ✅ Month names in CSV
+    column_totals = {m: 0 for m in months}
+    grand_total = 0
+
+    response = HttpResponse(content_type="text/csv")
+    response['Content-Disposition'] = 'attachment; filename="custom_reports.csv"'
+    writer = csv.writer(response)
+
+    # Header
+    writer.writerow(["Indicator", "Unit"] + month_headers + ["Total"])
+
+    # Data rows
+    for ind in indicators:
+        row_values = []
+        row_total = 0
+        for m in months:
+            val = pivot_qs.filter(indicator=ind, month=m).aggregate(total=Sum("value"))["total"] or 0
+            row_values.append(val)
+            row_total += val
+            column_totals[m] += val
+        grand_total += row_total
+        writer.writerow([ind.name, ind.unit] + row_values + [row_total])
+
+    # Column totals row
+    totals_row = ["Column Totals", ""] + [column_totals[m] for m in months] + [grand_total]
+    writer.writerow(totals_row)
+
+    return response
+
+
+
+# -------------------------
 # EXPORT CSV
 # -------------------------
 @login_required
@@ -507,4 +721,3 @@ def reports_export_csv(request):
     response.write("indicator,value\n")
     response.write("Sample Indicator,123\n")
     return response
-

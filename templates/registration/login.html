@@ -10,25 +10,72 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #0d6efd;
+    background: url("{% static 'images/login_bg.jpg' %}") no-repeat center center fixed;
+    background-size: cover;
+    position: relative;
+    padding: 1rem;
+    overflow: hidden;
   }
+
+  /* Dark overlay */
+  .login-wrapper::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1;
+  }
+
   .login-card {
-    background: #fff;
+    position: relative;
+    z-index: 2;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     padding: 2rem 2.5rem;
     border-radius: 15px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
-    width: 380px;
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4);
+    width: 100%;
+    max-width: 380px;
     text-align: center;
+    color: #fff;
+
+    /* Animation */
+    opacity: 0;
+    transform: translateY(30px);
+    animation: fadeInUp 1s ease-out forwards;
   }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .login-card img {
+    max-width: 100px;
+    height: auto;
+    margin-bottom: 1rem;
+  }
+
   .login-card h2 {
     margin-bottom: 0.5rem;
-    color: #0d6efd;
+    color: #fff;
     font-weight: bold;
   }
   .login-card p {
     margin-bottom: 1.5rem;
-    color: #555;
+    color: #e0e0e0;
   }
+
   .login-card form {
     display: flex;
     flex-direction: column;
@@ -37,10 +84,16 @@
   .login-card input {
     width: 100%;
     padding: 0.75rem;
-    border: 1px solid #ddd;
+    border: 1px solid rgba(255,255,255,0.3);
     border-radius: 8px;
     font-size: 1rem;
+    background: rgba(255,255,255,0.1);
+    color: #fff;
   }
+  .login-card input::placeholder {
+    color: #ddd;
+  }
+
   .btn-login {
     background: #0d6efd;
     color: white;
@@ -55,20 +108,41 @@
   .btn-login:hover {
     background: #084298;
   }
+
   .extra-links {
     margin-top: 1rem;
     font-size: 0.9rem;
   }
   .extra-links a {
-    color: #0d6efd;
+    color: #fff;
     text-decoration: none;
+  }
+  .extra-links a:hover {
+    text-decoration: underline;
+  }
+
+  /* Responsive */
+  @media (max-width: 480px) {
+    .login-card {
+      padding: 1.5rem;
+    }
+    .login-card h2 {
+      font-size: 1.3rem;
+    }
+    .login-card p {
+      font-size: 0.9rem;
+    }
+    .btn-login {
+      font-size: 0.95rem;
+      padding: 0.65rem;
+    }
   }
 </style>
 
 <div class="login-wrapper">
   <div class="login-card">
-    <!-- Logo added here -->
-    <img src="{% static 'logo/logo.png' %}" alt="Life Concern Logo" width="120" class="mb-3">
+    <!-- Logo -->
+    <img src="{% static 'logo/logo.png' %}" alt="Life Concern Logo">
 
     <h2>Welcome</h2>
     <p>Life Concern Data Management System</p>

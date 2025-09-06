@@ -7,11 +7,20 @@ register = template.Library()
 @register.filter
 def dict_get(dictionary, key):
     """
-    Allows template access like: {{ mydict|get:key }}
+    Allows template access like: {{ mydict|dict_get:key }}
+    Returns 0 if key is not found (useful for totals).
     """
     if dictionary and key in dictionary:
         return dictionary.get(key)
-    return None
+    return 0
+
+
+@register.filter
+def get_item(dictionary, key):
+    """
+    Alias for dict_get, so templates using get_item work.
+    """
+    return dict_get(dictionary, key)
 
 
 @register.filter
@@ -22,6 +31,19 @@ def get_month_name(month_number):
     """
     try:
         return calendar.month_name[int(month_number)]
+    except (ValueError, TypeError, IndexError):
+        return ""
+
+
+@register.filter
+def get_month_abbr(month_number):
+    """
+    Convert month number (1–12) into abbreviated month name.
+    Example: 1 → "Jan"
+    Useful for pivot table headers.
+    """
+    try:
+        return calendar.month_abbr[int(month_number)]
     except (ValueError, TypeError, IndexError):
         return ""
 
