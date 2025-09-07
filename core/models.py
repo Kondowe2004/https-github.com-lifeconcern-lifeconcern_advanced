@@ -1,5 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User  # <-- Add this import for User
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from .utils import send_email_alert  # <-- Added for email alerts
 
 
 class Project(models.Model):
@@ -61,3 +64,19 @@ class Report(models.Model):
     def __str__(self):
         return f"{self.title} by {self.user.username}"
 
+
+# -------------------------
+# Email Alert Signal
+# -------------------------
+@receiver(post_save, sender=MonthlyEntry)
+def send_monthly_entry_alert(sender, instance, created, **kwargs):
+    if created:
+        users = User.objects.all()
+        recipient_list = [user.email for user in users if user.email]
+        subject = f"New Data Entry Saved for {instance.indicator.project.name}"
+        message = (
+            f"Hello,\n\nA new data entry has been saved by {instance.created_by.username if instance.created_by else 'a user'} "
+            f"for the project '{instance.indicator.project.name}' and indicator '{instance.indicator.name}'.\n\n"
+            f"Value: {instance.value}\nMonth: {instance.month}/{instance.year}\nNotes: {instance.notes}"
+        )
+        send_email_alert(subject, message, recipient_list)

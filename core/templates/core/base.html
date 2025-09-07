@@ -196,7 +196,6 @@
       {% endif %}
 
       <main class="page-body">
-        <!-- Messages -->
         {% if messages %}
           <div class="container mb-3">
             {% for message in messages %}
@@ -232,12 +231,12 @@
 
   <!-- PWA Service Worker & Install Button -->
   <script>
-    // Register service worker
+    // Register service worker at root scope
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register("{% static 'service-worker.js' %}")
-        .then(reg => console.log('Service Worker registered', reg))
-        .catch(err => console.log('Service Worker registration failed', err));
+        navigator.serviceWorker.register("/service-worker.js")
+          .then(reg => console.log('Service Worker registered', reg))
+          .catch(err => console.log('Service Worker registration failed', err));
       });
     }
 
@@ -247,13 +246,13 @@
     installBtn.id = 'install-btn';
     installBtn.textContent = 'Install Dashboard';
     installBtn.classList.add('btn', 'btn-primary');
-    installBtn.style.display = 'none'; // hide initially
+    installBtn.style.display = 'none';
     document.body.appendChild(installBtn);
 
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
-      installBtn.style.display = 'block'; // show button when eligible
+      installBtn.style.display = 'block';
     });
 
     installBtn.addEventListener('click', async () => {
