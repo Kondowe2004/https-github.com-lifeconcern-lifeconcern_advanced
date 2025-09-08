@@ -9,19 +9,21 @@
   <!-- 🔹 Limit width to 1100px and center -->
 
   <!-- Page Header -->
-  <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap">
-    <div>
-      <h1 class="h5 fw-bold mb-1">{{ project.name }}</h1>
-      <p class="text-muted mb-2">{{ project.description|default:"No description provided." }}</p>
-    </div>
-    <div class="d-flex flex-wrap gap-2">
-      <a href="{% url 'project_kpis' project.id %}" class="btn btn-info btn-sm">
+  <div class="text-center mb-4">
+    <!-- Project Name -->
+    <h1 class="h5 fw-bold text-primary mb-2">{{ project.name }}</h1>
+    <!-- Project Description -->
+    <p class="text-muted mb-3">{{ project.description|default:"No description provided." }}</p>
+
+    <!-- Action Buttons on the same line, centered -->
+    <div class="d-flex justify-content-center gap-2" style="white-space: nowrap;">
+      <a href="{% url 'project_kpis' project.id %}" class="btn btn-info btn-sm shadow-sm">
         <i class="fas fa-chart-line me-1"></i> View KPIs
       </a>
-      <a href="{% url 'indicator_add' project.pk %}" class="btn btn-success btn-sm">
+      <a href="{% url 'indicator_add' project.pk %}" class="btn btn-success btn-sm shadow-sm">
         <i class="fas fa-plus me-1"></i> Add KPI
       </a>
-      <a href="{% url 'bulk_save_entries' project.id %}?year={{ year }}" class="btn btn-primary btn-sm">
+      <a href="{% url 'bulk_save_entries' project.id %}?year={{ year }}" class="btn btn-primary btn-sm shadow-sm">
         <i class="fas fa-file-alt me-1"></i> Bulk Save Entries
       </a>
     </div>
@@ -64,9 +66,9 @@
                style="table-layout: fixed; font-size: 0.8rem; width: 100%;">
           <thead class="table-light">
             <tr>
-              <th class="text-start" style="min-width: 150px;">Indicator</th>
+              <th class="text-start" style="min-width: 180px;">Indicator</th>
               {% for m in months %}
-                <th style="width: 55px;">{{ m|get_month_name|slice:":3" }}</th> <!-- ✅ now shows Jan, Feb -->
+                <th style="width: 55px;">{{ m|get_month_name|slice:":3" }}</th>
               {% endfor %}
               <th style="min-width: 100px;">Actions</th>
             </tr>

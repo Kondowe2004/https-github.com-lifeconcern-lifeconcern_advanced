@@ -18,68 +18,89 @@ from core.models import Report  # adjust if your Report model is in another app
 from core.templatetags.custom_tags import get_month_name
 import calendar
 import json
+from .models import Indicator
+from decimal import Decimal
 
 # -------------------------
 # DASHBOARD
 # -------------------------
 @login_required
 def dashboard(request):
-    """Main dashboard view showing all active projects and summary info."""
-    projects = Project.objects.filter(active=True)  # ✅ only active projects
+    """Main dashboard view showing all active projects, KPIs, charts, and recent activity."""
+    
+    # -----------------------------
+    # Projects & Indicators
+    # -----------------------------
+    projects = Project.objects.filter(active=True)  # only active projects
     total_projects = projects.count()
     total_indicators = Indicator.objects.count()
     total_entries = MonthlyEntry.objects.count()
 
-    # 🔹 Extra KPIs
+    # -----------------------------
+    # KPIs
+    # -----------------------------
     current_year = datetime.date.today().year
-    # ✅ Only count People Reached
+
+    # Total People Reached this year
     annual_total = (
         MonthlyEntry.objects.filter(
             year=current_year,
-            indicator__unit__iexact="People Reached"   # case-insensitive match
+            indicator__unit__iexact="People Reached"  # case-insensitive match
         ).aggregate(total=Sum("value"))["total"] or 0
     )
 
+    # Active users
     user_count = User.objects.filter(is_active=True).count()
 
-    # 🔹 Monthly performance (labels + data for chart)
-    monthly = (
+    # -----------------------------
+    # Monthly performance chart
+    # -----------------------------
+    monthly_entries = (
         MonthlyEntry.objects.filter(year=current_year)
         .values("month")
         .annotate(total=Sum("value"))
         .order_by("month")
     )
     monthly_labels = [
-        datetime.date(1900, m["month"], 1).strftime("%b") for m in monthly
+        datetime.date(1900, m["month"], 1).strftime("%b") for m in monthly_entries
     ]
-    monthly_data = [m["total"] for m in monthly]
+    monthly_data = [m["total"] or 0 for m in monthly_entries]
 
-    # 🔹 Project contribution (labels + data for chart)
-    by_project = (
+    # -----------------------------
+    # Project contribution chart
+    # -----------------------------
+    project_contributions = (
         MonthlyEntry.objects.filter(year=current_year)
         .values("indicator__project__name")
         .annotate(total=Sum("value"))
         .order_by("indicator__project__name")
     )
-    by_project_labels = [p["indicator__project__name"] for p in by_project]
-    by_project_data = [p["total"] for p in by_project]
+    by_project_labels = [p["indicator__project__name"] for p in project_contributions]
+    by_project_data = [p["total"] or 0 for p in project_contributions]
 
-    # 🔹 Recent activity (last 5 entries)
+    # -----------------------------
+    # Recent activity (latest entries & reports)
+    # -----------------------------
     recent_entries = (
         MonthlyEntry.objects.select_related("indicator", "indicator__project", "created_by")
-        .order_by("-created_at")[:5]
+        .order_by("-created_at")[:5]  # always latest 5 entries
     )
 
-    # Optional: Include recent reports too
-    recent_reports = Report.objects.select_related("user").order_by("-created_at")[:5]
+    recent_reports = (
+        Report.objects.select_related("user")
+        .order_by("-created_at")[:5]  # always latest 5 reports
+    )
 
-    return render(request, "core/dashboard.html", {
+    # -----------------------------
+    # Context for template
+    # -----------------------------
+    context = {
         "projects": projects,
         "total_projects": total_projects,
         "total_indicators": total_indicators,
         "total_entries": total_entries,
 
-        # 👇 Extra context
+        # KPIs
         "current_year": current_year,
         "annual_total": annual_total,
         "user_count": user_count,
@@ -88,10 +109,12 @@ def dashboard(request):
         "by_project_labels": by_project_labels,
         "by_project_data": by_project_data,
 
-        # 👇 Recent activity
+        # Recent activity
         "recent_entries": recent_entries,
-        "recent_reports": recent_reports,  # optional, if you want reports too
-    })
+        "recent_reports": recent_reports,
+    }
+
+    return render(request, "core/dashboard.html", context)
 
 
 # -------------------------
@@ -533,6 +556,7 @@ def export_project_kpis(request, pk):
 # -----------------------------
 # More Reports View
 # -----------------------------
+
 @login_required
 def more_reports(request):
     current_year = datetime.datetime.now().year
@@ -583,18 +607,29 @@ def more_reports(request):
         row_values = []
         row_total = 0
         for m in months:
-            val = float(base_qs.filter(indicator=ind, month=m).aggregate(total=Sum("value"))["total"] or 0)
+            val = float(
+                base_qs.filter(indicator=ind, month=m)
+                .aggregate(total=Sum("value"))["total"]
+                or 0
+            )
             row_values.append(val)
             row_total += val
             column_totals[m] += val
         grand_total += row_total
-        if row_total > 0:
-            pivot_data.append({
-                "indicator": ind.name,
-                "unit": ind.unit,
-                "values": row_values,
-                "total": row_total
-            })
+
+        # ✅ Add target and progress safely
+        target = getattr(ind, "target", 0)
+        target_float = float(target) if target else 0
+        progress = (row_total / target_float * 100) if target_float > 0 else 0
+
+        pivot_data.append({
+            "indicator": ind.name,
+            "unit": ind.unit,
+            "values": row_values,
+            "total": row_total,
+            "target": target_float,
+            "progress": round(progress, 2),  # percentage
+        })
 
     # -----------------------------
     # Analytics
@@ -609,9 +644,9 @@ def more_reports(request):
     for ind in indicators:
         actual = float(base_qs.filter(indicator=ind).aggregate(total=Sum("value"))["total"] or 0)
         target = getattr(ind, "target", None)
-        if target:
-            progress_pct = round((actual / float(target)) * 100, 1) if float(target) > 0 else 0
-            indicator_progress.append({"indicator": ind.name, "unit": ind.unit, "progress_pct": progress_pct})
+        target_float = float(target) if target else 0
+        progress_pct = round((actual / target_float * 100), 1) if target_float > 0 else 0
+        indicator_progress.append({"indicator": ind.name, "unit": ind.unit, "progress_pct": progress_pct})
     indicator_progress_labels = [i["indicator"] for i in indicator_progress]
     indicator_progress_data = [i["progress_pct"] for i in indicator_progress]
 
@@ -706,8 +741,6 @@ def more_reports(request):
     }
 
     return render(request, "core/more_reports.html", context)
-
-
 
 
 # -------------------------

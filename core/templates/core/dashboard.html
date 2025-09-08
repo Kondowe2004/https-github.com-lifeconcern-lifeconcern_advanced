@@ -232,7 +232,9 @@
         <div class="me-3 text-primary"><i class="fas fa-chart-line"></i></div>
         <div>
           <p class="mb-1 fw-semibold">{{ entry.indicator.name }} ({{ entry.indicator.project.name }}): {{ entry.value }}</p>
-          <small class="text-muted">{{ entry.created_at|date:"M d, Y H:i" }} by {{ entry.created_by.get_full_name|default:entry.created_by.username }}</small>
+          <small class="text-muted">
+            {{ entry.created_at|timesince }} ago by {{ entry.created_by.get_full_name|default:entry.created_by.username }}
+          </small>
         </div>
       </li>
     {% empty %}
@@ -244,7 +246,9 @@
         <div class="me-3 text-success"><i class="fas fa-file-alt"></i></div>
         <div>
           <p class="mb-1 fw-semibold">{{ report.title }}</p>
-          <small class="text-muted">{{ report.created_at|date:"M d, Y H:i" }} by {{ report.user.get_full_name|default:report.user.username }}</small>
+          <small class="text-muted">
+            {{ report.created_at|timesince }} ago by {{ report.user.get_full_name|default:report.user.username }}
+          </small>
         </div>
       </li>
     {% empty %}

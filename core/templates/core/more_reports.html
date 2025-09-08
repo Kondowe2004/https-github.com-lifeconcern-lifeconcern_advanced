@@ -137,6 +137,8 @@
       <th>Unit</th>
       {% for m in month_headers %}<th>{{ m }}</th>{% endfor %}
       <th>Total</th>
+      <th>Target</th>
+      <th>Progress (%)</th>
     </tr>
   </thead>
   <tbody>
@@ -146,9 +148,13 @@
         <td>{{ row.unit }}</td>
         {% for val in row.values %}<td>{{ val }}</td>{% endfor %}
         <td>{{ row.total }}</td>
+        <td>{{ row.target }}</td>
+        <td style="color:{% if row.progress >= 75 %}#59a14f{% elif row.progress >= 50 %}#edc949{% else %}#e15759{% endif %}; font-weight:bold;">
+          {{ row.progress }}%
+        </td>
       </tr>
     {% empty %}
-      <tr><td colspan="{{ 2|add:month_headers|length|add:1 }}" class="text-center">No data available.</td></tr>
+      <tr><td colspan="{{ 5|add:month_headers|length }}" class="text-center">No data available.</td></tr>
     {% endfor %}
   </tbody>
   <tfoot>
@@ -156,6 +162,8 @@
       <th colspan="2">Column Totals</th>
       {% for m in month_headers %}<th>{{ column_totals|get_item:m }}</th>{% endfor %}
       <th>{{ grand_total }}</th>
+      <th>-</th>
+      <th>-</th>
     </tr>
   </tfoot>
 </table>
