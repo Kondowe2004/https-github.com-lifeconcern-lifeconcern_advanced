@@ -1,0 +1,137 @@
+{% extends 'core/base.html' %}
+{% block title %}Data Story{% endblock %}
+
+{% block content %}
+<!-- Page Heading -->
+<div class="mb-4 text-center">
+  <h2 class="display-5 fw-bold text-gradient" style="background: linear-gradient(90deg, #0d6efd, #198754); -webkit-background-clip: text; color: transparent;">
+    📖 Data Story Dashboard
+  </h2>
+  <p class="lead text-muted">Visualizing your Top 10 KPIs with insights, trends, and targets.</p>
+</div>
+
+<!-- Year Filter -->
+<div class="mb-4 d-flex align-items-center justify-content-center gap-3">
+  <label for="yearSelect" class="form-label fw-semibold mb-0">Select Year:</label>
+  <select id="yearSelect" class="form-select w-auto">
+    {% for year in year_list %}
+      <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }}</option>
+    {% endfor %}
+  </select>
+</div>
+
+<!-- Container for KPI cards -->
+<div id="dataStoryContainer" class="row g-4">
+  {% include "core/partials/_data_story_cards.html" %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  // Function to render charts for KPI cards
+  function renderCharts() {
+    document.querySelectorAll('#dataStoryContainer .kpi-card canvas').forEach((canvas) => {
+      const ctx = canvas.getContext('2d');
+      const chartData = JSON.parse(canvas.dataset.chart || '{}');
+      const labels = chartData.labels || [];
+      const values = (chartData.values || []).map(v => parseFloat(v) || 0);
+      const target = parseFloat(canvas.dataset.target) || 0;
+      const tag = canvas.dataset.tag;
+      const title = canvas.dataset.title || 'KPI';
+
+      // Determine bar color based on KPI tag
+      let barColor;
+      switch(tag){
+        case "Improving": barColor='rgba(25, 135, 84, 0.6)'; break;
+        case "Declining": barColor='rgba(220, 53, 69, 0.6)'; break;
+        case "Stable": barColor='rgba(255, 193, 7, 0.6)'; break;
+        case "New": barColor='rgba(13, 110, 253, 0.6)'; break;
+        default: barColor='rgba(108, 117, 125, 0.6)';
+      }
+
+      // Destroy previous chart instance if exists
+      if (canvas.chartInstance) {
+        canvas.chartInstance.destroy();
+      }
+
+      canvas.chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Actual',
+              data: values,
+              backgroundColor: barColor,
+              borderColor: barColor.replace('0.6','1'),
+              borderWidth: 1
+            },
+            {
+              label: 'Target',
+              type: 'line',
+              data: Array(labels.length).fill(target),
+              borderColor: 'rgba(13, 110, 253, 0.8)',
+              borderWidth: 2,
+              fill: false,
+              pointRadius: 0,
+              tension: 0.1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: true, position: 'top' },
+            tooltip: {
+              mode: 'index',
+              intersect: false,
+              callbacks: {
+                label: function(context) {
+                  if(context.dataset.type === 'line') {
+                    return 'Target: ' + context.raw;
+                  } else {
+                    const actual = context.raw;
+                    const percent = target > 0 ? ((actual / target) * 100).toFixed(1) : 0;
+                    return 'Actual / Target: ' + actual + ' / ' + target + ' (' + percent + '%)';
+                  }
+                }
+              }
+            },
+            datalabels: {
+              anchor: 'end',
+              align: 'top',
+              offset: 0,
+              color: '#000000',
+              font: { weight: 'bold', size: 12 },
+              formatter: function(value) {
+                const percent = target > 0 ? ((value / target) * 100).toFixed(1) : 0;
+                return percent + '%';
+              }
+            }
+          },
+          interaction: { mode: 'nearest', axis: 'x', intersect: false },
+          scales: {
+            y: { beginAtZero: true },
+            x: { stacked: false }
+          }
+        },
+        plugins: [ChartDataLabels]
+      });
+    });
+  }
+
+  // Initial render
+  renderCharts();
+
+  // AJAX year filter
+  document.getElementById('yearSelect').addEventListener('change', function() {
+    const year = this.value;
+    fetch("{% url 'data_story' %}?year=" + year, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(response => response.text())
+      .then(html => {
+        document.getElementById('dataStoryContainer').innerHTML = html;
+        renderCharts();
+      });
+  });
+</script>
+{% endblock %}

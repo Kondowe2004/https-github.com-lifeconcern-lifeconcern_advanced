@@ -45,6 +45,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # ✅ Auto-logout middleware
+    'core.middleware.AutoLogoutMiddleware',
 ]
 
 ROOT_URLCONF = 'lifeconcern.urls'
@@ -129,3 +131,9 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = '/login/'
+
+# -------------------------
+# Session timeout for auto-logout
+# -------------------------
+SESSION_COOKIE_AGE = 1800  # 30 minutes
+SESSION_SAVE_EVERY_REQUEST = True  # reset timer on activity

@@ -1,0 +1,184 @@
+{% comment %}Partial template for KPI cards with adjusted height, improved tooltip, live auto-updates, and change highlights{% endcomment %}
+{% for item in insights %}
+  <div class="col-md-6 mb-4 kpi-card" id="kpi-card-{{ forloop.counter }}">
+    <div class="card p-3 shadow-sm" style="min-height: 320px;">
+      
+      <!-- Title + Tag -->
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0 fw-bold text-primary">{{ item.title }}</h5>
+        {% if item.tag == "Improving" %}
+          <span class="badge bg-success">🔼 {{ item.tag }}</span>
+        {% elif item.tag == "Declining" %}
+          <span class="badge bg-danger">🔻 {{ item.tag }}</span>
+        {% elif item.tag == "Stable" %}
+          <span class="badge bg-warning text-dark">➖ {{ item.tag }}</span>
+        {% elif item.tag == "New" %}
+          <span class="badge bg-primary">🆕 {{ item.tag }}</span>
+        {% endif %}
+      </div>
+
+      <!-- Combined Chart: Historical + Target Line -->
+      <canvas id="chart-{{ forloop.counter }}"
+              data-chart='{{ item.chart_data|safe }}'
+              data-target='{{ item.target|default_if_none:"0" }}'
+              data-tag="{{ item.tag }}"
+              data-title="{{ item.title }}"
+              height="200"></canvas>
+
+      <!-- Insight -->
+      <div class="bg-light p-2 mt-3 rounded" id="insight-{{ forloop.counter }}">
+        <strong>Insight:</strong> {{ item.story }}
+      </div>
+    </div>
+  </div>
+{% endfor %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
+<script>
+function renderCharts() {
+  document.querySelectorAll('#dataStoryContainer .kpi-card canvas').forEach((canvas) => {
+    const ctx = canvas.getContext('2d');
+    const chartData = JSON.parse(canvas.dataset.chart || '{}');
+    const labels = chartData.labels || [];
+    const values = (chartData.values || []).map(v => parseFloat(v) || 0);
+    const target = parseFloat(canvas.dataset.target) || 0;
+    const tag = canvas.dataset.tag;
+
+    let barColor;
+    switch(tag) {
+      case "Improving": barColor='rgba(25, 135, 84, 0.6)'; break;
+      case "Declining": barColor='rgba(220, 53, 69, 0.6)'; break;
+      case "Stable": barColor='rgba(255, 193, 7, 0.6)'; break;
+      case "New": barColor='rgba(13, 110, 253, 0.6)'; break;
+      default: barColor='rgba(108, 117, 125, 0.6)';
+    }
+
+    if (canvas.chartInstance) canvas.chartInstance.destroy();
+
+    canvas.chartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Actual',
+            data: values,
+            backgroundColor: barColor,
+            borderColor: barColor.replace('0.6','1'),
+            borderWidth: 1
+          },
+          {
+            label: 'Target',
+            type: 'line',
+            data: Array(labels.length).fill(target),
+            borderColor: 'rgba(13, 110, 253, 0.8)',
+            borderWidth: 2,
+            fill: false,
+            pointRadius: 0,
+            tension: 0.1
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        layout: { padding: { top: 5, bottom: 5 } },
+        plugins: {
+          legend: { display: true, position: 'top' },
+          tooltip: {
+            mode: 'index',
+            intersect: false,
+            yAlign: 'top',
+            callbacks: {
+              label: function(context) {
+                if(context.dataset.type === 'line') return 'Target: ' + context.raw;
+                const actual = context.raw;
+                const percent = target > 0 ? ((actual / target) * 100).toFixed(1) : 0;
+                return 'Actual / Target: ' + actual + ' / ' + target + ' (' + percent + '%)';
+              }
+            }
+          },
+          datalabels: {
+            anchor: 'end',
+            align: 'top',
+            offset: 1,
+            color: '#000000',
+            font: { weight: 'bold', size: 12 },
+            formatter: function(value) {
+              const percent = target > 0 ? ((value / target) * 100).toFixed(1) : 0;
+              return percent + '%';
+            }
+          }
+        },
+        interaction: { mode: 'nearest', axis: 'x', intersect: false },
+        scales: { y: { beginAtZero: true, grace: '6%' }, x: { stacked: false } }
+      },
+      plugins: [ChartDataLabels]
+    });
+  });
+}
+
+// Initial chart render
+renderCharts();
+
+/**
+ * Highlight changed KPI cards with flash animation
+ */
+function flashKPIChange(cardId, highlightColor) {
+  const card = document.getElementById(cardId);
+  if (!card) return;
+  const originalBg = card.style.backgroundColor;
+  card.style.transition = "background-color 0.3s";
+  card.style.backgroundColor = highlightColor;
+  setTimeout(() => { card.style.backgroundColor = originalBg; }, 800);
+}
+
+/**
+ * Dynamically fetch updated KPI cards & insights
+ */
+function updateKPICards() {
+  fetch("{% url 'data_story' %}?year={{ selected_year }}", {
+    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+  })
+  .then(response => response.text())
+  .then(html => {
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+
+    // Compare each KPI and flash if changed
+    tempDiv.querySelectorAll('.kpi-card').forEach((newCard, index) => {
+      const oldCard = document.getElementById('kpi-card-' + (index+1));
+      if (!oldCard) return;
+
+      const oldInsight = oldCard.querySelector('.bg-light').innerText;
+      const newInsight = newCard.querySelector('.bg-light').innerText;
+
+      const oldCanvas = oldCard.querySelector('canvas');
+      const newCanvas = newCard.querySelector('canvas');
+
+      // Detect change in insight or target/actual values
+      const oldData = JSON.parse(oldCanvas.dataset.chart || '{}');
+      const newData = JSON.parse(newCanvas.dataset.chart || '{}');
+
+      const oldTarget = parseFloat(oldCanvas.dataset.target || 0);
+      const newTarget = parseFloat(newCanvas.dataset.target || 0);
+
+      let changed = false;
+      if (oldInsight !== newInsight || oldTarget !== newTarget) changed = true;
+      if (oldData.values && newData.values) {
+        if (oldData.values.join() !== newData.values.join()) changed = true;
+      }
+
+      if (changed) flashKPIChange('kpi-card-' + (index+1), '#d4edda'); // light green flash
+    });
+
+    document.getElementById('dataStoryContainer').innerHTML = html;
+    renderCharts();
+  })
+  .catch(err => console.error("Failed to update KPI cards:", err));
+}
+
+// Auto-update every 15 seconds
+setInterval(updateKPICards, 15000);
+</script>
