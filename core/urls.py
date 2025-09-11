@@ -28,8 +28,11 @@ urlpatterns = [
 
     # More Reports
     path('reports/more/', views.more_reports, name='more_reports'),
-    path('reports/more/export/', views.more_reports_export_csv, name='more_reports_export_csv'),  # ✅ Correct name
+    path('reports/more/export/', views.more_reports_export_csv, name='more_reports_export_csv'),
 
     # Profile
     path('profile/', views.profile, name='profile'),
+
+    # 📖 Data Story Dashboard
+    path('data-story/', views.data_story, name='data_story'),  # ✅ New route
 ]

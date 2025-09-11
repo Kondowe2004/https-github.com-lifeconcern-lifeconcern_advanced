@@ -20,6 +20,13 @@ import calendar
 import json
 from .models import Indicator
 from decimal import Decimal
+from django.db.models import F, ExpressionWrapper, FloatField
+from django.utils.timezone import now
+from datetime import timedelta
+from django.db.models import Max
+from django.template.loader import render_to_string
+from datetime import date
+from decimal import Decimal, DivisionUndefined, InvalidOperation
 
 # -------------------------
 # DASHBOARD
@@ -800,6 +807,131 @@ def more_reports_export_csv(request):
 
     return response
 
+
+# core/views.py
+
+def data_story(request):
+    """
+    Dynamic Data Story dashboard with optional year filter.
+    Shows top 10 indicators with most recent/significant changes.
+    Tags indicators as Improving, Declining, Stable, or New.
+    Supports AJAX requests for dynamic year filtering.
+    """
+
+    # -------------------------
+    # Get all years with data for dropdown
+    # -------------------------
+    years = MonthlyEntry.objects.dates("created_at", "year", order="DESC")
+    year_list = [y.year for y in years]
+
+    # -------------------------
+    # Get selected year from query param ?year=YYYY
+    # Default to latest year
+    # -------------------------
+    selected_year = request.GET.get("year")
+    if selected_year:
+        try:
+            selected_year = int(selected_year)
+        except ValueError:
+            selected_year = year_list[0] if year_list else date.today().year
+    else:
+        selected_year = year_list[0] if year_list else date.today().year
+
+    # -------------------------
+    # Get all entries for the selected year, latest first per indicator
+    # -------------------------
+    entries = MonthlyEntry.objects.filter(year=selected_year).order_by("indicator_id", "-created_at")
+
+    top_insights = []
+    seen = set()
+
+    for entry in entries:
+        if entry.indicator_id in seen:
+            continue
+        seen.add(entry.indicator_id)
+
+        # Previous entry for comparison
+        prev_entry = (
+            MonthlyEntry.objects.filter(indicator=entry.indicator, created_at__lt=entry.created_at)
+            .order_by("-created_at")
+            .first()
+        )
+
+        if prev_entry:
+            try:
+                change = ((entry.value - prev_entry.value) / prev_entry.value * 100) if prev_entry.value != 0 else 0
+            except (ZeroDivisionError, DivisionUndefined, InvalidOperation):
+                change = 0
+            change_available = True
+        else:
+            change = 0
+            change_available = False
+
+        # Progress vs target (safe float)
+        target = entry.indicator.target
+        actual = entry.value
+        try:
+            progress_percent = float((actual / target) * 100) if target and target != Decimal('0') else 0.0
+        except (DivisionUndefined, InvalidOperation):
+            progress_percent = 0.0
+
+        # Historical chart data (last 6 entries)
+        last_6 = MonthlyEntry.objects.filter(indicator=entry.indicator).order_by("-created_at")[:6]
+        chart_labels = [date(x.year, x.month, 1).strftime("%b %Y") for x in reversed(last_6)]
+        chart_values = [float(x.value) for x in reversed(last_6)]
+
+        # Determine tag + story
+        if not change_available:
+            tag = "New"
+            story = f"{entry.indicator.name} has a new entry of {float(actual)}, achieving {progress_percent:.1f}% of the target."
+        elif change > 0:
+            tag = "Improving"
+            story = f"{entry.indicator.name} is currently at {float(actual)}, showing an improvement of {float(change):.1f}% and achieving {progress_percent:.1f}% of the target."
+        elif change < 0:
+            tag = "Declining"
+            story = f"{entry.indicator.name} is currently at {float(actual)}, showing a decline of {abs(float(change)):.1f}% and achieving {progress_percent:.1f}% of the target."
+        else:
+            tag = "Stable"
+            story = f"{entry.indicator.name} is currently at {float(actual)}, with no significant change and achieving {progress_percent:.1f}% of the target."
+
+        top_insights.append({
+            "title": entry.indicator.name,
+            "chart_data": json.dumps({"labels": chart_labels, "values": chart_values}),
+            "story": story,
+            "tag": tag,
+            "change": float(change) if change_available else None,
+            "last_updated": entry.created_at,
+            "actual": float(actual),
+            "target": float(target) if target else 0.0,
+            "progress_percent": progress_percent,
+        })
+
+    # -------------------------
+    # Sort by significance or recency and pick top 10
+    # -------------------------
+    ranked = sorted(
+        top_insights,
+        key=lambda x: (x["change"] if x["change"] is not None else -1, x["last_updated"]),
+        reverse=True
+    )[:10]
+
+    context = {
+        "insights": ranked,
+        "selected_year": selected_year,
+        "year_list": year_list
+    }
+
+    # -------------------------
+    # AJAX request: return only KPI cards partial
+    # -------------------------
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        html = render_to_string("core/partials/_data_story_cards.html", context, request=request)
+        return HttpResponse(html)
+
+    # -------------------------
+    # Normal full-page render
+    # -------------------------
+    return render(request, "core/data_story.html", context)
 
 
 # -------------------------
