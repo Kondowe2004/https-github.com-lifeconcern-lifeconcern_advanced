@@ -71,12 +71,12 @@ TEMPLATES = [
 WSGI_APPLICATION = 'lifeconcern.wsgi.application'
 
 # -------------------------
-# Database
+# Database (external SQLite)
 # -------------------------
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': os.path.expanduser('~/db_backups/db.sqlite3'),
     }
 }
 
