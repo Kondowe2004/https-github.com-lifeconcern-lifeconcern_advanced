@@ -1,0 +1,83 @@
+{% extends 'core/base.html' %}
+{% load widget_tweaks %}
+{% load static %}
+
+{% block title %}Edit Indicator Targets{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="card shadow-sm rounded-3 p-4">
+    <h2 class="mb-3">Edit Targets for Indicator: <strong>{{ indicator.name }}</strong></h2>
+    <p class="text-muted">Project: {{ indicator.project.name }}</p>
+
+    <form method="post">
+      {% csrf_token %}
+      {{ formset.management_form }}
+
+      <table class="table table-bordered table-hover align-middle">
+        <thead class="table-light">
+          <tr>
+            <th style="width: 20%;">Year</th>
+            <th style="width: 60%;">Target Value</th>
+            <th style="width: 20%;">Delete?</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for form in formset %}
+            <tr>
+              <td>
+                {% if form.instance.pk %}
+                  {% render_field form.year class="form-select" %}
+                {% else %}
+                  <select name="{{ form.prefix }}-year" class="form-select">
+                    {% for y in year_range %}
+                      <option value="{{ y }}" {% if y == current_year %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                  </select>
+                {% endif %}
+              </td>
+              <td>{% render_field form.value class="form-control" %}</td>
+              <td class="text-center">
+                {% if form.instance.pk %}
+                  <!-- Show delete checkbox only for existing rows -->
+                  {% render_field form.DELETE class="form-check-input" %}
+                {% else %}
+                  <!-- Keep hidden delete field for new rows (required by formset) -->
+                  {{ form.DELETE }}
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <div class="d-flex justify-content-start gap-2 mt-3">
+        <button type="submit" class="btn btn-primary">
+          <i class="fas fa-save me-2"></i>Save Targets
+        </button>
+        <a href="{% url 'project_kpis' indicator.project.id %}" class="btn btn-secondary">
+          Cancel
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+  table input, table select {
+    width: 100%;
+  }
+  .table-hover tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+  }
+  .card h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+  .form-check-input {
+    width: 1.25em;
+    height: 1.25em;
+    margin: 0 auto;
+  }
+</style>
+{% endblock %}
