@@ -1,15 +1,75 @@
 {% extends 'core/base.html' %}
-
+{% load widget_tweaks %}
 {% block title %}{{ title }} - {{ project.name }}{% endblock %}
 
 {% block content %}
-<div class="card shadow-sm" style="padding: 20px;">
-  <h2>{{ title }}</h2>
+<div class="card shadow-sm" style="padding: 20px; max-width: 600px; margin: auto; margin-top: 30px;">
+  <h2 class="mb-3">{{ title }}</h2>
   <p><strong>Project:</strong> {{ project.name }}</p>
 
-  <form method="post">
+  <form method="post" novalidate>
     {% csrf_token %}
-    {{ form.as_p }}
+
+    <!-- Year selector for KPI target -->
+    <div class="mb-3">
+      <label for="id_year" class="form-label">Select Year for Target</label>
+      <select name="year" id="id_year" class="form-select {% if form.errors.year %}is-invalid{% endif %}">
+        {% for y in years %}
+          <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+        {% endfor %}
+      </select>
+      {% if form.errors.year %}
+        <div class="invalid-feedback">{{ form.errors.year|striptags }}</div>
+      {% endif %}
+      <div class="form-text">Set the annual target for this KPI for the selected year.</div>
+    </div>
+
+    <!-- Target input -->
+    <div class="mb-3">
+      <label for="id_target" class="form-label">Target</label>
+      <input type="number" step="0.01" min="0"
+             name="target"
+             id="id_target"
+             class="form-control {% if form.errors.target %}is-invalid{% endif %}"
+             value="{{ form.initial.target|default_if_none:'' }}">
+      {% if form.errors.target %}
+        <div class="invalid-feedback">
+          {{ form.errors.target|striptags }}
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- KPI Name -->
+    <div class="mb-3">
+      <label for="{{ form.name.id_for_label }}" class="form-label">KPI Name</label>
+      {{ form.name|add_class:"form-control" }}
+      {% if form.errors.name %}
+        <div class="invalid-feedback">
+          {{ form.errors.name|striptags }}
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Unit -->
+    <div class="mb-3">
+      <label for="{{ form.unit.id_for_label }}" class="form-label">Unit</label>
+      {{ form.unit|add_class:"form-control" }}
+      {% if form.errors.unit %}
+        <div class="invalid-feedback">
+          {{ form.errors.unit|striptags }}
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Is KPI checkbox -->
+    <div class="form-check mb-3">
+      {{ form.is_kpi }}
+      <label class="form-check-label" for="{{ form.is_kpi.id_for_label }}">Is KPI?</label>
+      {% if form.errors.is_kpi %}
+        <div class="text-danger small">{{ form.errors.is_kpi|striptags }}</div>
+      {% endif %}
+    </div>
+
     <button type="submit" class="btn btn-success">💾 Save</button>
     <a href="{% url 'project_detail' project.pk %}" class="btn btn-secondary">↩ Back</a>
   </form>

@@ -5,131 +5,112 @@
 
 {% block content %}
 
-<!-- Full Page Gradient Background -->
 <style>
   body {
     background: linear-gradient(135deg, #f0f4f8, #e0f7fa);
   }
-</style>
 
-<!-- Top-right live date & time -->
-<div class="position-absolute top-0 end-0 p-2">
-  <div id="live-clock"
-       class="px-3 py-1 rounded-3 shadow clock-widget">
-  </div>
-</div>
-
-<script>
-  function updateClock() {
-    const now = new Date();
-    const options = {
-      weekday: 'short',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-      timeZoneName: 'short'
-    };
-    document.getElementById("live-clock").textContent =
-      now.toLocaleString("en-US", options);
-  }
-  setInterval(updateClock, 1000);
-  updateClock();
-</script>
-
-<style>
   .clock-widget {
     background: linear-gradient(90deg, #ff512f, #dd2476);
     color: white;
     font-weight: 600;
     font-size: 0.85rem;
     box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    border-radius: 12px;
+    padding: 0.4rem 0.8rem;
   }
 
-  /* Stat Cards */
   .stat-card {
     border-radius: 15px;
     color: #fff;
     padding: 20px;
-    transition: all 0.3s ease, box-shadow 0.3s ease;
+    transition: all 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
     cursor: pointer;
+    border: 3px solid transparent;
+    text-align: center;
   }
   .stat-card:hover {
     transform: translateY(-6px) scale(1.04);
     box-shadow: 0 12px 28px rgba(0,0,0,0.28), 0 0 10px rgba(255,255,255,0.2);
   }
-  .icon-animate {
-    animation: float 2s ease-in-out infinite;
-  }
-  @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-5px); }
-  }
+  .stat-card.past-year { border-color: #ffc107; }
+  .icon-animate { animation: float 2s ease-in-out infinite; }
+  @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
 
-  /* Project Cards */
-  .project-card {
-    background: linear-gradient(135deg, #f9fafb, #eef2ff);
-    border-radius: 15px;
-    border: 1px solid #e2e8f0;
-    transition: all 0.3s ease, box-shadow 0.3s ease;
-    height: 100%;
-  }
-  .project-card:hover {
-    background: linear-gradient(135deg, #6a11cb, #2575fc);
-    color: #fff;
-    transform: translateY(-6px) scale(1.03);
-    box-shadow: 0 12px 28px rgba(0,0,0,0.25), 0 0 15px rgba(255,255,255,0.2);
-  }
-
-  /* Quick Action Buttons */
-  .quick-btn {
-    background: linear-gradient(90deg, #f12711, #f5af19);
-    color: #fff !important;
-    font-weight: 600;
-    border-radius: 10px;
-    padding: 10px 18px;
-    transition: all 0.25s ease-in-out;
-  }
-  .quick-btn:hover {
-    background: linear-gradient(90deg, #ff512f, #dd2476);
-    transform: translateY(-3px);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.25);
-  }
-
-  /* Timeline */
-  .timeline li {
-    border-left: 3px solid #007bff;
-    padding-left: 12px;
-    position: relative;
-    margin-bottom: 15px;
-  }
-  .timeline li::before {
-    content: '';
-    position: absolute;
-    left: -7px;
-    top: 6px;
-    width: 14px;
-    height: 14px;
-    background: #007bff;
-    border-radius: 50%;
-  }
-  .timeline li.report::before { background: #28a745; }
-  .timeline li.kpi::before { background: #007bff; }
-
-  /* Logo container */
   .logo-container {
     background: #fff;
-    border-radius: 8px;
-    padding: 5px 8px;
-    display: inline-block;
+    padding: 8px 12px;
+    border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  }
+
+  .indicator-card {
+    color: #fff;
+    padding: 1.2rem;
+    border-radius: 15px;
+    transition: all 0.3s ease;
+    word-wrap: break-word;
+    white-space: normal;
+    background: linear-gradient(135deg, #6a11cb, #2575fc);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    text-align: center;
+  }
+  .indicator-card:nth-child(2n) { background: linear-gradient(135deg, #11998e, #38ef7d); }
+  .indicator-card:nth-child(3n) { background: linear-gradient(135deg, #ff416c, #ff4b2b); }
+  .indicator-card:hover {
+    transform: translateY(-5px) scale(1.03);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.25);
+  }
+
+  .chart-card {
+    border-radius: 15px;
+    padding: 1rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    background: #fff;
+    transition: all 0.3s ease;
+  }
+  .chart-card:hover {
+    transform: scale(1.02);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.2);
+  }
+
+  .quick-btn {
+    background: linear-gradient(135deg, #0d6efd, #6610f2);
+    color: #fff;
+    border-radius: 12px;
+    padding: 10px 16px;
+    font-weight: 600;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .quick-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+    text-decoration: none;
+    color: #fff;
+  }
+
+  .table-responsive { max-height: 450px; overflow-y: auto; }
+
+  .chart-card h5 {
+    font-size: 1rem;
+    line-height: 1.2;
   }
 </style>
 
-<!-- Page Header -->
-<div class="dashboard-header p-4 mb-4 text-white rounded-3" style="background: linear-gradient(90deg, #007bff, #00c6ff);">
+<div class="position-absolute top-0 end-0 p-2">
+  <div id="live-clock" class="clock-widget"></div>
+</div>
+<script>
+  function updateClock() {
+    const now = new Date();
+    document.getElementById("live-clock").textContent =
+      now.toLocaleString("en-US", { weekday:'short', year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false, timeZoneName:'short' });
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+</script>
+
+<div class="dashboard-header p-4 mb-4 text-white rounded-3" style="background: linear-gradient(90deg, #1e3c72, #2a5298);">
   <div class="d-flex justify-content-between align-items-center">
     <div class="d-flex align-items-center">
       <div class="logo-container me-3">
@@ -148,72 +129,81 @@
   </div>
 </div>
 
-<!-- Welcome Card -->
+<!-- Welcome bar with Bootstrap row/col layout -->
 <div class="card mb-4 p-3 shadow-sm rounded-3">
-  <h4 class="fw-semibold">👋 Welcome, <a href="{% url 'profile' %}">{{ user.first_name|default:user.username }}</a></h4>
-  <p class="text-muted mt-1 mb-0">Here’s a quick summary of your progress today.</p>
-</div>
-
-<!-- Quick Stats -->
-<div class="row g-4">
-  <div class="col-md-3 col-sm-6">
-    <a href="{% url 'projects' %}" class="text-decoration-none">
-      <div class="card stat-card text-center" style="background: linear-gradient(135deg, #6a11cb, #2575fc);">
-        <div class="mb-2"><i class="fas fa-folder-open fa-2x icon-animate"></i></div>
-        <h3 class="fw-bold">{{ total_projects }}</h3>
-        <p class="mb-0">Projects</p>
-      </div>
-    </a>
-  </div>
-  <div class="col-md-3 col-sm-6">
-    <a href="{% url 'projects' %}" class="text-decoration-none">
-      <div class="card stat-card text-center" style="background: linear-gradient(135deg, #11998e, #38ef7d);">
-        <div class="mb-2"><i class="fas fa-bullseye fa-2x icon-animate"></i></div>
-        <h3 class="fw-bold">{{ total_indicators }}</h3>
-        <p class="mb-0">Indicators</p>
-      </div>
-    </a>
-  </div>
-  <div class="col-md-3 col-sm-6">
-    <div class="card stat-card text-center" style="background: linear-gradient(135deg, #f7971e, #ffd200);">
-      <div class="mb-2"><i class="fas fa-calendar-alt fa-2x icon-animate"></i></div>
-      <h3 class="fw-bold">{{ annual_total }}</h3>
-      <p class="mb-0">People Reached ({{ current_year }})</p>
+  <div class="row align-items-center">
+    <div class="col-md-6 col-12">
+      <h4 class="fw-semibold mb-1">👋 Welcome, <a href="{% url 'profile' %}">{{ user.first_name|default:user.username }}</a></h4>
+      <p class="text-muted mb-0">Here’s a quick summary of your progress today.</p>
+    </div>
+    <div class="col-md-6 col-12 text-md-end mt-3 mt-md-0">
+      <form method="get" class="d-flex align-items-center gap-2 justify-content-md-end">
+        <label for="year" class="mb-0 fw-semibold">Select Year:</label>
+        <select name="year" id="year" class="form-select w-auto" onchange="this.form.submit()">
+          {% for y in years %}
+            <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+          {% endfor %}
+        </select>
+      </form>
+      <p class="text-muted mt-1 mb-0">Showing <strong>{{ selected_year }}</strong></p>
     </div>
   </div>
+</div>
+
+<!-- Stats cards -->
+<div class="row g-4">
+  {% for stat in stats %}
   <div class="col-md-3 col-sm-6">
-    <a href="{% url 'profile' %}" class="text-decoration-none">
-      <div class="card stat-card text-center" style="background: linear-gradient(135deg, #ff416c, #ff4b2b);">
-        <div class="mb-2"><i class="fas fa-users fa-2x icon-animate"></i></div>
-        <h3 class="fw-bold">{{ user_count }}</h3>
-        <p class="mb-0">Active Users</p>
+    <a href="{{ stat.url }}" class="text-decoration-none">
+      <div class="card stat-card {% if selected_year != current_year %}past-year{% endif %}" style="background: {{ stat.bg_gradient }};">
+        <div class="mb-2"><i class="{{ stat.icon }} fa-2x icon-animate"></i></div>
+        <h3 class="fw-bold">{{ stat.value|default:0 }}</h3>
+        <p class="mb-0">{{ stat.label }}</p>
       </div>
     </a>
   </div>
+  {% endfor %}
 </div>
 
-<!-- Project List -->
-<div class="card mt-4 p-3 shadow-lg rounded-3">
-  <h5 class="fw-semibold mb-3 text-primary">📋 Active Projects</h5>
-  <div class="row g-3">
-    {% for project in projects %}
-      <div class="col-md-4 col-sm-6">
-        <a href="{% url 'project_detail' project.id %}" class="text-decoration-none">
-          <div class="p-4 rounded-3 project-card h-100">
-            <h6 class="fw-bold text-dark mb-2">
-              <i class="fas fa-folder-open text-primary me-2"></i>{{ project.name }}
-            </h6>
-            <p class="text-muted small mb-0">{{ project.description|truncatechars:80 }}</p>
-          </div>
-        </a>
-      </div>
-    {% empty %}
-      <p class="text-muted">No projects available</p>
-    {% endfor %}
+<!-- Charts -->
+<div class="row g-4 mt-4">
+  <div class="col-md-6">
+    <div class="chart-card">
+      <h5 class="fw-semibold text-primary">📊 Comparative analysis of people reached per project</h5>
+      {% if comparative_labels %}
+        <canvas id="comparativeChart" height="280"></canvas>
+      {% else %}
+        <p class="text-muted m-3">No comparative data available</p>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="chart-card">
+      <h5 class="fw-semibold text-success">📈 Trend analysis of people reached per month</h5>
+      {% if trend_months %}
+        <canvas id="trendChart" height="280"></canvas>
+      {% else %}
+        <p class="text-muted m-3">No trend data available</p>
+      {% endif %}
+    </div>
   </div>
 </div>
 
-<!-- Quick Actions -->
+<!-- Remaining sections remain unchanged -->
+<div class="card mt-4 p-3 shadow-lg rounded-3">
+  <h5 class="fw-semibold text-info">🗺️ Geographic Visualization</h5>
+  <p class="text-muted">Map will appear here (coming soon).</p>
+</div>
+
+<div class="card mt-4 p-3 shadow-lg rounded-3">
+  <h5 class="fw-semibold text-warning">🔄 Key Indicators</h5>
+  <div id="indicator-carousel" class="row g-3">
+    {% if not indicators %}
+      <p class="text-muted m-3">No indicators available</p>
+    {% endif %}
+  </div>
+</div>
+
 <div class="card mt-4 p-3 shadow-lg rounded-3">
   <h5 class="fw-semibold text-success">⚡ Quick Actions</h5>
   <div class="d-flex flex-wrap gap-3 mt-3">
@@ -223,38 +213,88 @@
   </div>
 </div>
 
-<!-- Recent Activity -->
-<div class="card mt-4 p-3 shadow-sm rounded-3">
-  <h5 class="fw-semibold mb-3">🕒 Recent Activity</h5>
-  <ul class="timeline list-unstyled">
-    {% for entry in recent_entries %}
-      <li class="mb-3 d-flex kpi">
-        <div class="me-3 text-primary"><i class="fas fa-chart-line"></i></div>
-        <div>
-          <p class="mb-1 fw-semibold">{{ entry.indicator.name }} ({{ entry.indicator.project.name }}): {{ entry.value }}</p>
-          <small class="text-muted">
-            {{ entry.created_at|timesince }} ago by {{ entry.created_by.get_full_name|default:entry.created_by.username }}
-          </small>
-        </div>
-      </li>
-    {% empty %}
-      <p class="text-muted">No recent KPI entries.</p>
-    {% endfor %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.0"></script>
+<script>
+  const actualColor = {% if selected_year == current_year %}"#007bff"{% else %}"#ffc107"{% endif %};
+  const targetColor = {% if selected_year == current_year %}"#28a745"{% else %}"#ffca28"{% endif %};
 
-    {% for report in recent_reports %}
-      <li class="mb-3 d-flex report">
-        <div class="me-3 text-success"><i class="fas fa-file-alt"></i></div>
-        <div>
-          <p class="mb-1 fw-semibold">{{ report.title }}</p>
-          <small class="text-muted">
-            {{ report.created_at|timesince }} ago by {{ report.user.get_full_name|default:report.user.username }}
-          </small>
-        </div>
-      </li>
-    {% empty %}
-      <p class="text-muted">No recent reports.</p>
-    {% endfor %}
-  </ul>
-</div>
+  const compLabels = {{ comparative_labels|default:"[]"|safe }};
+  const compActuals = {{ comparative_actuals|default:"[]"|safe }};
+  const compTargets = {{ comparative_targets|default:"[]"|safe }};
+
+  if (compLabels.length) {
+    new Chart(document.getElementById('comparativeChart'), {
+      type: 'bar',
+      data: { labels: compLabels, datasets: [
+        { label: 'Actual', data: compActuals, backgroundColor: actualColor },
+        { label: 'Target', data: compTargets, backgroundColor: targetColor }
+      ]},
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'top' },
+          tooltip: { mode: 'index', intersect: false },
+          zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }, pan: { enabled: true, mode: 'x' } },
+          title: { display: false }
+        },
+        scales: { y: { beginAtZero: true }, x: { stacked: false } },
+      }
+    });
+  }
+
+  const trendLabels = {{ trend_months|default:"[]"|safe }};
+  const trendActuals = {{ trend_actuals|default:"[]"|safe }};
+  const trendTargets = {{ trend_targets|default:"[]"|safe }};
+
+  if (trendLabels.length) {
+    new Chart(document.getElementById('trendChart'), {
+      type: 'line',
+      data: { labels: trendLabels, datasets: [
+        { label: 'Actual', data: trendActuals, borderColor: actualColor, backgroundColor: 'rgba(0,123,255,0.1)', tension: 0.3, fill: true },
+        { label: 'Target', data: trendTargets, borderColor: targetColor, backgroundColor: 'rgba(40,167,69,0.1)', tension: 0.3, fill: true }
+      ]},
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'top' },
+          tooltip: { mode: 'index', intersect: false },
+          zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }, pan: { enabled: true, mode: 'x' } },
+          title: { display: false }
+        },
+        scales: { y: { beginAtZero: true } },
+      }
+    });
+  }
+
+  const indicators = {{ indicators|default:"[]"|safe }};
+  const carousel = document.getElementById("indicator-carousel");
+  if (indicators.length) {
+    let index = 0;
+    function showIndicators() {
+      carousel.innerHTML = "";
+      const slice = indicators.slice(index, index + 3);
+      slice.forEach(ind => {
+        const col = document.createElement("div");
+        col.className = "col-md-4";
+        const card = document.createElement("div");
+        card.className = "indicator-card h-100";
+        const trendArrow = ind.value > ind.previous_value ? "⬆️" :
+                           ind.value < ind.previous_value ? "⬇️" : "➡️";
+        card.innerHTML = `
+          <h6 class="fw-bold mb-1">${ind.name}</h6>
+          <p class="mb-1 small">${ind.project || ""}</p>
+          <h4 class="fw-bold">${ind.value} ${trendArrow}</h4>
+          <p class="mb-0"><small>Target: ${ind.target}</small></p>
+        `;
+        col.appendChild(card);
+        carousel.appendChild(col);
+      });
+      index = (index + 3) % indicators.length;
+    }
+    showIndicators();
+    setInterval(showIndicators, 15000);
+  }
+</script>
 
 {% endblock %}

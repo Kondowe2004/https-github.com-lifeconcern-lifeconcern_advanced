@@ -1,5 +1,6 @@
 {% comment %}Partial template for KPI cards with adjusted height, improved tooltip, live auto-updates, and change highlights{% endcomment %}
 {% for item in insights %}
+{% load widget_tweaks %}
   <div class="col-md-6 mb-4 kpi-card" id="kpi-card-{{ forloop.counter }}">
     <div class="card p-3 shadow-sm" style="min-height: 320px;">
       

@@ -1,8 +1,10 @@
 from django.db import models
-from django.contrib.auth.models import User  # <-- Add this import for User
+from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from .utils import send_email_alert  # <-- Added for email alerts
+from django.db.models import Sum
+import datetime
+from .utils import send_email_alert
 
 
 class Project(models.Model):
@@ -20,11 +22,8 @@ class Indicator(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='indicators')
     name = models.CharField(max_length=200)
     unit = models.CharField(max_length=50, default='count')
-    target = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-    is_kpi = models.BooleanField(default=False)  # Field for KPI indicators
-
-    # 🔹 New fields for automation
-    current_value = models.DecimalField(max_digits=12, decimal_places=2, default=0)  
+    is_kpi = models.BooleanField(default=False)  # KPI flag
+    current_value = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     progress = models.DecimalField(max_digits=5, decimal_places=2, default=0)  # % progress
 
     class Meta:
@@ -34,12 +33,39 @@ class Indicator(models.Model):
         return f"{self.project.name} - {self.name}"
 
     def update_progress(self):
-        """Recalculate progress against target"""
-        if self.target and self.target > 0:
-            self.progress = round((self.current_value / self.target) * 100, 2)
+        """Recalculate progress against the current year's target only"""
+        current_year = datetime.date.today().year
+
+        # Get current year's target
+        target_obj = self.targets.filter(year=current_year).first()
+        target_value = target_obj.value if target_obj else 0
+
+        # Get total actuals for current year
+        actual_total = (
+            self.entries.filter(year=current_year).aggregate(total=Sum("value"))["total"] or 0
+        )
+
+        # Update fields
+        self.current_value = actual_total
+        if target_value > 0:
+            self.progress = round((actual_total / target_value) * 100, 2)
         else:
             self.progress = 0
-        self.save(update_fields=["progress"])
+
+        self.save(update_fields=["current_value", "progress"])
+
+
+class IndicatorTarget(models.Model):
+    indicator = models.ForeignKey(Indicator, on_delete=models.CASCADE, related_name='targets')
+    year = models.IntegerField()
+    value = models.DecimalField(max_digits=12, decimal_places=2)
+
+    class Meta:
+        unique_together = ('indicator', 'year')
+        ordering = ['year']
+
+    def __str__(self):
+        return f"{self.indicator.name} - {self.year}: {self.value}"
 
 
 class MonthlyEntry(models.Model):
@@ -48,7 +74,7 @@ class MonthlyEntry(models.Model):
     month = models.IntegerField()  # 1..12
     value = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     notes = models.CharField(max_length=255, blank=True)
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)  # Reference to User
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
 
@@ -59,23 +85,29 @@ class Report(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['-created_at']  # safe ordering
+        ordering = ['-created_at']
 
     def __str__(self):
         return f"{self.title} by {self.user.username}"
 
 
 # -------------------------
-# Email Alert Signal
+# Email Alert + Progress Update Signal
 # -------------------------
 @receiver(post_save, sender=MonthlyEntry)
-def send_monthly_entry_alert(sender, instance, created, **kwargs):
+def handle_monthly_entry_save(sender, instance, created, **kwargs):
+    """Send alert + update indicator progress when a monthly entry is saved"""
+    # Update progress automatically
+    instance.indicator.update_progress()
+
+    # Send email alert if new entry created
     if created:
         users = User.objects.all()
         recipient_list = [user.email for user in users if user.email]
         subject = f"New Data Entry Saved for {instance.indicator.project.name}"
         message = (
-            f"Hello,\n\nA new data entry has been saved by {instance.created_by.username if instance.created_by else 'a user'} "
+            f"Hello,\n\nA new data entry has been saved by "
+            f"{instance.created_by.username if instance.created_by else 'a user'} "
             f"for the project '{instance.indicator.project.name}' and indicator '{instance.indicator.name}'.\n\n"
             f"Value: {instance.value}\nMonth: {instance.month}/{instance.year}\nNotes: {instance.notes}"
         )

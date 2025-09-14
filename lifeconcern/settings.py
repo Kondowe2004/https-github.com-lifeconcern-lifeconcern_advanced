@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import sys
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -8,12 +9,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # -------------------------
 SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-lifeconcern-advanced-demo")
 
-DEBUG = os.environ.get("DEBUG", "False") == "False"
+DEBUG = os.environ.get("DEBUG", "True") == "True"  # ✅ Fix: True by default in dev
 
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
-    "lifeconcern.pythonanywhere.com",  # ✅ Your PythonAnywhere domain
+    "lifeconcern.pythonanywhere.com",  # ✅ PythonAnywhere domain
 ]
 
 CSRF_TRUSTED_ORIGINS = [
@@ -24,12 +25,18 @@ CSRF_TRUSTED_ORIGINS = [
 # Installed apps
 # -------------------------
 INSTALLED_APPS = [
+    # Default Django apps
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    # Third-party
+    'widget_tweaks',   # ✅ Needed for add_class filter
+
+    # Local apps
     'accounts',
     'core',
 ]
@@ -71,12 +78,19 @@ TEMPLATES = [
 WSGI_APPLICATION = 'lifeconcern.wsgi.application'
 
 # -------------------------
-# Database (external SQLite)
+# Database (SQLite cross-platform)
 # -------------------------
+if sys.platform.startswith("win"):
+    # Local Windows
+    DB_PATH = BASE_DIR / "db.sqlite3"
+else:
+    # PythonAnywhere / Linux
+    DB_PATH = os.path.expanduser("~/db_backups/db.sqlite3")
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.expanduser('~/db_backups/db.sqlite3'),
+        'NAME': str(DB_PATH),
     }
 }
 
@@ -119,8 +133,8 @@ EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = "datamanagementlico@gmail.com"   # Replace with your email
-EMAIL_HOST_PASSWORD = "jbll pppr owrw doap"       # Replace with your app password
+EMAIL_HOST_USER = "datamanagementlico@gmail.com"
+EMAIL_HOST_PASSWORD = "jbll pppr owrw doap"  # ✅ App password
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 # -------------------------

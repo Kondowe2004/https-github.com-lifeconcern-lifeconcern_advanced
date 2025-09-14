@@ -27,101 +27,199 @@ from django.db.models import Max
 from django.template.loader import render_to_string
 from datetime import date
 from decimal import Decimal, DivisionUndefined, InvalidOperation
+from django.shortcuts import render, get_object_or_404, redirect
+from django.forms import modelformset_factory
+from django.utils import timezone
+from .models import Indicator, IndicatorTarget
+from .forms import IndicatorTargetForm#from django.shortcuts import render
+from decimal import Decimal, InvalidOperation
+from django.db import transaction, IntegrityError
+import datetime
+from collections import defaultdict
+from .forms import IndicatorForm
 
-# -------------------------
-# DASHBOARD
-# -------------------------
+
 @login_required
 def dashboard(request):
-    """Main dashboard view showing all active projects, KPIs, charts, and recent activity."""
-    
+    """Dashboard view showing KPIs, comparative analysis, trend analysis, and rotating indicators."""
+    today_year = datetime.date.today().year
+    selected_year = request.GET.get("year")
+
+    try:
+        selected_year = int(selected_year)
+    except (TypeError, ValueError):
+        selected_year = today_year
+
     # -----------------------------
-    # Projects & Indicators
+    # Available years for dropdown
     # -----------------------------
-    projects = Project.objects.filter(active=True)  # only active projects
+    years = sorted(
+        set(
+            list(MonthlyEntry.objects.values_list("year", flat=True).distinct())
+            + list(IndicatorTarget.objects.values_list("year", flat=True).distinct())
+        ),
+        reverse=True
+    )
+
+    # -----------------------------
+    # Active projects only
+    # -----------------------------
+    projects = Project.objects.filter(active=True)
     total_projects = projects.count()
-    total_indicators = Indicator.objects.count()
-    total_entries = MonthlyEntry.objects.count()
 
     # -----------------------------
-    # KPIs
+    # Timeless indicators (active projects only)
     # -----------------------------
-    current_year = datetime.date.today().year
+    all_indicators = Indicator.objects.filter(project__active=True).select_related("project")
+    total_indicators = all_indicators.count()
 
-    # Total People Reached this year
+    # -----------------------------
+    # KPI: total entries for selected year
+    # -----------------------------
+    total_entries = MonthlyEntry.objects.filter(year=selected_year).count()
+
+    # Annual total for "People Reached"
     annual_total = (
         MonthlyEntry.objects.filter(
-            year=current_year,
-            indicator__unit__iexact="People Reached"  # case-insensitive match
+            year=selected_year,
+            indicator__unit__iexact="People Reached"
         ).aggregate(total=Sum("value"))["total"] or 0
     )
 
-    # Active users
     user_count = User.objects.filter(is_active=True).count()
 
     # -----------------------------
-    # Monthly performance chart
+    # Comparative Analysis (Actual vs Target per active project)
     # -----------------------------
-    monthly_entries = (
-        MonthlyEntry.objects.filter(year=current_year)
-        .values("month")
-        .annotate(total=Sum("value"))
-        .order_by("month")
-    )
-    monthly_labels = [
-        datetime.date(1900, m["month"], 1).strftime("%b") for m in monthly_entries
+    comparative_labels, comparative_actuals, comparative_targets = [], [], []
+
+    for proj in projects:
+        comparative_labels.append(proj.name)
+
+        actual_total = MonthlyEntry.objects.filter(
+            year=selected_year,
+            indicator__project=proj,
+            indicator__unit__iexact="People Reached"
+        ).aggregate(total=Sum("value"))["total"] or 0
+
+        indicator_total = IndicatorTarget.objects.filter(
+            indicator__project=proj,
+            year=selected_year,
+            indicator__unit__iexact="People Reached"
+        ).aggregate(total=Sum("value"))["total"] or 0
+
+        comparative_actuals.append(int(actual_total))
+        comparative_targets.append(int(indicator_total))
+
+    # -----------------------------
+    # Trend Analysis (Monthly Actual vs Monthly Target)
+    # -----------------------------
+    trend_months, trend_actuals, trend_targets = [], [], []
+
+    # Compute monthly target: sum of annual targets for "People Reached" / 12
+    total_annual_target = IndicatorTarget.objects.filter(
+        year=selected_year,
+        indicator__unit__iexact="People Reached"
+    ).aggregate(total=Sum("value"))["total"] or 0
+    monthly_target = int(total_annual_target / 12) if total_annual_target else 0
+
+    for month_num in range(1, 13):
+        trend_months.append(datetime.date(1900, month_num, 1).strftime("%b"))
+
+        # Monthly actuals: filter entries by year and month
+        monthly_actual = MonthlyEntry.objects.filter(
+            year=selected_year,
+            month=month_num,
+            indicator__unit__iexact="People Reached"
+        ).aggregate(total=Sum("value"))["total"] or 0
+
+        trend_actuals.append(int(monthly_actual))
+        trend_targets.append(monthly_target)
+
+    # -----------------------------
+    # Rotating Indicators (timeless for active projects)
+    # -----------------------------
+    indicators_data = []
+    for ind in all_indicators:
+        # Last two entries for selected year
+        last_entries = list(
+            MonthlyEntry.objects.filter(indicator=ind, year=selected_year)
+            .order_by("-id")[:2]
+        )
+        last_value = int(last_entries[0].value or 0) if last_entries else 0
+        prev_value = int(last_entries[1].value or 0) if len(last_entries) > 1 else 0
+
+        # Target for selected year
+        target_obj = IndicatorTarget.objects.filter(indicator=ind, year=selected_year).first()
+        target_value = int(target_obj.value) if target_obj else 0
+
+        indicators_data.append({
+            "id": ind.id,
+            "name": ind.name,
+            "project": ind.project.name if ind.project else None,
+            "value": last_value,
+            "target": target_value,
+            "previous_value": prev_value,
+        })
+
+    # -----------------------------
+    # Stats for KPI cards
+    # -----------------------------
+    stats = [
+        {
+            "label": "Projects",
+            "value": total_projects,
+            "icon": "fas fa-folder-open",
+            "bg_gradient": "linear-gradient(135deg, #6a11cb, #2575fc)",
+            "url": "/projects/",
+        },
+        {
+            "label": "Indicators",
+            "value": total_indicators,
+            "icon": "fas fa-bullseye",
+            "bg_gradient": "linear-gradient(135deg, #11998e, #38ef7d)",
+            "url": "/projects/",
+        },
+        {
+            "label": f"People Reached ({selected_year})",
+            "value": annual_total,
+            "icon": "fas fa-calendar-alt",
+            "bg_gradient": "linear-gradient(135deg, #f7971e, #ffd200)",
+            "url": "#",
+        },
+        {
+            "label": "Active Users",
+            "value": user_count,
+            "icon": "fas fa-users",
+            "bg_gradient": "linear-gradient(135deg, #ff416c, #ff4b2b)",
+            "url": "/profile/",
+        },
     ]
-    monthly_data = [m["total"] or 0 for m in monthly_entries]
 
-    # -----------------------------
-    # Project contribution chart
-    # -----------------------------
-    project_contributions = (
-        MonthlyEntry.objects.filter(year=current_year)
-        .values("indicator__project__name")
-        .annotate(total=Sum("value"))
-        .order_by("indicator__project__name")
-    )
-    by_project_labels = [p["indicator__project__name"] for p in project_contributions]
-    by_project_data = [p["total"] or 0 for p in project_contributions]
-
-    # -----------------------------
-    # Recent activity (latest entries & reports)
-    # -----------------------------
-    recent_entries = (
-        MonthlyEntry.objects.select_related("indicator", "indicator__project", "created_by")
-        .order_by("-created_at")[:5]  # always latest 5 entries
-    )
-
-    recent_reports = (
-        Report.objects.select_related("user")
-        .order_by("-created_at")[:5]  # always latest 5 reports
-    )
-
-    # -----------------------------
-    # Context for template
-    # -----------------------------
     context = {
         "projects": projects,
         "total_projects": total_projects,
         "total_indicators": total_indicators,
         "total_entries": total_entries,
-
-        # KPIs
-        "current_year": current_year,
+        "current_year": today_year,
+        "selected_year": selected_year,
+        "years": years,
         "annual_total": annual_total,
         "user_count": user_count,
-        "monthly_labels": monthly_labels,
-        "monthly_data": monthly_data,
-        "by_project_labels": by_project_labels,
-        "by_project_data": by_project_data,
-
-        # Recent activity
-        "recent_entries": recent_entries,
-        "recent_reports": recent_reports,
+        "comparative_labels": comparative_labels,
+        "comparative_actuals": comparative_actuals,
+        "comparative_targets": comparative_targets,
+        "trend_months": trend_months,
+        "trend_actuals": trend_actuals,
+        "trend_targets": trend_targets,
+        "indicators": indicators_data,
+        "stats": stats,
     }
 
     return render(request, "core/dashboard.html", context)
+
+
+
 
 
 # -------------------------
@@ -151,7 +249,7 @@ def project_detail(request, pk):
 
 
 # -------------------------
-# KPI Data Entry (Bulk Save + Totals)
+# KPI Data Entry (Bulk Save + Totals + Annual Targets)
 # -------------------------
 @login_required
 def project_kpis(request, pk):
@@ -160,9 +258,13 @@ def project_kpis(request, pk):
     months = list(range(1, 13))
     year = int(request.GET.get("year", request.POST.get("year", datetime.datetime.now().year)))
 
+    # -------------------------
+    # Handle POST: bulk monthly values + optional target updates
+    # -------------------------
     if request.method == "POST":
         with transaction.atomic():
             for ind in indicators:
+                # --- Update monthly entries ---
                 for month in months:
                     field_name = f"val_{ind.id}_{month}"
                     raw_val = request.POST.get(field_name, "").strip()
@@ -178,23 +280,52 @@ def project_kpis(request, pk):
                         month=month,
                         defaults={"value": val, "created_by": request.user},
                     )
-                # Update indicator progress
+
+                # --- Update annual target if provided ---
+                target_field = f"target_{ind.id}"
+                raw_target = request.POST.get(target_field, "").strip()
+                if raw_target != "":
+                    try:
+                        target_val = float(raw_target)
+                        IndicatorTarget.objects.update_or_create(
+                            indicator=ind,
+                            year=year,
+                            defaults={"value": target_val},
+                        )
+                    except ValueError:
+                        pass
+
+                # --- Update indicator progress ---
                 total_val = MonthlyEntry.objects.filter(indicator=ind, year=year).aggregate(
                     total=Sum("value")
                 )["total"] or 0
                 ind.current_value = total_val
                 ind.update_progress()
 
-        messages.success(request, "KPI data saved successfully!")
+        messages.success(request, "KPI data and targets saved successfully!")
         return redirect("project_kpis", pk=project.id)
 
     # -------------------------
-    # Build grid + totals
+    # Prepare grid + totals
     # -------------------------
     grid = defaultdict(dict)
-    totals = {}           # ✅ Row totals per indicator
-    monthly_totals = {}   # ✅ Column totals across indicators
-    grand_total = 0       # ✅ Bottom-right grand total
+    totals = {}              # Row totals per indicator
+    monthly_totals = {}      # Column totals across indicators
+    grand_total = 0          # Bottom-right grand total
+
+    # Fetch targets for all indicators for this year
+    targets = IndicatorTarget.objects.filter(indicator__in=indicators, year=year)
+    target_dict = {t.indicator_id: t.value for t in targets}
+
+    # --- Auto-create target for new indicators ---
+    for ind in indicators:
+        if ind.id not in target_dict:
+            target_obj, created = IndicatorTarget.objects.get_or_create(
+                indicator=ind,
+                year=year,
+                defaults={"value": 0.0},  # default value for new indicators
+            )
+            target_dict[ind.id] = target_obj.value
 
     # Build grid and row totals
     for ind in indicators:
@@ -211,16 +342,21 @@ def project_kpis(request, pk):
     for month in months:
         monthly_totals[month] = sum(grid[ind.id].get(month, 0) or 0 for ind in indicators)
 
-    return render(request, "core/project_kpis.html", {
+    context = {
         "project": project,
         "indicators": indicators,
         "months": months,
         "year": year,
         "grid": grid,
-        "totals": totals,              # 👈 Row totals
-        "monthly_totals": monthly_totals,  # 👈 Column totals
-        "grand_total": grand_total,    # 👈 Grand total
-    })
+        "totals": totals,
+        "monthly_totals": monthly_totals,
+        "grand_total": grand_total,
+        "target_dict": target_dict,  # For template: direct value per indicator
+    }
+
+    return render(request, "core/project_kpis.html", context)
+
+
 
 
 # -------------------------
@@ -264,39 +400,115 @@ def project_delete(request, pk):
 
 
 # -------------------------
-# KPI MANAGEMENT
+# Add KPI (with editable year selector)
 # -------------------------
 @login_required
 def indicator_add(request, project_pk):
     project = get_object_or_404(Project, pk=project_pk)
+    current_year = timezone.now().year
+    years = [current_year - 2, current_year - 1, current_year, current_year + 1, current_year + 2]
+
     if request.method == "POST":
         form = IndicatorForm(request.POST)
         if form.is_valid():
+            # Save Indicator instance first
             indicator = form.save(commit=False)
             indicator.project = project
             indicator.save()
+
+            # Handle KPI target for selected year
+            target_val = form.cleaned_data.get("target")
+            target_year = request.POST.get("year", current_year)
+            try:
+                target_year = int(target_year)
+            except ValueError:
+                target_year = current_year
+
+            if target_val is not None:
+                IndicatorTarget.objects.update_or_create(
+                    indicator=indicator,
+                    year=target_year,
+                    defaults={"value": target_val},
+                )
+
             messages.success(request, "KPI added successfully!")
             return redirect("project_detail", pk=project.pk)
     else:
         form = IndicatorForm()
-    return render(request, "core/indicators/indicator_form.html",
-                  {"form": form, "project": project, "title": "Add KPI"})
+
+    return render(
+        request,
+        "core/indicators/indicator_form.html",
+        {
+            "form": form,
+            "project": project,
+            "title": "Add KPI",
+            "now": timezone.now(),
+            "years": years,
+            "selected_year": current_year,
+        },
+    )
 
 
+# -------------------------
+# Edit KPI (with editable year selector)
+# -------------------------
 @login_required
 def indicator_edit(request, project_pk, pk):
     project = get_object_or_404(Project, pk=project_pk)
     indicator = get_object_or_404(Indicator, pk=pk, project=project)
+    current_year = timezone.now().year
+    years = [current_year - 2, current_year - 1, current_year, current_year + 1, current_year + 2]
+
+    # Pre-fill current-year target if it exists
+    try:
+        current_target = IndicatorTarget.objects.get(indicator=indicator, year=current_year)
+        initial_data = {"target": current_target.value}
+        selected_year = current_year
+    except IndicatorTarget.DoesNotExist:
+        initial_data = {}
+        selected_year = current_year
+
     if request.method == "POST":
-        form = IndicatorForm(request.POST, instance=indicator)
+        form = IndicatorForm(request.POST, instance=indicator, initial=initial_data)
         if form.is_valid():
-            form.save()
+            indicator = form.save(commit=False)
+            indicator.project = project
+            indicator.save()
+
+            target_val = form.cleaned_data.get("target")
+            target_year = request.POST.get("year", current_year)
+            try:
+                target_year = int(target_year)
+            except ValueError:
+                target_year = current_year
+
+            if target_val is not None:
+                IndicatorTarget.objects.update_or_create(
+                    indicator=indicator,
+                    year=target_year,
+                    defaults={"value": target_val},
+                )
+
             messages.success(request, "KPI updated successfully!")
             return redirect("project_detail", pk=project.pk)
     else:
-        form = IndicatorForm(instance=indicator)
-    return render(request, "core/indicators/indicator_form.html",
-                  {"form": form, "project": project, "indicator": indicator, "title": "Edit KPI"})
+        form = IndicatorForm(instance=indicator, initial=initial_data)
+
+    return render(
+        request,
+        "core/indicators/indicator_form.html",
+        {
+            "form": form,
+            "project": project,
+            "indicator": indicator,
+            "title": "Edit KPI",
+            "now": timezone.now(),
+            "years": years,
+            "selected_year": selected_year,
+        },
+    )
+
 
 
 @login_required
@@ -560,13 +772,14 @@ def export_project_kpis(request, pk):
     return response
 
 
+
+
 # -----------------------------
 # More Reports View
 # -----------------------------
-
 @login_required
 def more_reports(request):
-    current_year = datetime.datetime.now().year
+    current_year = datetime.date.today().year
     selected_year = request.GET.get("year")
     try:
         selected_year = int(selected_year)
@@ -614,28 +827,24 @@ def more_reports(request):
         row_values = []
         row_total = 0
         for m in months:
-            val = float(
-                base_qs.filter(indicator=ind, month=m)
-                .aggregate(total=Sum("value"))["total"]
-                or 0
-            )
+            val = float(base_qs.filter(indicator=ind, month=m).aggregate(total=Sum("value"))["total"] or 0)
             row_values.append(val)
             row_total += val
             column_totals[m] += val
         grand_total += row_total
 
-        # ✅ Add target and progress safely
-        target = getattr(ind, "target", 0)
-        target_float = float(target) if target else 0
-        progress = (row_total / target_float * 100) if target_float > 0 else 0
+        # ✅ Get target from IndicatorTarget for selected year
+        target_obj = IndicatorTarget.objects.filter(indicator=ind, year=selected_year).first()
+        target_value = float(target_obj.value) if target_obj else 0
+        progress = (row_total / target_value * 100) if target_value > 0 else 0
 
         pivot_data.append({
             "indicator": ind.name,
             "unit": ind.unit,
             "values": row_values,
             "total": row_total,
-            "target": target_float,
-            "progress": round(progress, 2),  # percentage
+            "target": target_value,
+            "progress": round(progress, 2),
         })
 
     # -----------------------------
@@ -649,11 +858,16 @@ def more_reports(request):
     # 2. Progress
     indicator_progress = []
     for ind in indicators:
-        actual = float(base_qs.filter(indicator=ind).aggregate(total=Sum("value"))["total"] or 0)
-        target = getattr(ind, "target", None)
-        target_float = float(target) if target else 0
-        progress_pct = round((actual / target_float * 100), 1) if target_float > 0 else 0
-        indicator_progress.append({"indicator": ind.name, "unit": ind.unit, "progress_pct": progress_pct})
+        actual_total = float(base_qs.filter(indicator=ind).aggregate(total=Sum("value"))["total"] or 0)
+        target_obj = IndicatorTarget.objects.filter(indicator=ind, year=selected_year).first()
+        target_value = float(target_obj.value) if target_obj else 0
+        progress_pct = round((actual_total / target_value * 100), 1) if target_value > 0 else 0
+        indicator_progress.append({
+            "indicator": ind.name,
+            "unit": ind.unit,
+            "progress_pct": progress_pct
+        })
+
     indicator_progress_labels = [i["indicator"] for i in indicator_progress]
     indicator_progress_data = [i["progress_pct"] for i in indicator_progress]
 
@@ -661,17 +875,17 @@ def more_reports(request):
     cumulative_performance = []
     for ind in indicators:
         series = [float(base_qs.filter(indicator=ind, month=m).aggregate(total=Sum("value"))["total"] or 0) for m in months]
+        running_total = 0
+        cumulative_series = []
+        for val in series:
+            running_total += val
+            cumulative_series.append(running_total)
         if any(series):
-            running_total = 0
-            cumulative_series = []
-            for val in series:
-                running_total += val
-                cumulative_series.append(running_total)
             cumulative_performance.append({"indicator": ind.name, "values": cumulative_series})
 
-    # 4. Top/Bottom
-    totals = list(base_qs.values("indicator__name").annotate(total=Sum("value")).order_by("-total"))
-    top_indicators = totals[:5]
+    # 4. Top Indicators
+    totals = base_qs.values("indicator__name").annotate(total=Sum("value")).order_by("-total")
+    top_indicators = list(totals[:5])
     top_indicators_labels = [i["indicator__name"] for i in top_indicators]
     top_indicators_data = [float(i["total"]) for i in top_indicators]
 
@@ -750,6 +964,7 @@ def more_reports(request):
     return render(request, "core/more_reports.html", context)
 
 
+
 # -------------------------
 # EXPORT CSV FOR MORE REPORTS
 # -------------------------
@@ -808,15 +1023,93 @@ def more_reports_export_csv(request):
     return response
 
 
-# core/views.py
+# -----------------------------
+# Edit Indicator Targets View
+# -----------------------------
 
+
+def edit_indicator_targets(request, indicator_id):
+    indicator = get_object_or_404(Indicator, id=indicator_id)
+    queryset = IndicatorTarget.objects.filter(indicator=indicator)
+
+    # Create a modelformset with at least 1 extra blank form for new targets
+    IndicatorTargetFormSetClass = modelformset_factory(
+        IndicatorTarget,
+        form=IndicatorTargetForm,
+        extra=1,        # at least one blank form for adding
+        can_delete=True # allows deletion
+    )
+
+    formset = IndicatorTargetFormSetClass(request.POST or None, queryset=queryset)
+
+    if request.method == "POST" and formset.is_valid():
+        try:
+            with transaction.atomic():  # ensures atomic DB operations
+                # 1️⃣ Delete targets marked for deletion first
+                for form in formset.deleted_forms:
+                    if form.instance.pk:
+                        form.instance.delete()
+
+                # 2️⃣ Save or update remaining targets
+                for form in formset:
+                    if form.cleaned_data.get('DELETE'):
+                        continue  # skip deleted forms
+
+                    year = form.cleaned_data.get('year')
+                    value = form.cleaned_data.get('value')
+
+                    if year is None or value is None:
+                        continue  # skip incomplete forms
+
+                    # Update existing target or create new one
+                    IndicatorTarget.objects.update_or_create(
+                        indicator=indicator,
+                        year=year,
+                        defaults={'value': value}
+                    )
+
+        except IntegrityError:
+            formset.add_error(None, "Error: Duplicate target for the same year.")
+            # Reload the page with the error message
+            current_year = datetime.date.today().year
+            year_range = range(current_year - 5, current_year + 6)
+            context = {
+                "indicator": indicator,
+                "formset": formset,
+                "current_year": current_year,
+                "year_range": year_range,
+            }
+            return render(request, "core/edit_indicator_targets.html", context)
+
+        return redirect('project_kpis', pk=indicator.project.id)
+
+    # Prepare context with current year and year range
+    current_year = datetime.date.today().year
+    year_range = range(current_year - 5, current_year + 6)
+
+    context = {
+        "indicator": indicator,
+        "formset": formset,
+        "current_year": current_year,
+        "year_range": year_range,
+    }
+
+    return render(request, "core/edit_indicator_targets.html", context)
+
+
+
+
+@login_required
 def data_story(request):
     """
     Dynamic Data Story dashboard with optional year filter.
     Shows top 10 indicators with most recent/significant changes.
     Tags indicators as Improving, Declining, Stable, or New.
+    Targets are always for the current year only.
     Supports AJAX requests for dynamic year filtering.
     """
+    
+    current_year = date.today().year
 
     # -------------------------
     # Get all years with data for dropdown
@@ -833,9 +1126,9 @@ def data_story(request):
         try:
             selected_year = int(selected_year)
         except ValueError:
-            selected_year = year_list[0] if year_list else date.today().year
+            selected_year = year_list[0] if year_list else current_year
     else:
-        selected_year = year_list[0] if year_list else date.today().year
+        selected_year = year_list[0] if year_list else current_year
 
     # -------------------------
     # Get all entries for the selected year, latest first per indicator
@@ -850,7 +1143,7 @@ def data_story(request):
             continue
         seen.add(entry.indicator_id)
 
-        # Previous entry for comparison
+        # Previous entry for comparison (any year)
         prev_entry = (
             MonthlyEntry.objects.filter(indicator=entry.indicator, created_at__lt=entry.created_at)
             .order_by("-created_at")
@@ -860,19 +1153,23 @@ def data_story(request):
         if prev_entry:
             try:
                 change = ((entry.value - prev_entry.value) / prev_entry.value * 100) if prev_entry.value != 0 else 0
-            except (ZeroDivisionError, DivisionUndefined, InvalidOperation):
+            except (ZeroDivisionError, InvalidOperation):
                 change = 0
             change_available = True
         else:
             change = 0
             change_available = False
 
-        # Progress vs target (safe float)
-        target = entry.indicator.target
-        actual = entry.value
+        # -------------------------
+        # Progress vs target
+        # Targets are always for current year
+        # -------------------------
+        target_obj = IndicatorTarget.objects.filter(indicator=entry.indicator, year=current_year).first()
+        target_value = float(target_obj.value) if target_obj else 0.0
+        actual = float(entry.value)
         try:
-            progress_percent = float((actual / target) * 100) if target and target != Decimal('0') else 0.0
-        except (DivisionUndefined, InvalidOperation):
+            progress_percent = (actual / target_value * 100) if target_value > 0 else 0.0
+        except (ZeroDivisionError, InvalidOperation):
             progress_percent = 0.0
 
         # Historical chart data (last 6 entries)
@@ -883,26 +1180,26 @@ def data_story(request):
         # Determine tag + story
         if not change_available:
             tag = "New"
-            story = f"{entry.indicator.name} has a new entry of {float(actual)}, achieving {progress_percent:.1f}% of the target."
+            story = f"{entry.indicator.name} has a new entry of {actual}, achieving {progress_percent:.1f}% of the target."
         elif change > 0:
             tag = "Improving"
-            story = f"{entry.indicator.name} is currently at {float(actual)}, showing an improvement of {float(change):.1f}% and achieving {progress_percent:.1f}% of the target."
+            story = f"{entry.indicator.name} is currently at {actual}, showing an improvement of {change:.1f}% and achieving {progress_percent:.1f}% of the target."
         elif change < 0:
             tag = "Declining"
-            story = f"{entry.indicator.name} is currently at {float(actual)}, showing a decline of {abs(float(change)):.1f}% and achieving {progress_percent:.1f}% of the target."
+            story = f"{entry.indicator.name} is currently at {actual}, showing a decline of {abs(change):.1f}% and achieving {progress_percent:.1f}% of the target."
         else:
             tag = "Stable"
-            story = f"{entry.indicator.name} is currently at {float(actual)}, with no significant change and achieving {progress_percent:.1f}% of the target."
+            story = f"{entry.indicator.name} is currently at {actual}, with no significant change and achieving {progress_percent:.1f}% of the target."
 
         top_insights.append({
             "title": entry.indicator.name,
             "chart_data": json.dumps({"labels": chart_labels, "values": chart_values}),
             "story": story,
             "tag": tag,
-            "change": float(change) if change_available else None,
+            "change": change if change_available else None,
             "last_updated": entry.created_at,
-            "actual": float(actual),
-            "target": float(target) if target else 0.0,
+            "actual": actual,
+            "target": target_value,
             "progress_percent": progress_percent,
         })
 
@@ -932,6 +1229,8 @@ def data_story(request):
     # Normal full-page render
     # -------------------------
     return render(request, "core/data_story.html", context)
+
+
 
 
 # -------------------------
