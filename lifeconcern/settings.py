@@ -133,9 +133,14 @@ EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
+
+# Gmail account credentials
 EMAIL_HOST_USER = "datamanagementlico@gmail.com"
-EMAIL_HOST_PASSWORD = "jbll pppr owrw doap"  # ✅ App password
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+EMAIL_HOST_PASSWORD = "jbll pppr owrw doap"  # ✅ App password (never use normal password)
+
+# Default sender (use a neutral updates address for classification as 'Updates')
+DEFAULT_FROM_EMAIL = "updates@yourdomain.com"
+SERVER_EMAIL = DEFAULT_FROM_EMAIL  # Used for error emails from Django
 
 # -------------------------
 # Redirects after login/logout

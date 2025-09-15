@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.db.models import Sum
+from django.core.exceptions import ValidationError
 import datetime
 from .utils import send_email_alert
 
@@ -67,6 +68,21 @@ class IndicatorTarget(models.Model):
     def __str__(self):
         return f"{self.indicator.name} - {self.year}: {self.value}"
 
+    # -----------------------------
+    # Backend validation
+    # -----------------------------
+    def clean(self):
+        if self.value is None:
+            raise ValidationError({'value': "Target value cannot be empty."})
+        try:
+            float(self.value)
+        except (ValueError, TypeError):
+            raise ValidationError({'value': "Target value must be numeric."})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
 
 class MonthlyEntry(models.Model):
     indicator = models.ForeignKey(Indicator, on_delete=models.CASCADE, related_name='entries')
@@ -76,6 +92,24 @@ class MonthlyEntry(models.Model):
     notes = models.CharField(max_length=255, blank=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    # -----------------------------
+    # Backend validation
+    # -----------------------------
+    def clean(self):
+        if self.value is None:
+            raise ValidationError({'value': "KPI value cannot be empty."})
+        try:
+            float(self.value)
+        except (ValueError, TypeError):
+            raise ValidationError({'value': "KPI value must be numeric."})
+
+        if not (1 <= self.month <= 12):
+            raise ValidationError({'month': "Month must be between 1 and 12."})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()  # calls clean() before saving
+        super().save(*args, **kwargs)
 
 
 class Report(models.Model):

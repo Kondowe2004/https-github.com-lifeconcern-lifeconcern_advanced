@@ -1,4 +1,5 @@
 {% extends 'core/base.html' %}
+{% load widget_tweaks %}
 {% load static %}
 
 {% block title %}Dashboard{% endblock %}
@@ -95,6 +96,16 @@
     font-size: 1rem;
     line-height: 1.2;
   }
+
+  .indicator-values {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 0.5rem;
+  }
+  .indicator-values div {
+    text-align: center;
+    font-size: 0.9rem;
+  }
 </style>
 
 <div class="position-absolute top-0 end-0 p-2">
@@ -129,7 +140,6 @@
   </div>
 </div>
 
-<!-- Welcome bar with Bootstrap row/col layout -->
 <div class="card mb-4 p-3 shadow-sm rounded-3">
   <div class="row align-items-center">
     <div class="col-md-6 col-12">
@@ -150,7 +160,6 @@
   </div>
 </div>
 
-<!-- Stats cards -->
 <div class="row g-4">
   {% for stat in stats %}
   <div class="col-md-3 col-sm-6">
@@ -165,7 +174,6 @@
   {% endfor %}
 </div>
 
-<!-- Charts -->
 <div class="row g-4 mt-4">
   <div class="col-md-6">
     <div class="chart-card">
@@ -189,7 +197,6 @@
   </div>
 </div>
 
-<!-- Remaining sections remain unchanged -->
 <div class="card mt-4 p-3 shadow-lg rounded-3">
   <h5 class="fw-semibold text-info">🗺️ Geographic Visualization</h5>
   <p class="text-muted">Map will appear here (coming soon).</p>
@@ -222,7 +229,6 @@
   const compLabels = {{ comparative_labels|default:"[]"|safe }};
   const compActuals = {{ comparative_actuals|default:"[]"|safe }};
   const compTargets = {{ comparative_targets|default:"[]"|safe }};
-
   if (compLabels.length) {
     new Chart(document.getElementById('comparativeChart'), {
       type: 'bar',
@@ -230,23 +236,13 @@
         { label: 'Actual', data: compActuals, backgroundColor: actualColor },
         { label: 'Target', data: compTargets, backgroundColor: targetColor }
       ]},
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { position: 'top' },
-          tooltip: { mode: 'index', intersect: false },
-          zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }, pan: { enabled: true, mode: 'x' } },
-          title: { display: false }
-        },
-        scales: { y: { beginAtZero: true }, x: { stacked: false } },
-      }
+      options: { responsive: true, plugins: { legend: { position: 'top' }, tooltip: { mode: 'index', intersect: false }, zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }, pan: { enabled: true, mode: 'x' } }, title: { display: false } }, scales: { y: { beginAtZero: true }, x: { stacked: false } } }
     });
   }
 
   const trendLabels = {{ trend_months|default:"[]"|safe }};
   const trendActuals = {{ trend_actuals|default:"[]"|safe }};
   const trendTargets = {{ trend_targets|default:"[]"|safe }};
-
   if (trendLabels.length) {
     new Chart(document.getElementById('trendChart'), {
       type: 'line',
@@ -254,16 +250,7 @@
         { label: 'Actual', data: trendActuals, borderColor: actualColor, backgroundColor: 'rgba(0,123,255,0.1)', tension: 0.3, fill: true },
         { label: 'Target', data: trendTargets, borderColor: targetColor, backgroundColor: 'rgba(40,167,69,0.1)', tension: 0.3, fill: true }
       ]},
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { position: 'top' },
-          tooltip: { mode: 'index', intersect: false },
-          zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }, pan: { enabled: true, mode: 'x' } },
-          title: { display: false }
-        },
-        scales: { y: { beginAtZero: true } },
-      }
+      options: { responsive: true, plugins: { legend: { position: 'top' }, tooltip: { mode: 'index', intersect: false }, zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }, pan: { enabled: true, mode: 'x' } }, title: { display: false } }, scales: { y: { beginAtZero: true } } }
     });
   }
 
@@ -284,8 +271,11 @@
         card.innerHTML = `
           <h6 class="fw-bold mb-1">${ind.name}</h6>
           <p class="mb-1 small">${ind.project || ""}</p>
-          <h4 class="fw-bold">${ind.value} ${trendArrow}</h4>
-          <p class="mb-0"><small>Target: ${ind.target}</small></p>
+          <div class="indicator-values">
+            <div>Last Month: <strong>${ind.last_month_value || 0}</strong></div>
+            <div>Cumulative: <strong>${ind.value}</strong> ${trendArrow}</div>
+          </div>
+          <p class="mb-0 mt-1"><small>Target: ${ind.target}</small></p>
         `;
         col.appendChild(card);
         carousel.appendChild(col);

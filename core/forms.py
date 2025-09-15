@@ -1,6 +1,7 @@
 from django import forms
 from .models import Project, Indicator, IndicatorTarget
 from django.utils import timezone
+from decimal import Decimal, InvalidOperation
 
 
 # -----------------------------
@@ -31,6 +32,7 @@ class IndicatorForm(forms.ModelForm):
         decimal_places=2,
         label="Annual Target",
         widget=forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+        error_messages={"invalid": "Target value must be numeric."},
     )
 
     # Year selection dropdown
@@ -55,18 +57,27 @@ class IndicatorForm(forms.ModelForm):
         current_year = timezone.now().year
         self.fields["year"].initial = current_year  # default selection
 
-        # If instance exists and is saved, prefill target for selected year
+        # If instance exists, prefill target for selected year
         if self.instance and self.instance.pk:
             selected_year = self.initial.get("year", current_year)
             target_obj = self.instance.targets.filter(year=selected_year).first()
             if target_obj:
                 self.fields["target"].initial = target_obj.value
 
+    def clean_target(self):
+        value = self.cleaned_data.get("target")
+        if value is not None:
+            try:
+                Decimal(value)
+            except (InvalidOperation, TypeError):
+                raise forms.ValidationError("Target value must be numeric.")
+        return value
+
     def save(self, commit=True):
         # Save the Indicator instance first
         indicator = super().save(commit=False)
         if commit:
-            indicator.save()  # ✅ Must save before using in related filters
+            indicator.save()  # Must save before using in related filters
 
         # Save or update the target for chosen year
         target_val = self.cleaned_data.get("target")
@@ -94,3 +105,13 @@ class IndicatorTargetForm(forms.ModelForm):
             "year": forms.NumberInput(attrs={"class": "form-control"}),
             "value": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
         }
+
+    def clean_value(self):
+        value = self.cleaned_data.get("value")
+        if value is None:
+            raise forms.ValidationError("Value cannot be empty.")
+        try:
+            Decimal(value)
+        except (InvalidOperation, TypeError):
+            raise forms.ValidationError("Value must be numeric.")
+        return value

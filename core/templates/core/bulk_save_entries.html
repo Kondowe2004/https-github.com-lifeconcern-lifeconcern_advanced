@@ -9,7 +9,7 @@
     <small class="text-light">Enter values for indicators below</small>
   </div>
   <div class="card-body">
-    <form method="post">
+    <form method="post" id="bulkEntriesForm">
       {% csrf_token %}
 
       <!-- Year & Month -->
@@ -41,10 +41,11 @@
             <label for="indicator_{{ indicator.id }}" class="form-label fw-semibold">
               {{ indicator.name }}
             </label>
-            <input type="number" step="any" id="indicator_{{ indicator.id }}" 
+            <input type="text" id="indicator_{{ indicator.id }}" 
                    name="indicator_{{ indicator.id }}" 
                    class="form-control shadow-sm"
                    placeholder="Enter value for {{ indicator.name }}">
+            <div class="invalid-feedback">Please enter a valid numeric value.</div>
           </div>
         {% endfor %}
       </div>
@@ -59,7 +60,7 @@
   </div>
 </div>
 
-<!-- 🔎 JavaScript Search -->
+<!-- 🔎 JavaScript: Search & Numeric Validation -->
 <script>
 function filterIndicators() {
   let input = document.getElementById("searchInput");
@@ -73,14 +74,37 @@ function filterIndicators() {
   }
 }
 
-// ✅ Highlight filled inputs
-document.addEventListener("input", function(e) {
-  if (e.target.tagName === "INPUT" && e.target.type === "number") {
-    if (e.target.value.trim() !== "") {
-      e.target.classList.add("filled");
+// ✅ Highlight filled inputs & check numeric
+const form = document.getElementById('bulkEntriesForm');
+
+form.addEventListener('input', function(e) {
+  if (e.target.tagName === 'INPUT' && e.target.id.startsWith('indicator_')) {
+    const val = e.target.value.trim();
+    if (val === "") {
+      e.target.classList.remove('filled', 'is-invalid');
+    } else if (isNaN(val)) {
+      e.target.classList.add('is-invalid');
+      e.target.classList.remove('filled');
     } else {
-      e.target.classList.remove("filled");
+      e.target.classList.remove('is-invalid');
+      e.target.classList.add('filled');
     }
+  }
+});
+
+form.addEventListener('submit', function(e) {
+  let invalid = false;
+  const inputs = form.querySelectorAll('input[id^="indicator_"]');
+  inputs.forEach(input => {
+    const val = input.value.trim();
+    if (val !== "" && isNaN(val)) {
+      input.classList.add('is-invalid');
+      invalid = true;
+    }
+  });
+  if (invalid) {
+    e.preventDefault();
+    alert('Please correct non-numeric values before saving.');
   }
 });
 </script>
@@ -94,6 +118,10 @@ document.addEventListener("input", function(e) {
   .indicator-item input.filled {
     background-color: #e9f7ef !important;
     border-color: #198754 !important;
+  }
+  .indicator-item input.is-invalid {
+    background-color: #ffe6e6 !important;
+    border-color: #dc3545 !important;
   }
 </style>
 {% endblock %}

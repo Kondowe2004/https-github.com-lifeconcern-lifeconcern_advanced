@@ -104,7 +104,7 @@
                     <input type="number" step="0.01" min="0"
                            name="val_{{ ind.id }}_{{ m }}"
                            value="{{ val|default:'' }}"
-                           class="form-control form-control-sm text-end shadow-sm {% if val %}bg-success-subtle{% endif %}"
+                           class="form-control form-control-sm text-end shadow-sm month-input {% if val %}bg-success-subtle{% endif %}"
                            style="max-width: 70px;">
                   </td>
                   {% endwith %}
@@ -165,49 +165,63 @@
 .hover-shadow:hover {
   background-color: #f0f8ff !important;
 }
+/* Highlight valid and invalid target entries */
+.target-input.valid, .month-input.valid {
+  background-color: #e9f7ef !important;
+  border-color: #198754 !important;
+}
+.target-input.invalid, .month-input.invalid {
+  background-color: #ffe6e6 !important;
+  border-color: #dc3545 !important;
+}
 </style>
 
 <script>
+// Filter table rows by indicator name
 function filterTable() {
-  let input = document.getElementById("searchInput");
-  let filter = input.value.toLowerCase();
+  let input = document.getElementById("searchInput").value.toLowerCase();
   let table = document.getElementById("kpiTable");
   let rows = table.getElementsByTagName("tr");
 
   for (let i = 1; i < rows.length; i++) {
-    let firstCol = rows[i].getElementsByTagName("td")[1]; // Indicator column
+    let firstCol = rows[i].getElementsByTagName("td")[1];
     if (firstCol) {
       let textValue = firstCol.textContent || firstCol.innerText;
-      rows[i].style.display = textValue.toLowerCase().indexOf(filter) > -1 ? "" : "none";
+      rows[i].style.display = textValue.toLowerCase().includes(input) ? "" : "none";
     }
   }
 }
 
-// Optional: AJAX Save
-document.getElementById("kpiForm").addEventListener("submit", function(e){
-  e.preventDefault();
-  let form = this;
-  let data = new FormData(form);
-  
-  fetch(form.action, {
-    method: "POST",
-    body: data,
-    headers: {
-      "X-Requested-With": "XMLHttpRequest",
-      "X-CSRFToken": data.get("csrfmiddlewaretoken")
+// Validate numeric inputs inline
+function validateNumericInput(e) {
+  const val = e.target.value.trim();
+  if (val === "" || !isNaN(val)) {
+    e.target.classList.remove("invalid");
+    e.target.classList.add("valid");
+  } else {
+    e.target.classList.remove("valid");
+    e.target.classList.add("invalid");
+  }
+}
+
+document.querySelectorAll(".target-input, .month-input").forEach(input => {
+  input.addEventListener("input", validateNumericInput);
+});
+
+// Form submission validation
+document.getElementById("kpiForm").addEventListener("submit", function(e) {
+  let invalid = false;
+  document.querySelectorAll(".target-input, .month-input").forEach(input => {
+    const val = input.value.trim();
+    if (val !== "" && isNaN(val)) {
+      input.classList.add("invalid");
+      invalid = true;
     }
-  })
-  .then(response => response.text())
-  .then(html => {
-    // Reload table body to reflect updated targets
-    let parser = new DOMParser();
-    let doc = parser.parseFromString(html, 'text/html');
-    let newTbody = doc.querySelector("#kpiTable tbody");
-    if (newTbody) {
-      document.querySelector("#kpiTable tbody").innerHTML = newTbody.innerHTML;
-    }
-  })
-  .catch(err => console.error(err));
+  });
+  if (invalid) {
+    e.preventDefault();
+    alert("Please correct non-numeric values before saving.");
+  }
 });
 </script>
 {% endblock %}

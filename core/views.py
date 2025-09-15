@@ -14,7 +14,7 @@ from .forms import ProjectForm, IndicatorForm
 from django.shortcuts import render
 from django.contrib.auth.models import User
 from django.db.models import Count
-from core.models import Report  # adjust if your Report model is in another app
+from core.models import Report  
 from core.templatetags.custom_tags import get_month_name
 import calendar
 import json
@@ -39,6 +39,7 @@ from collections import defaultdict
 from .forms import IndicatorForm
 
 
+# Dashboard
 @login_required
 def dashboard(request):
     """Dashboard view showing KPIs, comparative analysis, trend analysis, and rotating indicators."""
@@ -141,13 +142,19 @@ def dashboard(request):
     # -----------------------------
     indicators_data = []
     for ind in all_indicators:
-        # Last two entries for selected year
-        last_entries = list(
-            MonthlyEntry.objects.filter(indicator=ind, year=selected_year)
-            .order_by("-id")[:2]
-        )
-        last_value = int(last_entries[0].value or 0) if last_entries else 0
-        prev_value = int(last_entries[1].value or 0) if len(last_entries) > 1 else 0
+        # -----------------------------
+        # Total actuals for the selected year
+        # -----------------------------
+        total_actual = MonthlyEntry.objects.filter(
+            indicator=ind,
+            year=selected_year
+        ).aggregate(total=Sum("value"))["total"] or 0
+
+        # Previous month value (optional, for comparison)
+        last_entry = MonthlyEntry.objects.filter(indicator=ind, year=selected_year).order_by("-id").first()
+        prev_entry = MonthlyEntry.objects.filter(indicator=ind, year=selected_year).order_by("-id")[1:2]
+        previous_value = int(prev_entry[0].value) if prev_entry else 0
+        last_value = int(last_entry.value) if last_entry else 0
 
         # Target for selected year
         target_obj = IndicatorTarget.objects.filter(indicator=ind, year=selected_year).first()
@@ -157,9 +164,10 @@ def dashboard(request):
             "id": ind.id,
             "name": ind.name,
             "project": ind.project.name if ind.project else None,
-            "value": last_value,
+            "value": int(total_actual),  # cumulative actual for year
             "target": target_value,
-            "previous_value": prev_value,
+            "previous_value": previous_value,
+            "last_month_value": last_value,  # optional if you want to show last month
         })
 
     # -----------------------------
@@ -249,7 +257,7 @@ def project_detail(request, pk):
 
 
 # -------------------------
-# KPI Data Entry (Bulk Save + Totals + Annual Targets)
+# KPI Data Entry (Bulk Save + Totals + Annual Targets + Validation)
 # -------------------------
 @login_required
 def project_kpis(request, pk):
@@ -258,12 +266,16 @@ def project_kpis(request, pk):
     months = list(range(1, 13))
     year = int(request.GET.get("year", request.POST.get("year", datetime.datetime.now().year)))
 
+    errors = {}  # {indicator_id: {month: error_message}}
+
     # -------------------------
     # Handle POST: bulk monthly values + optional target updates
     # -------------------------
     if request.method == "POST":
         with transaction.atomic():
             for ind in indicators:
+                errors[ind.id] = {}
+
                 # --- Update monthly entries ---
                 for month in months:
                     field_name = f"val_{ind.id}_{month}"
@@ -272,14 +284,14 @@ def project_kpis(request, pk):
                         continue
                     try:
                         val = float(raw_val)
+                        MonthlyEntry.objects.update_or_create(
+                            indicator=ind,
+                            year=year,
+                            month=month,
+                            defaults={"value": val, "created_by": request.user},
+                        )
                     except ValueError:
-                        continue
-                    MonthlyEntry.objects.update_or_create(
-                        indicator=ind,
-                        year=year,
-                        month=month,
-                        defaults={"value": val, "created_by": request.user},
-                    )
+                        errors[ind.id][month] = "Invalid numeric value"
 
                 # --- Update annual target if provided ---
                 target_field = f"target_{ind.id}"
@@ -293,7 +305,7 @@ def project_kpis(request, pk):
                             defaults={"value": target_val},
                         )
                     except ValueError:
-                        pass
+                        errors[ind.id]["target"] = "Invalid numeric value"
 
                 # --- Update indicator progress ---
                 total_val = MonthlyEntry.objects.filter(indicator=ind, year=year).aggregate(
@@ -302,8 +314,16 @@ def project_kpis(request, pk):
                 ind.current_value = total_val
                 ind.update_progress()
 
-        messages.success(request, "KPI data and targets saved successfully!")
-        return redirect("project_kpis", pk=project.id)
+        if any(errors[ind.id] for ind in indicators):
+            messages.warning(request, "Some cells contained invalid values. Please correct them.")
+        else:
+            messages.success(request, "KPI data and targets saved successfully!")
+
+        # If errors exist, we render the page without redirect to show the errors
+        if any(errors[ind.id] for ind in indicators):
+            pass
+        else:
+            return redirect("project_kpis", pk=project.id)
 
     # -------------------------
     # Prepare grid + totals
@@ -352,9 +372,11 @@ def project_kpis(request, pk):
         "monthly_totals": monthly_totals,
         "grand_total": grand_total,
         "target_dict": target_dict,  # For template: direct value per indicator
+        "errors": errors,            # Pass errors to template
     }
 
     return render(request, "core/project_kpis.html", context)
+
 
 
 
@@ -400,7 +422,7 @@ def project_delete(request, pk):
 
 
 # -------------------------
-# Add KPI (with editable year selector)
+# Add KPI (with editable year selector + numeric validation)
 # -------------------------
 @login_required
 def indicator_add(request, project_pk):
@@ -424,15 +446,22 @@ def indicator_add(request, project_pk):
             except ValueError:
                 target_year = current_year
 
+            # Validate numeric target before saving
             if target_val is not None:
-                IndicatorTarget.objects.update_or_create(
-                    indicator=indicator,
-                    year=target_year,
-                    defaults={"value": target_val},
-                )
+                try:
+                    target_val = float(target_val)
+                    IndicatorTarget.objects.update_or_create(
+                        indicator=indicator,
+                        year=target_year,
+                        defaults={"value": target_val},
+                    )
+                except (ValueError, TypeError):
+                    messages.warning(request, "Invalid target value. Please enter a numeric value.")
 
             messages.success(request, "KPI added successfully!")
             return redirect("project_detail", pk=project.pk)
+        else:
+            messages.warning(request, "Please correct the errors in the form.")
     else:
         form = IndicatorForm()
 
@@ -450,8 +479,9 @@ def indicator_add(request, project_pk):
     )
 
 
+
 # -------------------------
-# Edit KPI (with editable year selector)
+# Edit KPI (with editable year selector + numeric validation)
 # -------------------------
 @login_required
 def indicator_edit(request, project_pk, pk):
@@ -476,6 +506,7 @@ def indicator_edit(request, project_pk, pk):
             indicator.project = project
             indicator.save()
 
+            # Handle KPI target for selected year
             target_val = form.cleaned_data.get("target")
             target_year = request.POST.get("year", current_year)
             try:
@@ -483,15 +514,22 @@ def indicator_edit(request, project_pk, pk):
             except ValueError:
                 target_year = current_year
 
+            # Validate numeric target before saving
             if target_val is not None:
-                IndicatorTarget.objects.update_or_create(
-                    indicator=indicator,
-                    year=target_year,
-                    defaults={"value": target_val},
-                )
+                try:
+                    target_val = float(target_val)
+                    IndicatorTarget.objects.update_or_create(
+                        indicator=indicator,
+                        year=target_year,
+                        defaults={"value": target_val},
+                    )
+                except (ValueError, TypeError):
+                    messages.warning(request, "Invalid target value. Please enter a numeric value.")
 
             messages.success(request, "KPI updated successfully!")
             return redirect("project_detail", pk=project.pk)
+        else:
+            messages.warning(request, "Please correct the errors in the form.")
     else:
         form = IndicatorForm(instance=indicator, initial=initial_data)
 
@@ -508,7 +546,6 @@ def indicator_edit(request, project_pk, pk):
             "selected_year": selected_year,
         },
     )
-
 
 
 @login_required
@@ -540,8 +577,9 @@ def projects(request):
     return render(request, "core/projects.html", {"projects": projects})
 
 
+
 # -------------------------
-# BULK SAVE ENTRIES
+# BULK SAVE ENTRIES (with numeric validation)
 # -------------------------
 @login_required
 def bulk_save_entries(request, pk):
@@ -551,17 +589,31 @@ def bulk_save_entries(request, pk):
     if request.method == "POST":
         year = int(request.POST.get("year", datetime.datetime.now().year))
         month = int(request.POST.get("month", datetime.datetime.now().month))
+        invalid_entries = []
+
         with transaction.atomic():
             for indicator in indicators:
-                value = request.POST.get(f"indicator_{indicator.id}")
-                if value not in [None, ""]:
-                    MonthlyEntry.objects.update_or_create(
-                        indicator=indicator,
-                        year=year,
-                        month=month,
-                        defaults={"value": float(value), "created_by": request.user},
-                    )
-        messages.success(request, f"Entries for {month}/{year} saved successfully!")
+                raw_value = request.POST.get(f"indicator_{indicator.id}")
+                if raw_value not in [None, ""]:
+                    try:
+                        numeric_value = float(raw_value)
+                        MonthlyEntry.objects.update_or_create(
+                            indicator=indicator,
+                            year=year,
+                            month=month,
+                            defaults={"value": numeric_value, "created_by": request.user},
+                        )
+                    except ValueError:
+                        invalid_entries.append(indicator.name)
+
+        if invalid_entries:
+            messages.warning(
+                request,
+                f"Some entries were not saved because they were not numeric: {', '.join(invalid_entries)}"
+            )
+        else:
+            messages.success(request, f"Entries for {month}/{year} saved successfully!")
+
         return redirect("project_detail", pk=project.id)
 
     return render(request, "core/bulk_save_entries.html", {
@@ -964,18 +1016,21 @@ def more_reports(request):
     return render(request, "core/more_reports.html", context)
 
 
-
 # -------------------------
 # EXPORT CSV FOR MORE REPORTS
+# Fully dynamic CSV export
 # -------------------------
+
 @login_required
 def more_reports_export_csv(request):
+    # Filters from GET parameters
     selected_unit = request.GET.get("unit") or None
     selected_project = request.GET.get("project")
     selected_project = int(selected_project) if selected_project and selected_project.isdigit() else None
     selected_indicator = request.GET.get("indicator")
     selected_indicator = int(selected_indicator) if selected_indicator and selected_indicator.isdigit() else None
 
+    # Base queryset
     pivot_qs = MonthlyEntry.objects.all()
     if selected_unit:
         pivot_qs = pivot_qs.filter(indicator__unit=selected_unit)
@@ -984,6 +1039,7 @@ def more_reports_export_csv(request):
     if selected_indicator:
         pivot_qs = pivot_qs.filter(indicator_id=selected_indicator)
 
+    # Filter indicators
     indicators = Indicator.objects.all()
     if selected_unit:
         indicators = indicators.filter(unit=selected_unit)
@@ -992,42 +1048,68 @@ def more_reports_export_csv(request):
     if selected_indicator:
         indicators = indicators.filter(id=selected_indicator)
 
+    # Months
     months = list(range(1, 13))
-    month_headers = [get_month_name(m) for m in months]  # ✅ Month names in CSV
-    column_totals = {m: 0 for m in months}
-    grand_total = 0
+    month_headers = [get_month_name(m) for m in months]
 
+    # Determine additional dynamic fields from Indicator model
+    # Include any numeric fields beyond 'id', 'name', 'unit', 'project'
+    base_fields = ["id", "name", "unit", "project"]
+    dynamic_fields = [f.name for f in Indicator._meta.get_fields() 
+                      if f.concrete and f.name not in base_fields]
+
+    # CSV response
     response = HttpResponse(content_type="text/csv")
     response['Content-Disposition'] = 'attachment; filename="custom_reports.csv"'
     writer = csv.writer(response)
 
-    # Header
-    writer.writerow(["Indicator", "Unit"] + month_headers + ["Total"])
+    # Headers: Indicator, Unit, Months, Total, plus dynamic fields
+    headers = ["Indicator", "Unit"] + month_headers + ["Total"] + dynamic_fields
+    writer.writerow(headers)
 
-    # Data rows
+    # Prepare column totals for months and numeric dynamic fields
+    column_totals = {m: 0 for m in months}
+    dynamic_totals = {f: 0 for f in dynamic_fields}
+    grand_total = 0
+
     for ind in indicators:
         row_values = []
         row_total = 0
+
+        # Monthly values
         for m in months:
             val = pivot_qs.filter(indicator=ind, month=m).aggregate(total=Sum("value"))["total"] or 0
             row_values.append(val)
             row_total += val
             column_totals[m] += val
         grand_total += row_total
-        writer.writerow([ind.name, ind.unit] + row_values + [row_total])
 
-    # Column totals row
-    totals_row = ["Column Totals", ""] + [column_totals[m] for m in months] + [grand_total]
+        # Dynamic fields values
+        dynamic_values = []
+        for field in dynamic_fields:
+            val = getattr(ind, field, "")
+            if isinstance(val, (int, float)):
+                dynamic_totals[field] += val
+            dynamic_values.append(val)
+
+        writer.writerow([ind.name, ind.unit] + row_values + [row_total] + dynamic_values)
+
+    # Totals row
+    totals_row = ["Column Totals", ""]
+    totals_row += [column_totals[m] for m in months]
+    totals_row += [grand_total]
+    totals_row += [dynamic_totals[f] for f in dynamic_fields]
     writer.writerow(totals_row)
 
     return response
 
 
-# -----------------------------
-# Edit Indicator Targets View
-# -----------------------------
 
 
+
+# -----------------------------
+# Edit Indicator Targets View (with numeric validation)
+# -----------------------------
 def edit_indicator_targets(request, indicator_id):
     indicator = get_object_or_404(Indicator, id=indicator_id)
     queryset = IndicatorTarget.objects.filter(indicator=indicator)
@@ -1041,6 +1123,7 @@ def edit_indicator_targets(request, indicator_id):
     )
 
     formset = IndicatorTargetFormSetClass(request.POST or None, queryset=queryset)
+    numeric_errors = []
 
     if request.method == "POST" and formset.is_valid():
         try:
@@ -1056,10 +1139,17 @@ def edit_indicator_targets(request, indicator_id):
                         continue  # skip deleted forms
 
                     year = form.cleaned_data.get('year')
-                    value = form.cleaned_data.get('value')
+                    raw_value = form.cleaned_data.get('value')
 
-                    if year is None or value is None:
+                    if year is None or raw_value in [None, ""]:
                         continue  # skip incomplete forms
+
+                    # Ensure value is numeric
+                    try:
+                        value = float(raw_value)
+                    except (ValueError, TypeError):
+                        numeric_errors.append(f"Year {year}: '{raw_value}' is not numeric.")
+                        continue
 
                     # Update existing target or create new one
                     IndicatorTarget.objects.update_or_create(
@@ -1070,16 +1160,11 @@ def edit_indicator_targets(request, indicator_id):
 
         except IntegrityError:
             formset.add_error(None, "Error: Duplicate target for the same year.")
-            # Reload the page with the error message
-            current_year = datetime.date.today().year
-            year_range = range(current_year - 5, current_year + 6)
-            context = {
-                "indicator": indicator,
-                "formset": formset,
-                "current_year": current_year,
-                "year_range": year_range,
-            }
-            return render(request, "core/edit_indicator_targets.html", context)
+
+        if numeric_errors:
+            # Show a warning message for non-numeric entries
+            messages.warning(request, "Some targets were not saved due to non-numeric values: " +
+                             ", ".join(numeric_errors))
 
         return redirect('project_kpis', pk=indicator.project.id)
 
@@ -1095,6 +1180,7 @@ def edit_indicator_targets(request, indicator_id):
     }
 
     return render(request, "core/edit_indicator_targets.html", context)
+
 
 
 
@@ -1234,12 +1320,52 @@ def data_story(request):
 
 
 # -------------------------
-# EXPORT CSV
+# EXPORT CSV - Dynamic with Numeric Totals
 # -------------------------
+
 @login_required
 def reports_export_csv(request):
-    response = HttpResponse(content_type="text/csv")
+    # Fetch all indicators
+    indicators = Indicator.objects.all()
+
+    # Dynamically determine fields to export (exclude ID if desired)
+    exclude_fields = ['id']
+    fields = [f.name for f in Indicator._meta.get_fields() if f.concrete and f.name not in exclude_fields]
+
+    # Identify numeric fields for totals
+    numeric_fields = [f.name for f in Indicator._meta.get_fields() 
+                      if f.concrete and isinstance(f, FloatField)]
+
+    # Initialize totals dictionary
+    totals = {f: 0 for f in numeric_fields}
+
+    # Prepare CSV response
+    response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="report.csv"'
-    response.write("indicator,value\n")
-    response.write("Sample Indicator,123\n")
+
+    writer = csv.writer(response)
+
+    # Write header
+    writer.writerow(fields)
+
+    # Write data rows and accumulate totals
+    for ind in indicators:
+        row = []
+        for f in fields:
+            val = getattr(ind, f, "")
+            row.append(val)
+            # accumulate total if numeric
+            if f in numeric_fields and isinstance(val, (int, float)):
+                totals[f] += val
+        writer.writerow(row)
+
+    # Write totals row
+    totals_row = []
+    for f in fields:
+        if f in numeric_fields:
+            totals_row.append(totals[f])
+        else:
+            totals_row.append("Total" if f == fields[0] else "")
+    writer.writerow(totals_row)
+
     return response

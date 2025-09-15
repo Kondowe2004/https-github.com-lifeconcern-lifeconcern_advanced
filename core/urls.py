@@ -19,6 +19,9 @@ urlpatterns = [
     path('projects/<int:project_pk>/indicators/<int:pk>/edit/', views.indicator_edit, name='indicator_edit'),
     path('projects/<int:project_pk>/indicators/<int:pk>/delete/', views.indicator_delete, name='indicator_delete'),
 
+    # Edit indicator targets
+    path('indicators/<int:indicator_id>/targets/edit/', views.edit_indicator_targets, name='edit_indicator_targets'),
+
     # Project KPI Export
     path('projects/<int:pk>/export/csv/', views.export_project_kpis, name='export_project_kpis'),
 
@@ -34,5 +37,5 @@ urlpatterns = [
     path('profile/', views.profile, name='profile'),
 
     # 📖 Data Story Dashboard
-    path('data-story/', views.data_story, name='data_story'),  # ✅ New route
+    path('data-story/', views.data_story, name='data_story'),
 ]

@@ -9,7 +9,7 @@
 <h2 class="mb-4">More Reports</h2>
 
 <!-- Combined Year + Pivot Filters -->
-<form method="get" id="pivotFilterForm" class="row g-3 mb-4">
+<form method="get" id="pivotFilterForm" class="row g-3 mb-4 align-items-end">
   <div class="col-md-2">
     <label for="year" class="form-label">Year</label>
     <select name="year" id="year" class="form-select">
@@ -49,8 +49,13 @@
     </select>
   </div>
 
-  <div class="col-md-2 align-self-end">
-    <a id="download-csv" href="{% url 'more_reports_export_csv' %}?year={{ selected_year }}&unit={{ selected_unit }}&project={{ selected_project }}&indicator={{ selected_indicator }}" class="btn btn-success">Download CSV</a>
+  <div class="col-md-4 d-flex gap-2">
+    <a id="download-csv" href="{% url 'more_reports_export_csv' %}?year={{ selected_year }}&unit={{ selected_unit }}&project={{ selected_project }}&indicator={{ selected_indicator }}" class="btn btn-success">
+      Download CSV
+    </a>
+    <button type="button" class="btn btn-primary" id="downloadChartBtn">
+      Download Chart
+    </button>
   </div>
 </form>
 
@@ -65,11 +70,20 @@
   <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#year-over-year">Year-over-Year</button></li>
 </ul>
 
+<!-- Extra spacing between tabs and charts -->
+<style>
+  .tab-content .tab-pane {
+    padding-top: 20px; /* space between tabs and chart */
+  }
+  .chart-container {
+    margin-top: 10px; /* extra spacing inside each chart container */
+  }
+</style>
+
 <div class="tab-content">
   <!-- Distribution -->
   <div class="tab-pane fade show active" id="distribution">
     <div class="chart-container mb-4" style="max-width:800px; height:400px; margin:auto;">
-      <button class="btn btn-primary btn-sm mb-2" onclick="downloadChart('distributionChart', 'distribution.png')">Download Chart</button>
       <canvas id="distributionChart"></canvas>
     </div>
   </div>
@@ -77,7 +91,6 @@
   <!-- Progress -->
   <div class="tab-pane fade" id="progress">
     <div class="chart-container mb-4" style="max-width:800px; height:400px; margin:auto;">
-      <button class="btn btn-primary btn-sm mb-2" onclick="downloadChart('progressChart', 'progress.png')">Download Chart</button>
       <canvas id="progressChart"></canvas>
       <p id="progressNoData" class="text-center mt-3 d-none">No data available.</p>
     </div>
@@ -86,7 +99,6 @@
   <!-- Cumulative -->
   <div class="tab-pane fade" id="cumulative">
     <div class="chart-container mb-4" style="max-width:800px; height:400px; margin:auto;">
-      <button class="btn btn-primary btn-sm mb-2" onclick="downloadChart('cumulativeChart', 'cumulative.png')">Download Chart</button>
       <canvas id="cumulativeChart"></canvas>
     </div>
   </div>
@@ -94,7 +106,6 @@
   <!-- Top/Bottom -->
   <div class="tab-pane fade" id="top-bottom">
     <div class="chart-container mb-4" style="max-width:800px; height:400px; margin:auto;">
-      <button class="btn btn-primary btn-sm mb-2" onclick="downloadChart('rankingChart', 'ranking.png')">Download Chart</button>
       <canvas id="rankingChart"></canvas>
     </div>
   </div>
@@ -102,7 +113,6 @@
   <!-- Heatmap -->
   <div class="tab-pane fade" id="heatmap">
     <div class="chart-container mb-4" style="max-width:800px; height:400px; margin:auto;">
-      <button class="btn btn-primary btn-sm mb-2" onclick="downloadChart('heatmapChart', 'heatmap.png')">Download Chart</button>
       <canvas id="heatmapChart"></canvas>
       <p id="heatmapNoData" class="text-center mt-3 d-none">No data available.</p>
     </div>
@@ -111,7 +121,6 @@
   <!-- Correlation -->
   <div class="tab-pane fade" id="correlation">
     <div class="chart-container mb-4" style="max-width:800px; height:400px; margin:auto;">
-      <button class="btn btn-primary btn-sm mb-2" onclick="downloadChart('correlationChart', 'correlation.png')">Download Chart</button>
       <canvas id="correlationChart"></canvas>
       <p id="correlationNoData" class="text-center mt-3 d-none">No data available.</p>
     </div>
@@ -120,7 +129,6 @@
   <!-- Year-over-Year -->
   <div class="tab-pane fade" id="year-over-year">
     <div class="chart-container mb-4" style="max-width:800px; height:350px; margin:auto;">
-      <button class="btn btn-primary btn-sm mb-2" onclick="downloadChart('yoyChart', 'yoy.png')">Download Chart</button>
       <canvas id="yoyChart"></canvas>
       <p id="yoyNoData" class="text-center mt-3 d-none">No data available.</p>
     </div>
@@ -178,6 +186,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const form = document.getElementById('pivotFilterForm');
   const selects = form.querySelectorAll('select');
   const csvLink = document.getElementById('download-csv');
+  const chartDownloadBtn = document.getElementById('downloadChartBtn');
 
   function updateCsvLink() {
     const params = new URLSearchParams({
@@ -232,6 +241,13 @@ document.addEventListener('DOMContentLoaded', function() {
       chart.update();
     }
   };
+
+  chartDownloadBtn.addEventListener('click', function() {
+    const activeTab = document.querySelector('.tab-pane.active canvas');
+    if(activeTab){
+      downloadChart(activeTab.id, activeTab.id + '.png');
+    }
+  });
 
   let distributionChart, progressChart, cumulativeChart, rankingChart, heatmapChart, correlationChart, yoyChart;
 

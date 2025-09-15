@@ -10,7 +10,7 @@
     <h2 class="mb-3">Edit Targets for Indicator: <strong>{{ indicator.name }}</strong></h2>
     <p class="text-muted">Project: {{ indicator.project.name }}</p>
 
-    <form method="post">
+    <form method="post" id="indicatorTargetsForm">
       {% csrf_token %}
       {{ formset.management_form }}
 
@@ -36,13 +36,14 @@
                   </select>
                 {% endif %}
               </td>
-              <td>{% render_field form.value class="form-control" %}</td>
+              <td>
+                {% render_field form.value class="form-control target-input" %}
+                <div class="invalid-feedback">Please enter a numeric value.</div>
+              </td>
               <td class="text-center">
                 {% if form.instance.pk %}
-                  <!-- Show delete checkbox only for existing rows -->
                   {% render_field form.DELETE class="form-check-input" %}
                 {% else %}
-                  <!-- Keep hidden delete field for new rows (required by formset) -->
                   {{ form.DELETE }}
                 {% endif %}
               </td>
@@ -63,21 +64,63 @@
   </div>
 </div>
 
+<!-- JavaScript: Inline Numeric Validation -->
+<script>
+document.addEventListener('input', function(e) {
+  if (e.target.classList.contains('target-input')) {
+    const val = e.target.value.trim();
+    if (val === "" || !isNaN(val)) {
+      e.target.classList.remove('is-invalid');
+      e.target.classList.add('valid-input');
+    } else {
+      e.target.classList.add('is-invalid');
+      e.target.classList.remove('valid-input');
+    }
+  }
+});
+
+document.getElementById('indicatorTargetsForm').addEventListener('submit', function(e) {
+  let invalid = false;
+  const inputs = document.querySelectorAll('.target-input');
+  inputs.forEach(input => {
+    const val = input.value.trim();
+    if (val !== "" && isNaN(val)) {
+      input.classList.add('is-invalid');
+      invalid = true;
+    }
+  });
+  if (invalid) {
+    e.preventDefault();
+    alert('Please correct non-numeric target values before saving.');
+  }
+});
+</script>
+
 <style>
-  table input, table select {
-    width: 100%;
-  }
-  .table-hover tbody tr:hover {
-    background-color: rgba(0, 123, 255, 0.05);
-  }
-  .card h2 {
-    font-size: 1.5rem;
-    font-weight: 600;
-  }
-  .form-check-input {
-    width: 1.25em;
-    height: 1.25em;
-    margin: 0 auto;
-  }
+table input, table select {
+  width: 100%;
+}
+.table-hover tbody tr:hover {
+  background-color: rgba(0, 123, 255, 0.05);
+}
+.card h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+.form-check-input {
+  width: 1.25em;
+  height: 1.25em;
+  margin: 0 auto;
+}
+/* Valid target input highlight */
+.valid-input {
+  background-color: #e9f7ef !important;
+  border-color: #198754 !important;
+}
+/* Invalid target input highlight */
+.target-input.is-invalid {
+  background-color: #ffe6e6 !important;
+  border-color: #dc3545 !important;
+}
 </style>
 {% endblock %}

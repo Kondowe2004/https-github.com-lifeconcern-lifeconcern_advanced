@@ -7,7 +7,7 @@
   <h2 class="mb-3">{{ title }}</h2>
   <p><strong>Project:</strong> {{ project.name }}</p>
 
-  <form method="post" novalidate>
+  <form method="post" novalidate id="indicatorForm">
     {% csrf_token %}
 
     <!-- Year selector for KPI target -->
@@ -27,16 +27,15 @@
     <!-- Target input -->
     <div class="mb-3">
       <label for="id_target" class="form-label">Target</label>
-      <input type="number" step="0.01" min="0"
+      <input type="text"
              name="target"
              id="id_target"
              class="form-control {% if form.errors.target %}is-invalid{% endif %}"
              value="{{ form.initial.target|default_if_none:'' }}">
       {% if form.errors.target %}
-        <div class="invalid-feedback">
-          {{ form.errors.target|striptags }}
-        </div>
+        <div class="invalid-feedback">{{ form.errors.target|striptags }}</div>
       {% endif %}
+      <div class="form-text">Enter a numeric value only.</div>
     </div>
 
     <!-- KPI Name -->
@@ -44,9 +43,7 @@
       <label for="{{ form.name.id_for_label }}" class="form-label">KPI Name</label>
       {{ form.name|add_class:"form-control" }}
       {% if form.errors.name %}
-        <div class="invalid-feedback">
-          {{ form.errors.name|striptags }}
-        </div>
+        <div class="invalid-feedback">{{ form.errors.name|striptags }}</div>
       {% endif %}
     </div>
 
@@ -55,15 +52,13 @@
       <label for="{{ form.unit.id_for_label }}" class="form-label">Unit</label>
       {{ form.unit|add_class:"form-control" }}
       {% if form.errors.unit %}
-        <div class="invalid-feedback">
-          {{ form.errors.unit|striptags }}
-        </div>
+        <div class="invalid-feedback">{{ form.errors.unit|striptags }}</div>
       {% endif %}
     </div>
 
     <!-- Is KPI checkbox -->
     <div class="form-check mb-3">
-      {{ form.is_kpi }}
+      {{ form.is_kpi|add_class:"form-check-input" }}
       <label class="form-check-label" for="{{ form.is_kpi.id_for_label }}">Is KPI?</label>
       {% if form.errors.is_kpi %}
         <div class="text-danger small">{{ form.errors.is_kpi|striptags }}</div>
@@ -74,4 +69,37 @@
     <a href="{% url 'project_detail' project.pk %}" class="btn btn-secondary">↩ Back</a>
   </form>
 </div>
+
+<script>
+  // Inline validation for numeric target
+  const form = document.getElementById('indicatorForm');
+  const targetInput = document.getElementById('id_target');
+
+  function validateTarget() {
+    const val = targetInput.value.trim();
+    if (val !== '' && isNaN(val)) {
+      targetInput.classList.add('is-invalid');
+      return false;
+    } else {
+      targetInput.classList.remove('is-invalid');
+      return true;
+    }
+  }
+
+  targetInput.addEventListener('input', validateTarget);
+
+  form.addEventListener('submit', function(e) {
+    if (!validateTarget()) {
+      e.preventDefault();
+      alert('Please enter a valid numeric value for the target.');
+    }
+  });
+</script>
+
+<style>
+  .is-invalid {
+    border-color: red !important;
+    background-color: #ffe6e6;
+  }
+</style>
 {% endblock %}
