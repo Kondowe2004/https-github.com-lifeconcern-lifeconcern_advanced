@@ -3,7 +3,7 @@
 {% block title %}{{ title }} - {{ project.name }}{% endblock %}
 
 {% block content %}
-<div class="card shadow-sm" style="padding: 20px; max-width: 600px; margin: auto; margin-top: 30px;">
+<div class="card shadow-sm p-4" style="max-width: 600px; margin: 30px auto;">
   <h2 class="mb-3">{{ title }}</h2>
   <p><strong>Project:</strong> {{ project.name }}</p>
 
@@ -21,21 +21,23 @@
       {% if form.errors.year %}
         <div class="invalid-feedback">{{ form.errors.year|striptags }}</div>
       {% endif %}
-      <div class="form-text">Set the annual target for this KPI for the selected year.</div>
+      <div class="form-text">Set the annual target for this KPI (whole numbers only).</div>
     </div>
 
     <!-- Target input -->
     <div class="mb-3">
       <label for="id_target" class="form-label">Target</label>
-      <input type="text"
+      <input type="number"
              name="target"
              id="id_target"
+             step="1"
+             min="0"
              class="form-control {% if form.errors.target %}is-invalid{% endif %}"
              value="{{ form.initial.target|default_if_none:'' }}">
       {% if form.errors.target %}
         <div class="invalid-feedback">{{ form.errors.target|striptags }}</div>
       {% endif %}
-      <div class="form-text">Enter a numeric value only.</div>
+      <div class="form-text">Enter a whole number only (no decimals).</div>
     </div>
 
     <!-- KPI Name -->
@@ -65,19 +67,21 @@
       {% endif %}
     </div>
 
-    <button type="submit" class="btn btn-success">💾 Save</button>
-    <a href="{% url 'project_detail' project.pk %}" class="btn btn-secondary">↩ Back</a>
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-success">💾 Save</button>
+      <a href="{% url 'project_detail' project.pk %}" class="btn btn-secondary">↩ Back</a>
+    </div>
   </form>
 </div>
 
 <script>
-  // Inline validation for numeric target
+  // Inline validation for whole-number target
   const form = document.getElementById('indicatorForm');
   const targetInput = document.getElementById('id_target');
 
   function validateTarget() {
     const val = targetInput.value.trim();
-    if (val !== '' && isNaN(val)) {
+    if (val !== '' && (!Number.isInteger(Number(val)) || Number(val) < 0)) {
       targetInput.classList.add('is-invalid');
       return false;
     } else {
@@ -91,15 +95,26 @@
   form.addEventListener('submit', function(e) {
     if (!validateTarget()) {
       e.preventDefault();
-      alert('Please enter a valid numeric value for the target.');
+      alert('Please enter a valid whole number for the target.');
     }
   });
 </script>
 
 <style>
+  /* Invalid input highlight */
   .is-invalid {
-    border-color: red !important;
+    border-color: #dc3545 !important;
     background-color: #ffe6e6;
+  }
+
+  /* Remove spinner arrows in number inputs */
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+  }
+  input[type=number] {
+      -moz-appearance: textfield;
   }
 </style>
 {% endblock %}

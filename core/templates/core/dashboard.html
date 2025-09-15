@@ -7,9 +7,7 @@
 {% block content %}
 
 <style>
-  body {
-    background: linear-gradient(135deg, #f0f4f8, #e0f7fa);
-  }
+  body { background: linear-gradient(135deg, #f0f4f8, #e0f7fa); }
 
   .clock-widget {
     background: linear-gradient(90deg, #ff512f, #dd2476);
@@ -25,7 +23,7 @@
     border-radius: 15px;
     color: #fff;
     padding: 20px;
-    transition: all 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+    transition: all 0.3s ease;
     cursor: pointer;
     border: 3px solid transparent;
     text-align: center;
@@ -36,14 +34,9 @@
   }
   .stat-card.past-year { border-color: #ffc107; }
   .icon-animate { animation: float 2s ease-in-out infinite; }
-  @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+  @keyframes float { 0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);} }
 
-  .logo-container {
-    background: #fff;
-    padding: 8px 12px;
-    border-radius: 12px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-  }
+  .logo-container { background: #fff; padding: 8px 12px; border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
 
   .indicator-card {
     color: #fff;
@@ -58,10 +51,7 @@
   }
   .indicator-card:nth-child(2n) { background: linear-gradient(135deg, #11998e, #38ef7d); }
   .indicator-card:nth-child(3n) { background: linear-gradient(135deg, #ff416c, #ff4b2b); }
-  .indicator-card:hover {
-    transform: translateY(-5px) scale(1.03);
-    box-shadow: 0 12px 24px rgba(0,0,0,0.25);
-  }
+  .indicator-card:hover { transform: translateY(-5px) scale(1.03); box-shadow: 0 12px 24px rgba(0,0,0,0.25); }
 
   .chart-card {
     border-radius: 15px;
@@ -70,10 +60,7 @@
     background: #fff;
     transition: all 0.3s ease;
   }
-  .chart-card:hover {
-    transform: scale(1.02);
-    box-shadow: 0 12px 24px rgba(0,0,0,0.2);
-  }
+  .chart-card:hover { transform: scale(1.02); box-shadow: 0 12px 24px rgba(0,0,0,0.2); }
 
   .quick-btn {
     background: linear-gradient(135deg, #0d6efd, #6610f2);
@@ -91,34 +78,28 @@
   }
 
   .table-responsive { max-height: 450px; overflow-y: auto; }
+  .chart-card h5 { font-size: 1rem; line-height: 1.2; }
 
-  .chart-card h5 {
-    font-size: 1rem;
-    line-height: 1.2;
-  }
+  .indicator-values { display: flex; justify-content: space-around; margin-top: 0.5rem; }
+  .indicator-values div { text-align: center; font-size: 0.9rem; }
 
-  .indicator-values {
-    display: flex;
-    justify-content: space-around;
-    margin-top: 0.5rem;
-  }
-  .indicator-values div {
-    text-align: center;
-    font-size: 0.9rem;
-  }
 </style>
 
 <div class="position-absolute top-0 end-0 p-2">
   <div id="live-clock" class="clock-widget"></div>
 </div>
 <script>
-  function updateClock() {
-    const now = new Date();
-    document.getElementById("live-clock").textContent =
-      now.toLocaleString("en-US", { weekday:'short', year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false, timeZoneName:'short' });
-  }
-  setInterval(updateClock, 1000);
-  updateClock();
+function updateClock() {
+  const now = new Date();
+  document.getElementById("live-clock").textContent =
+    now.toLocaleString("en-US", {
+      weekday:'short', year:'numeric', month:'short', day:'numeric',
+      hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false,
+      timeZoneName:'short'
+    });
+}
+setInterval(updateClock, 1000);
+updateClock();
 </script>
 
 <div class="dashboard-header p-4 mb-4 text-white rounded-3" style="background: linear-gradient(90deg, #1e3c72, #2a5298);">
@@ -166,7 +147,7 @@
     <a href="{{ stat.url }}" class="text-decoration-none">
       <div class="card stat-card {% if selected_year != current_year %}past-year{% endif %}" style="background: {{ stat.bg_gradient }};">
         <div class="mb-2"><i class="{{ stat.icon }} fa-2x icon-animate"></i></div>
-        <h3 class="fw-bold">{{ stat.value|default:0 }}</h3>
+        <h3 class="fw-bold">{{ stat.value|default_if_none:0 }}</h3>
         <p class="mb-0">{{ stat.label }}</p>
       </div>
     </a>
@@ -223,68 +204,71 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.0"></script>
 <script>
-  const actualColor = {% if selected_year == current_year %}"#007bff"{% else %}"#ffc107"{% endif %};
-  const targetColor = {% if selected_year == current_year %}"#28a745"{% else %}"#ffca28"{% endif %};
+const actualColor = {% if selected_year == current_year %}"#007bff"{% else %}"#ffc107"{% endif %};
+const targetColor = {% if selected_year == current_year %}"#28a745"{% else %}"#ffca28"{% endif %};
 
-  const compLabels = {{ comparative_labels|default:"[]"|safe }};
-  const compActuals = {{ comparative_actuals|default:"[]"|safe }};
-  const compTargets = {{ comparative_targets|default:"[]"|safe }};
-  if (compLabels.length) {
-    new Chart(document.getElementById('comparativeChart'), {
-      type: 'bar',
-      data: { labels: compLabels, datasets: [
-        { label: 'Actual', data: compActuals, backgroundColor: actualColor },
-        { label: 'Target', data: compTargets, backgroundColor: targetColor }
-      ]},
-      options: { responsive: true, plugins: { legend: { position: 'top' }, tooltip: { mode: 'index', intersect: false }, zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }, pan: { enabled: true, mode: 'x' } }, title: { display: false } }, scales: { y: { beginAtZero: true }, x: { stacked: false } } }
+// Force integers for chart values
+const compLabels = {{ comparative_labels|default:"[]"|safe }};
+const compActuals = {{ comparative_actuals|default:"[]"|safe }}.map(v => parseInt(v)||0);
+const compTargets = {{ comparative_targets|default:"[]"|safe }}.map(v => parseInt(v)||0);
+
+if (compLabels.length) {
+  new Chart(document.getElementById('comparativeChart'), {
+    type: 'bar',
+    data: { labels: compLabels, datasets: [
+      { label: 'Actual', data: compActuals, backgroundColor: actualColor },
+      { label: 'Target', data: compTargets, backgroundColor: targetColor }
+    ]},
+    options: { responsive:true, plugins:{ legend:{ position:'top' }, tooltip:{ mode:'index', intersect:false }, zoom:{ zoom:{ wheel:{ enabled:true }, pinch:{ enabled:true }, mode:'x' }, pan:{ enabled:true, mode:'x' } }, title:{ display:false } }, scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1 } }, x:{ stacked:false } } }
+  });
+}
+
+const trendLabels = {{ trend_months|default:"[]"|safe }};
+const trendActuals = {{ trend_actuals|default:"[]"|safe }}.map(v => parseInt(v)||0);
+const trendTargets = {{ trend_targets|default:"[]"|safe }}.map(v => parseInt(v)||0);
+
+if (trendLabels.length) {
+  new Chart(document.getElementById('trendChart'), {
+    type: 'line',
+    data: { labels: trendLabels, datasets: [
+      { label: 'Actual', data: trendActuals, borderColor: actualColor, backgroundColor:'rgba(0,123,255,0.1)', tension:0.3, fill:true },
+      { label: 'Target', data: trendTargets, borderColor: targetColor, backgroundColor:'rgba(40,167,69,0.1)', tension:0.3, fill:true }
+    ]},
+    options: { responsive:true, plugins:{ legend:{ position:'top' }, tooltip:{ mode:'index', intersect:false }, zoom:{ zoom:{ wheel:{ enabled:true }, pinch:{ enabled:true }, mode:'x' }, pan:{ enabled:true, mode:'x' } }, title:{ display:false } }, scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1 } } } }
+  });
+}
+
+// Indicator carousel
+const indicators = {{ indicators|default:"[]"|safe }};
+const carousel = document.getElementById("indicator-carousel");
+if (indicators.length) {
+  let index = 0;
+  function showIndicators() {
+    carousel.innerHTML = "";
+    const slice = indicators.slice(index, index+3);
+    slice.forEach(ind => {
+      const col = document.createElement("div");
+      col.className = "col-md-4";
+      const card = document.createElement("div");
+      card.className = "indicator-card h-100";
+      const trendArrow = ind.value>ind.previous_value?"⬆️":ind.value<ind.previous_value?"⬇️":"➡️";
+      card.innerHTML = `
+        <h6 class="fw-bold mb-1">${ind.name}</h6>
+        <p class="mb-1 small">${ind.project||""}</p>
+        <div class="indicator-values">
+          <div>Last Month: <strong>${ind.last_month_value||0}</strong></div>
+          <div>Cumulative: <strong>${ind.value||0}</strong> ${trendArrow}</div>
+        </div>
+        <p class="mb-0 mt-1"><small>Target: ${ind.target||0}</small></p>
+      `;
+      col.appendChild(card);
+      carousel.appendChild(col);
     });
+    index = (index + 3) % indicators.length;
   }
-
-  const trendLabels = {{ trend_months|default:"[]"|safe }};
-  const trendActuals = {{ trend_actuals|default:"[]"|safe }};
-  const trendTargets = {{ trend_targets|default:"[]"|safe }};
-  if (trendLabels.length) {
-    new Chart(document.getElementById('trendChart'), {
-      type: 'line',
-      data: { labels: trendLabels, datasets: [
-        { label: 'Actual', data: trendActuals, borderColor: actualColor, backgroundColor: 'rgba(0,123,255,0.1)', tension: 0.3, fill: true },
-        { label: 'Target', data: trendTargets, borderColor: targetColor, backgroundColor: 'rgba(40,167,69,0.1)', tension: 0.3, fill: true }
-      ]},
-      options: { responsive: true, plugins: { legend: { position: 'top' }, tooltip: { mode: 'index', intersect: false }, zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }, pan: { enabled: true, mode: 'x' } }, title: { display: false } }, scales: { y: { beginAtZero: true } } }
-    });
-  }
-
-  const indicators = {{ indicators|default:"[]"|safe }};
-  const carousel = document.getElementById("indicator-carousel");
-  if (indicators.length) {
-    let index = 0;
-    function showIndicators() {
-      carousel.innerHTML = "";
-      const slice = indicators.slice(index, index + 3);
-      slice.forEach(ind => {
-        const col = document.createElement("div");
-        col.className = "col-md-4";
-        const card = document.createElement("div");
-        card.className = "indicator-card h-100";
-        const trendArrow = ind.value > ind.previous_value ? "⬆️" :
-                           ind.value < ind.previous_value ? "⬇️" : "➡️";
-        card.innerHTML = `
-          <h6 class="fw-bold mb-1">${ind.name}</h6>
-          <p class="mb-1 small">${ind.project || ""}</p>
-          <div class="indicator-values">
-            <div>Last Month: <strong>${ind.last_month_value || 0}</strong></div>
-            <div>Cumulative: <strong>${ind.value}</strong> ${trendArrow}</div>
-          </div>
-          <p class="mb-0 mt-1"><small>Target: ${ind.target}</small></p>
-        `;
-        col.appendChild(card);
-        carousel.appendChild(col);
-      });
-      index = (index + 3) % indicators.length;
-    }
-    showIndicators();
-    setInterval(showIndicators, 15000);
-  }
+  showIndicators();
+  setInterval(showIndicators, 15000);
+}
 </script>
 
 {% endblock %}

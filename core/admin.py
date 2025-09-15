@@ -7,11 +7,13 @@ from .models import Project, Indicator, MonthlyEntry, IndicatorTarget
 # User Admin Customization
 # -----------------------------
 class CustomUserAdmin(UserAdmin):
-    # Show in list view
+    # Show fields in list view
     list_display = ("username", "email", "first_name", "last_name", "is_staff", "is_active")
     list_filter = ("is_staff", "is_active")
-    # ✅ Allow editing directly from the list view
-    list_editable = ("first_name", "last_name", "is_staff", "is_active")
+    # ✅ Make fields editable directly from the list view
+    list_editable = ("email", "first_name", "last_name", "is_staff", "is_active")
+    # Optional: search by username or email
+    search_fields = ("username", "email", "first_name", "last_name")
 
 # Unregister the default User admin and register our custom one
 admin.site.unregister(User)
@@ -32,7 +34,6 @@ class ProjectAdmin(admin.ModelAdmin):
 # -----------------------------
 @admin.register(Indicator)
 class IndicatorAdmin(admin.ModelAdmin):
-    # Removed 'target' from list_display
     list_display = ("name", "project", "unit", "is_kpi")
     list_filter = ("project", "is_kpi")
     search_fields = ("name",)

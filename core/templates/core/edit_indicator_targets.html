@@ -37,8 +37,8 @@
                 {% endif %}
               </td>
               <td>
-                {% render_field form.value class="form-control target-input" %}
-                <div class="invalid-feedback">Please enter a numeric value.</div>
+                {% render_field form.value class="form-control target-input" type="number" step="1" %}
+                <div class="invalid-feedback">Please enter a whole number only.</div>
               </td>
               <td class="text-center">
                 {% if form.instance.pk %}
@@ -64,12 +64,12 @@
   </div>
 </div>
 
-<!-- JavaScript: Inline Numeric Validation -->
+<!-- JavaScript: Whole-Number Validation -->
 <script>
 document.addEventListener('input', function(e) {
   if (e.target.classList.contains('target-input')) {
     const val = e.target.value.trim();
-    if (val === "" || !isNaN(val)) {
+    if (val === "" || /^\d+$/.test(val)) {
       e.target.classList.remove('is-invalid');
       e.target.classList.add('valid-input');
     } else {
@@ -84,43 +84,42 @@ document.getElementById('indicatorTargetsForm').addEventListener('submit', funct
   const inputs = document.querySelectorAll('.target-input');
   inputs.forEach(input => {
     const val = input.value.trim();
-    if (val !== "" && isNaN(val)) {
+    if (val !== "" && !/^\d+$/.test(val)) {
       input.classList.add('is-invalid');
       invalid = true;
     }
   });
   if (invalid) {
     e.preventDefault();
-    alert('Please correct non-numeric target values before saving.');
+    alert('Please correct non-whole-number target values before saving.');
   }
 });
 </script>
 
 <style>
-table input, table select {
-  width: 100%;
-}
-.table-hover tbody tr:hover {
-  background-color: rgba(0, 123, 255, 0.05);
-}
-.card h2 {
-  font-size: 1.5rem;
-  font-weight: 600;
-}
-.form-check-input {
-  width: 1.25em;
-  height: 1.25em;
-  margin: 0 auto;
-}
+/* Table and card styling */
+table input, table select { width: 100%; }
+.table-hover tbody tr:hover { background-color: rgba(0, 123, 255, 0.05); }
+.card h2 { font-size: 1.5rem; font-weight: 600; }
+
+/* Checkbox alignment */
+.form-check-input { width: 1.25em; height: 1.25em; margin: 0 auto; }
+
 /* Valid target input highlight */
 .valid-input {
   background-color: #e9f7ef !important;
   border-color: #198754 !important;
 }
+
 /* Invalid target input highlight */
 .target-input.is-invalid {
   background-color: #ffe6e6 !important;
   border-color: #dc3545 !important;
 }
+
+/* Remove number input spinner arrows */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; }
 </style>
 {% endblock %}

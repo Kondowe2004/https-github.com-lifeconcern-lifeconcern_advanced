@@ -8,6 +8,9 @@ import datetime
 from .utils import send_email_alert
 
 
+# -------------------------
+# Project Model
+# -------------------------
 class Project(models.Model):
     name = models.CharField(max_length=200, unique=True)
     description = models.TextField(blank=True)
@@ -19,13 +22,16 @@ class Project(models.Model):
         return self.name
 
 
+# -------------------------
+# Indicator Model
+# -------------------------
 class Indicator(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='indicators')
     name = models.CharField(max_length=200)
     unit = models.CharField(max_length=50, default='count')
-    is_kpi = models.BooleanField(default=False)  # KPI flag
-    current_value = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    progress = models.DecimalField(max_digits=5, decimal_places=2, default=0)  # % progress
+    is_kpi = models.BooleanField(default=False)
+    current_value = models.IntegerField(default=0)  # whole numbers only
+    progress = models.IntegerField(default=0)       # % progress as integer
 
     class Meta:
         unique_together = ('project', 'name')
@@ -49,17 +55,20 @@ class Indicator(models.Model):
         # Update fields
         self.current_value = actual_total
         if target_value > 0:
-            self.progress = round((actual_total / target_value) * 100, 2)
+            self.progress = int(round((actual_total / target_value) * 100))
         else:
             self.progress = 0
 
         self.save(update_fields=["current_value", "progress"])
 
 
+# -------------------------
+# Indicator Target Model
+# -------------------------
 class IndicatorTarget(models.Model):
     indicator = models.ForeignKey(Indicator, on_delete=models.CASCADE, related_name='targets')
     year = models.IntegerField()
-    value = models.DecimalField(max_digits=12, decimal_places=2)
+    value = models.IntegerField()  # whole numbers only
 
     class Meta:
         unique_together = ('indicator', 'year')
@@ -68,42 +77,36 @@ class IndicatorTarget(models.Model):
     def __str__(self):
         return f"{self.indicator.name} - {self.year}: {self.value}"
 
-    # -----------------------------
     # Backend validation
-    # -----------------------------
     def clean(self):
         if self.value is None:
             raise ValidationError({'value': "Target value cannot be empty."})
-        try:
-            float(self.value)
-        except (ValueError, TypeError):
-            raise ValidationError({'value': "Target value must be numeric."})
+        if not isinstance(self.value, int):
+            raise ValidationError({'value': "Target value must be a whole number."})
 
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
 
 
+# -------------------------
+# Monthly Entry Model
+# -------------------------
 class MonthlyEntry(models.Model):
     indicator = models.ForeignKey(Indicator, on_delete=models.CASCADE, related_name='entries')
     year = models.IntegerField()
     month = models.IntegerField()  # 1..12
-    value = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    value = models.IntegerField(default=0)  # whole numbers only
     notes = models.CharField(max_length=255, blank=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
-    # -----------------------------
     # Backend validation
-    # -----------------------------
     def clean(self):
         if self.value is None:
             raise ValidationError({'value': "KPI value cannot be empty."})
-        try:
-            float(self.value)
-        except (ValueError, TypeError):
-            raise ValidationError({'value': "KPI value must be numeric."})
-
+        if not isinstance(self.value, int):
+            raise ValidationError({'value': "KPI value must be a whole number."})
         if not (1 <= self.month <= 12):
             raise ValidationError({'month': "Month must be between 1 and 12."})
 
@@ -112,6 +115,9 @@ class MonthlyEntry(models.Model):
         super().save(*args, **kwargs)
 
 
+# -------------------------
+# Report Model
+# -------------------------
 class Report(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField()

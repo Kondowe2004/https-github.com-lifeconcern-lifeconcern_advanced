@@ -17,12 +17,12 @@
         <div class="col-md-6">
           <label for="year" class="form-label fw-semibold">Year</label>
           <input type="number" id="year" name="year" value="{{ year }}" required 
-                 class="form-control shadow-sm">
+                 class="form-control shadow-sm" step="1" min="2000" max="2100">
         </div>
         <div class="col-md-6">
           <label for="month" class="form-label fw-semibold">Month</label>
           <input type="number" id="month" name="month" value="{{ month }}" min="1" max="12" required 
-                 class="form-control shadow-sm">
+                 class="form-control shadow-sm" step="1">
         </div>
       </div>
 
@@ -41,11 +41,12 @@
             <label for="indicator_{{ indicator.id }}" class="form-label fw-semibold">
               {{ indicator.name }}
             </label>
-            <input type="text" id="indicator_{{ indicator.id }}" 
+            <input type="number" id="indicator_{{ indicator.id }}" 
                    name="indicator_{{ indicator.id }}" 
                    class="form-control shadow-sm"
+                   step="1" min="0"
                    placeholder="Enter value for {{ indicator.name }}">
-            <div class="invalid-feedback">Please enter a valid numeric value.</div>
+            <div class="invalid-feedback">Please enter a valid whole number.</div>
           </div>
         {% endfor %}
       </div>
@@ -60,7 +61,7 @@
   </div>
 </div>
 
-<!-- 🔎 JavaScript: Search & Numeric Validation -->
+<!-- 🔎 JavaScript: Search & Whole-Number Validation -->
 <script>
 function filterIndicators() {
   let input = document.getElementById("searchInput");
@@ -74,15 +75,19 @@ function filterIndicators() {
   }
 }
 
-// ✅ Highlight filled inputs & check numeric
+// ✅ Highlight filled inputs & check whole numbers
 const form = document.getElementById('bulkEntriesForm');
+
+function isWholeNumber(val) {
+  return /^\d+$/.test(val);
+}
 
 form.addEventListener('input', function(e) {
   if (e.target.tagName === 'INPUT' && e.target.id.startsWith('indicator_')) {
     const val = e.target.value.trim();
     if (val === "") {
       e.target.classList.remove('filled', 'is-invalid');
-    } else if (isNaN(val)) {
+    } else if (!isWholeNumber(val)) {
       e.target.classList.add('is-invalid');
       e.target.classList.remove('filled');
     } else {
@@ -97,14 +102,14 @@ form.addEventListener('submit', function(e) {
   const inputs = form.querySelectorAll('input[id^="indicator_"]');
   inputs.forEach(input => {
     const val = input.value.trim();
-    if (val !== "" && isNaN(val)) {
+    if (val !== "" && !isWholeNumber(val)) {
       input.classList.add('is-invalid');
       invalid = true;
     }
   });
   if (invalid) {
     e.preventDefault();
-    alert('Please correct non-numeric values before saving.');
+    alert('Please correct non-whole-number values before saving.');
   }
 });
 </script>
@@ -122,6 +127,15 @@ form.addEventListener('submit', function(e) {
   .indicator-item input.is-invalid {
     background-color: #ffe6e6 !important;
     border-color: #dc3545 !important;
+  }
+  /* Remove spinner arrows in number inputs */
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+  }
+  input[type=number] {
+      -moz-appearance: textfield;
   }
 </style>
 {% endblock %}

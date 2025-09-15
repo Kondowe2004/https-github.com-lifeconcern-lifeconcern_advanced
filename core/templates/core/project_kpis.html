@@ -85,7 +85,7 @@
               <tr class="{% cycle 'table-light' 'table-white' %} hover-shadow">
                 <!-- Annual Target Editable -->
                 <td>
-                  <input type="number" step="0.01" min="0"
+                  <input type="number" step="1" min="0"
                          name="target_{{ ind.id }}"
                          value="{{ target_dict|get_item:ind.id|default:'' }}"
                          class="form-control form-control-sm text-end shadow-sm target-input"
@@ -101,7 +101,7 @@
                 {% for m in months %}
                   {% with val=grid|get_item:ind.id|get_item:m %}
                   <td>
-                    <input type="number" step="0.01" min="0"
+                    <input type="number" step="1" min="0"
                            name="val_{{ ind.id }}_{{ m }}"
                            value="{{ val|default:'' }}"
                            class="form-control form-control-sm text-end shadow-sm month-input {% if val %}bg-success-subtle{% endif %}"
@@ -162,18 +162,16 @@
 </div>
 
 <style>
-.hover-shadow:hover {
-  background-color: #f0f8ff !important;
-}
-/* Highlight valid and invalid target entries */
-.target-input.valid, .month-input.valid {
-  background-color: #e9f7ef !important;
-  border-color: #198754 !important;
-}
-.target-input.invalid, .month-input.invalid {
-  background-color: #ffe6e6 !important;
-  border-color: #dc3545 !important;
-}
+.hover-shadow:hover { background-color: #f0f8ff !important; }
+
+/* Highlight valid and invalid entries */
+.target-input.valid, .month-input.valid { background-color: #e9f7ef !important; border-color: #198754 !important; }
+.target-input.invalid, .month-input.invalid { background-color: #ffe6e6 !important; border-color: #dc3545 !important; }
+
+/* Remove spinner arrows */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; }
 </style>
 
 <script>
@@ -182,7 +180,6 @@ function filterTable() {
   let input = document.getElementById("searchInput").value.toLowerCase();
   let table = document.getElementById("kpiTable");
   let rows = table.getElementsByTagName("tr");
-
   for (let i = 1; i < rows.length; i++) {
     let firstCol = rows[i].getElementsByTagName("td")[1];
     if (firstCol) {
@@ -192,10 +189,10 @@ function filterTable() {
   }
 }
 
-// Validate numeric inputs inline
-function validateNumericInput(e) {
+// Validate whole numbers
+function validateWholeNumber(e) {
   const val = e.target.value.trim();
-  if (val === "" || !isNaN(val)) {
+  if (val === "" || /^\d+$/.test(val)) {
     e.target.classList.remove("invalid");
     e.target.classList.add("valid");
   } else {
@@ -205,7 +202,7 @@ function validateNumericInput(e) {
 }
 
 document.querySelectorAll(".target-input, .month-input").forEach(input => {
-  input.addEventListener("input", validateNumericInput);
+  input.addEventListener("input", validateWholeNumber);
 });
 
 // Form submission validation
@@ -213,14 +210,14 @@ document.getElementById("kpiForm").addEventListener("submit", function(e) {
   let invalid = false;
   document.querySelectorAll(".target-input, .month-input").forEach(input => {
     const val = input.value.trim();
-    if (val !== "" && isNaN(val)) {
+    if (val !== "" && !/^\d+$/.test(val)) {
       input.classList.add("invalid");
       invalid = true;
     }
   });
   if (invalid) {
     e.preventDefault();
-    alert("Please correct non-numeric values before saving.");
+    alert("Please correct non-whole-number values before saving.");
   }
 });
 </script>
