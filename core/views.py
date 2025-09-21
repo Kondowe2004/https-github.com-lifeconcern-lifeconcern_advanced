@@ -14,7 +14,7 @@ from .forms import ProjectForm, IndicatorForm
 from django.shortcuts import render
 from django.contrib.auth.models import User
 from django.db.models import Count
-from core.models import Report  
+from core.models import Report
 from core.templatetags.custom_tags import get_month_name
 import calendar
 import json
@@ -871,6 +871,7 @@ def export_project_kpis(request, pk):
 @login_required
 def more_reports(request):
     current_year = datetime.date.today().year
+    # --- Selected filters ---
     selected_year = request.GET.get("year")
     try:
         selected_year = int(selected_year)
@@ -883,9 +884,7 @@ def more_reports(request):
     selected_indicator = request.GET.get("indicator")
     selected_indicator = int(selected_indicator) if selected_indicator and selected_indicator.isdigit() else None
 
-    # -----------------------------
-    # Base queryset
-    # -----------------------------
+    # --- Base queryset ---
     base_qs = MonthlyEntry.objects.filter(year=selected_year)
     if selected_unit:
         base_qs = base_qs.filter(indicator__unit=selected_unit)
@@ -894,9 +893,7 @@ def more_reports(request):
     if selected_indicator:
         base_qs = base_qs.filter(indicator_id=selected_indicator)
 
-    # -----------------------------
-    # Indicators
-    # -----------------------------
+    # --- Indicators ---
     indicators = Indicator.objects.all()
     if selected_unit:
         indicators = indicators.filter(unit=selected_unit)
@@ -905,9 +902,7 @@ def more_reports(request):
     if selected_indicator:
         indicators = indicators.filter(id=selected_indicator)
 
-    # -----------------------------
-    # Pivot Table
-    # -----------------------------
+    # --- Pivot Table ---
     months = list(range(1, 13))
     month_headers = [calendar.month_abbr[m] for m in months]
     pivot_data = []
@@ -918,16 +913,16 @@ def more_reports(request):
         row_values = []
         row_total = 0
         for m in months:
-            val = float(base_qs.filter(indicator=ind, month=m).aggregate(total=Sum("value"))["total"] or 0)
+            val = base_qs.filter(indicator=ind, month=m).aggregate(total=Sum("value"))["total"] or 0
+            val = int(val)
             row_values.append(val)
             row_total += val
             column_totals[m] += val
         grand_total += row_total
 
-        # ✅ Get target from IndicatorTarget for selected year
         target_obj = IndicatorTarget.objects.filter(indicator=ind, year=selected_year).first()
-        target_value = float(target_obj.value) if target_obj else 0
-        progress = (row_total / target_value * 100) if target_value > 0 else 0
+        target_value = int(target_obj.value) if target_obj and target_obj.value > 0 else 1
+        progress = row_total * 100 // target_value
 
         pivot_data.append({
             "indicator": ind.name,
@@ -935,24 +930,22 @@ def more_reports(request):
             "values": row_values,
             "total": row_total,
             "target": target_value,
-            "progress": round(progress, 2),
+            "progress": progress,
         })
 
-    # -----------------------------
-    # Analytics
-    # -----------------------------
+    # --- Analytics ---
     # 1. Distribution
     indicator_distribution = base_qs.values("indicator__name").annotate(total=Sum("value")).order_by("-total")
     indicator_distribution_labels = [i["indicator__name"] for i in indicator_distribution]
-    indicator_distribution_data = [float(i["total"]) for i in indicator_distribution]
+    indicator_distribution_data = [int(i["total"]) for i in indicator_distribution]
 
     # 2. Progress
     indicator_progress = []
     for ind in indicators:
-        actual_total = float(base_qs.filter(indicator=ind).aggregate(total=Sum("value"))["total"] or 0)
+        actual_total = int(base_qs.filter(indicator=ind).aggregate(total=Sum("value"))["total"] or 0)
         target_obj = IndicatorTarget.objects.filter(indicator=ind, year=selected_year).first()
-        target_value = float(target_obj.value) if target_obj else 0
-        progress_pct = round((actual_total / target_value * 100), 1) if target_value > 0 else 0
+        target_value = int(target_obj.value) if target_obj and target_obj.value > 0 else 1
+        progress_pct = actual_total * 100 // target_value
         indicator_progress.append({
             "indicator": ind.name,
             "unit": ind.unit,
@@ -965,7 +958,7 @@ def more_reports(request):
     # 3. Cumulative
     cumulative_performance = []
     for ind in indicators:
-        series = [float(base_qs.filter(indicator=ind, month=m).aggregate(total=Sum("value"))["total"] or 0) for m in months]
+        series = [int(base_qs.filter(indicator=ind, month=m).aggregate(total=Sum("value"))["total"] or 0) for m in months]
         running_total = 0
         cumulative_series = []
         for val in series:
@@ -978,34 +971,28 @@ def more_reports(request):
     totals = base_qs.values("indicator__name").annotate(total=Sum("value")).order_by("-total")
     top_indicators = list(totals[:5])
     top_indicators_labels = [i["indicator__name"] for i in top_indicators]
-    top_indicators_data = [float(i["total"]) for i in top_indicators]
+    top_indicators_data = [int(i["total"]) for i in top_indicators]
 
-    # -----------------------------
-    # Heatmap
-    # -----------------------------
+    # --- Heatmap ---
     heatmap_matrix = []
     indicator_labels = []
     for ind in indicators:
         indicator_labels.append(ind.name)
-        row = [float(base_qs.filter(indicator=ind, month=m).aggregate(total=Sum("value"))["total"] or 0) for m in months]
+        row = [int(base_qs.filter(indicator=ind, month=m).aggregate(total=Sum("value"))["total"] or 0) for m in months]
         heatmap_matrix.append(row)
 
-    # -----------------------------
-    # Correlation
-    # -----------------------------
+    # --- Correlation ---
     correlation_data = []
     ind_list = list(indicators[:2])
     if len(ind_list) == 2:
-        x_values = [float(base_qs.filter(indicator=ind_list[0], month=m).aggregate(total=Sum("value"))["total"] or 0) for m in months]
-        y_values = [float(base_qs.filter(indicator=ind_list[1], month=m).aggregate(total=Sum("value"))["total"] or 0) for m in months]
+        x_values = [int(base_qs.filter(indicator=ind_list[0], month=m).aggregate(total=Sum("value"))["total"] or 0) for m in months]
+        y_values = [int(base_qs.filter(indicator=ind_list[1], month=m).aggregate(total=Sum("value"))["total"] or 0) for m in months]
         correlation_data = [{"x": x, "y": y} for x, y in zip(x_values, y_values)]
     elif len(ind_list) == 1:
-        x_values = [float(base_qs.filter(indicator=ind_list[0], month=m).aggregate(total=Sum("value"))["total"] or 0) for m in months]
+        x_values = [int(base_qs.filter(indicator=ind_list[0], month=m).aggregate(total=Sum("value"))["total"] or 0) for m in months]
         correlation_data = [{"x": x, "y": 0} for x in x_values]
 
-    # -----------------------------
-    # Year-over-Year
-    # -----------------------------
+    # --- Year-over-Year ---
     available_years = MonthlyEntry.objects.values_list("year", flat=True).distinct().order_by("year")
     yoy_data_values = []
     yoy_labels = []
@@ -1017,13 +1004,11 @@ def more_reports(request):
             qs = qs.filter(indicator__project_id=selected_project)
         if selected_indicator:
             qs = qs.filter(indicator_id=selected_indicator)
-        total = float(qs.aggregate(total=Sum("value"))["total"] or 0)
+        total = int(qs.aggregate(total=Sum("value"))["total"] or 0)
         yoy_data_values.append(total)
         yoy_labels.append(y)
 
-    # -----------------------------
-    # Context
-    # -----------------------------
+    # --- Context ---
     context = {
         "selected_year": selected_year,
         "years": list(available_years) if available_years else [current_year],
@@ -1050,6 +1035,8 @@ def more_reports(request):
         "correlation_data": json.dumps(correlation_data),
         "yoy_labels": json.dumps(yoy_labels),
         "yoy_data_values": json.dumps(yoy_data_values),
+        # --- New Chart Option: labels inside bars ---
+        "chart_labels_inside": True,
     }
 
     return render(request, "core/more_reports.html", context)
@@ -1094,7 +1081,7 @@ def more_reports_export_csv(request):
     # Determine additional dynamic fields from Indicator model
     # Include any numeric fields beyond 'id', 'name', 'unit', 'project'
     base_fields = ["id", "name", "unit", "project"]
-    dynamic_fields = [f.name for f in Indicator._meta.get_fields() 
+    dynamic_fields = [f.name for f in Indicator._meta.get_fields()
                       if f.concrete and f.name not in base_fields]
 
     # CSV response
@@ -1235,7 +1222,7 @@ def data_story(request):
     Targets are always for the current year only.
     Supports AJAX requests for dynamic year filtering.
     """
-    
+
     current_year = date.today().year
 
     # -------------------------
@@ -1374,7 +1361,7 @@ def reports_export_csv(request):
     fields = [f.name for f in Indicator._meta.get_fields() if f.concrete and f.name not in exclude_fields]
 
     # Identify numeric fields for totals
-    numeric_fields = [f.name for f in Indicator._meta.get_fields() 
+    numeric_fields = [f.name for f in Indicator._meta.get_fields()
                       if f.concrete and isinstance(f, FloatField)]
 
     # Initialize totals dictionary

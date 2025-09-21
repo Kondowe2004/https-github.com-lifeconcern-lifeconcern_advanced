@@ -44,22 +44,38 @@
     </form>
   </div>
 
+  <!-- Instructional Text with badge links -->
+  <div class="mb-2 text-center">
+    <p class="text-muted small mb-0">
+      ⚠️ Click on 
+      <a href="{% url 'project_kpis' project.id %}" class="badge bg-info text-decoration-none">View KPIs</a> 
+      to edit monthly entries. Use 
+      <a href="{% url 'bulk_save_entries' project.id %}?year={{ year }}" class="badge bg-primary text-decoration-none">Bulk Save Entries</a> 
+      to enter new data.
+    </p>
+  </div>
+
   <!-- Indicators Table (Inline Bulk Save) -->
   <form method="post" action="{% url 'bulk_save_entries' project.id %}">
     {% csrf_token %}
     <input type="hidden" name="year" value="{{ year }}">
 
     <div class="card shadow-sm p-3">
+
+      <!-- Table Header: Title + Back Button -->
       <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <h3 class="h6 fw-bold mb-0">📊 Monthly KPI Entry Grid ({{ year }})</h3>
+        <a href="{% url 'projects' %}" class="btn btn-dark btn-sm shadow-sm">
+          <i class="fas fa-arrow-left me-1"></i> Back
+        </a>
+      </div>
 
-        <!-- Zoom Control -->
-        <div class="d-flex align-items-center gap-2">
-          <label class="form-label mb-0 small fw-semibold">Zoom:</label>
-          <input type="range" id="zoomSlider" min="50" max="150" value="100" step="10"
-                 class="form-range w-100" style="max-width:150px;">
-          <span id="zoomValue" class="small text-muted">100%</span>
-        </div>
+      <!-- Zoom Control -->
+      <div class="d-flex justify-content-end align-items-center mb-2 gap-2">
+        <label class="form-label mb-0 small fw-semibold">Zoom:</label>
+        <input type="range" id="zoomSlider" min="50" max="150" value="100" step="10"
+               class="form-range w-100" style="max-width:150px;">
+        <span id="zoomValue" class="small text-muted">100%</span>
       </div>
 
       <div class="table-responsive" id="zoomContainer">
@@ -71,7 +87,7 @@
               {% for m in months %}
                 <th style="width: 55px;">{{ m|get_month_name|slice:":3" }}</th>
               {% endfor %}
-              <th style="min-width: 100px;">Actions</th>
+              <th style="min-width: 120px;">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -96,14 +112,21 @@
                 {% endwith %}
               {% endfor %}
               <td class="text-nowrap">
-                <a href="{% url 'indicator_edit' project.pk ind.pk %}" class="btn btn-warning btn-sm me-1">
-                  <i class="fas fa-edit"></i>
-                </a>
-                <a href="{% url 'indicator_delete' project.pk ind.pk %}" 
-                   class="btn btn-danger btn-sm"
-                   onclick="return confirm('Are you sure you want to delete this KPI?');">
-                  <i class="fas fa-trash-alt"></i>
-                </a>
+                <div class="d-flex gap-1 justify-content-center">
+                  <!-- Edit Button -->
+                  <a href="{% url 'indicator_edit' project.pk ind.pk %}" 
+                     class="btn btn-warning btn-sm d-flex align-items-center justify-content-center hover-scale"
+                     style="width: 60px;">
+                    <i class="fas fa-edit me-1"></i> Edit
+                  </a>
+                  <!-- Delete Button -->
+                  <a href="{% url 'indicator_delete' project.pk ind.pk %}" 
+                     class="btn btn-danger btn-sm d-flex align-items-center justify-content-center hover-scale"
+                     style="width: 60px;"
+                     onclick="return confirm('Are you sure you want to delete this KPI?');">
+                    <i class="fas fa-trash-alt me-1"></i> Delete
+                  </a>
+                </div>
               </td>
             </tr>
           {% empty %}
@@ -143,4 +166,15 @@
     zoomValue.textContent = zoomSlider.value + "%";
   });
 </script>
+
+<!-- Hover effect for buttons -->
+<style>
+.hover-scale {
+  transition: transform 0.15s ease-in-out;
+}
+.hover-scale:hover {
+  transform: scale(1.1);
+}
+</style>
+
 {% endblock %}

@@ -45,12 +45,12 @@
     transition: all 0.3s ease;
     word-wrap: break-word;
     white-space: normal;
-    background: linear-gradient(135deg, #6a11cb, #2575fc);
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     text-align: center;
   }
-  .indicator-card:nth-child(2n) { background: linear-gradient(135deg, #11998e, #38ef7d); }
-  .indicator-card:nth-child(3n) { background: linear-gradient(135deg, #ff416c, #ff4b2b); }
+  .indicator-card.green { background: linear-gradient(135deg, #11998e, #38ef7d); }
+  .indicator-card.yellow { background: linear-gradient(135deg, #f7971e, #ffd200); }
+  .indicator-card.red { background: linear-gradient(135deg, #ff416c, #ff4b2b); }
   .indicator-card:hover { transform: translateY(-5px) scale(1.03); box-shadow: 0 12px 24px rgba(0,0,0,0.25); }
 
   .chart-card {
@@ -83,6 +83,25 @@
   .indicator-values { display: flex; justify-content: space-around; margin-top: 0.5rem; }
   .indicator-values div { text-align: center; font-size: 0.9rem; }
 
+  /* Legend styles */
+  .legend-box {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    margin-right: 6px;
+    border-radius: 4px;
+  }
+  .legend-item {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 15px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #444;
+  }
+  .legend-green { background: linear-gradient(135deg, #11998e, #38ef7d); }
+  .legend-yellow { background: linear-gradient(135deg, #f7971e, #ffd200); }
+  .legend-red { background: linear-gradient(135deg, #ff416c, #ff4b2b); }
 </style>
 
 <div class="position-absolute top-0 end-0 p-2">
@@ -185,6 +204,14 @@ updateClock();
 
 <div class="card mt-4 p-3 shadow-lg rounded-3">
   <h5 class="fw-semibold text-warning">🔄 Key Indicators</h5>
+  
+  <!-- Legend -->
+  <div class="mb-3">
+    <span class="legend-item"><span class="legend-box legend-green"></span> ≥ 90% of Target</span>
+    <span class="legend-item"><span class="legend-box legend-yellow"></span> 60–89% of Target</span>
+    <span class="legend-item"><span class="legend-box legend-red"></span> < 60% of Target</span>
+  </div>
+
   <div id="indicator-carousel" class="row g-3">
     {% if not indicators %}
       <p class="text-muted m-3">No indicators available</p>
@@ -238,7 +265,7 @@ if (trendLabels.length) {
   });
 }
 
-// Indicator carousel
+// Indicator carousel with color coding
 const indicators = {{ indicators|default:"[]"|safe }};
 const carousel = document.getElementById("indicator-carousel");
 if (indicators.length) {
@@ -249,8 +276,12 @@ if (indicators.length) {
     slice.forEach(ind => {
       const col = document.createElement("div");
       col.className = "col-md-4";
+      const ratio = ind.target > 0 ? (ind.value / ind.target) * 100 : 0;
+      let statusClass = "red";
+      if (ratio >= 90) statusClass = "green";
+      else if (ratio >= 60) statusClass = "yellow";
       const card = document.createElement("div");
-      card.className = "indicator-card h-100";
+      card.className = `indicator-card h-100 ${statusClass}`;
       const trendArrow = ind.value>ind.previous_value?"⬆️":ind.value<ind.previous_value?"⬇️":"➡️";
       card.innerHTML = `
         <h6 class="fw-bold mb-1">${ind.name}</h6>

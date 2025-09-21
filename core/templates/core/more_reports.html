@@ -6,7 +6,9 @@
 {% block title %}More Reports{% endblock %}
 
 {% block content %}
-<h2 class="mb-4">More Reports</h2>
+<h2 class="mb-4 text-center fw-bold" style="background: linear-gradient(to right, #4e79a7, #f28e2b); -webkit-background-clip: text; color: transparent; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">
+  More Reports
+</h2>
 
 <!-- Combined Year + Pivot Filters -->
 <form method="get" id="pivotFilterForm" class="row g-3 mb-4 align-items-end">
@@ -70,27 +72,48 @@
   <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#year-over-year">Year-over-Year</button></li>
 </ul>
 
-<!-- Extra spacing between tabs and charts -->
 <style>
   .tab-content .tab-pane {
-    padding-top: 20px; /* space between tabs and chart */
+    padding-top: 20px;
+    opacity: 0;
+    transition: opacity 0.6s ease-in-out;
+  }
+  .tab-content .tab-pane.show.active {
+    opacity: 1;
   }
   .chart-container {
-    margin-top: 10px; /* extra spacing inside each chart container */
+    margin-top: 10px;
+    min-height: 420px; /* ensures charts maintain space when switching tabs */
+  }
+
+  /* Pivot Table Coloring */
+  table.table-striped tbody tr:nth-of-type(odd) { background-color: #f9f9f9; }
+  table.table-striped tbody tr:nth-of-type(even) { background-color: #ffffff; }
+  table.table-bordered th { background-color: #4e79a7; color: #fff; }
+
+  /* Chart legend styling */
+  .chartjs-legend {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 6px 18px;
+    max-height: 120px;
+    overflow-y: auto;
+    padding: 8px;
+    margin-top: 8px;
   }
 </style>
 
 <div class="tab-content">
   <!-- Distribution -->
   <div class="tab-pane fade show active" id="distribution">
-    <div class="chart-container mb-4" style="max-width:800px; height:400px; margin:auto;">
+    <div class="chart-container mb-4" style="max-width:800px; margin:auto;">
       <canvas id="distributionChart"></canvas>
     </div>
   </div>
 
   <!-- Progress -->
   <div class="tab-pane fade" id="progress">
-    <div class="chart-container mb-4" style="max-width:800px; height:400px; margin:auto;">
+    <div class="chart-container mb-4" style="max-width:800px; margin:auto;">
       <canvas id="progressChart"></canvas>
       <p id="progressNoData" class="text-center mt-3 d-none">No data available.</p>
     </div>
@@ -98,21 +121,21 @@
 
   <!-- Cumulative -->
   <div class="tab-pane fade" id="cumulative">
-    <div class="chart-container mb-4" style="max-width:800px; height:400px; margin:auto;">
+    <div class="chart-container mb-4" style="max-width:800px; margin:auto;">
       <canvas id="cumulativeChart"></canvas>
     </div>
   </div>
 
   <!-- Top/Bottom -->
   <div class="tab-pane fade" id="top-bottom">
-    <div class="chart-container mb-4" style="max-width:800px; height:400px; margin:auto;">
+    <div class="chart-container mb-4" style="max-width:800px; margin:auto;">
       <canvas id="rankingChart"></canvas>
     </div>
   </div>
 
   <!-- Heatmap -->
   <div class="tab-pane fade" id="heatmap">
-    <div class="chart-container mb-4" style="max-width:800px; height:400px; margin:auto;">
+    <div class="chart-container mb-4" style="max-width:800px; margin:auto;">
       <canvas id="heatmapChart"></canvas>
       <p id="heatmapNoData" class="text-center mt-3 d-none">No data available.</p>
     </div>
@@ -120,7 +143,7 @@
 
   <!-- Correlation -->
   <div class="tab-pane fade" id="correlation">
-    <div class="chart-container mb-4" style="max-width:800px; height:400px; margin:auto;">
+    <div class="chart-container mb-4" style="max-width:800px; margin:auto;">
       <canvas id="correlationChart"></canvas>
       <p id="correlationNoData" class="text-center mt-3 d-none">No data available.</p>
     </div>
@@ -128,19 +151,19 @@
 
   <!-- Year-over-Year -->
   <div class="tab-pane fade" id="year-over-year">
-    <div class="chart-container mb-4" style="max-width:800px; height:350px; margin:auto;">
+    <div class="chart-container mb-4" style="max-width:800px; margin:auto; height:380px;">
       <canvas id="yoyChart"></canvas>
       <p id="yoyNoData" class="text-center mt-3 d-none">No data available.</p>
     </div>
   </div>
 </div>
 
-<div class="my-9"></div> <!-- Extra spacing before pivot table -->
+<div class="my-9"></div>
 
 <!-- Pivot Table -->
 <h4 class="mt-5">Custom Reports (Pivot Table)</h4>
 <table class="table table-bordered table-striped">
-  <thead class="table-dark">
+  <thead>
     <tr>
       <th>Indicator</th>
       <th>Unit</th>
@@ -181,6 +204,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix@2.0.0/dist/chartjs-chart-matrix.min.js"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   const form = document.getElementById('pivotFilterForm');
@@ -220,9 +244,13 @@ document.addEventListener('DOMContentLoaded', function() {
   const chartOptionsBase = {
     responsive:true,
     maintainAspectRatio:false,
+    animation:{duration:1000,easing:'easeOutQuart'},
     plugins: { 
-      legend:{position:'bottom'}, 
-      datalabels:{color:'#000', anchor:'end', align:'top'}, 
+      legend:{
+        position:'bottom',
+        labels:{ usePointStyle:true, boxWidth:12, padding:10 },
+      }, 
+      datalabels:{color:'#000', anchor:'center', align:'center', font:{weight:'bold'}}, 
       background:{color:'#ffffff'} 
     }
   };
@@ -260,7 +288,7 @@ document.addEventListener('DOMContentLoaded', function() {
       distributionChart = new Chart('distributionChart', {
         type:'doughnut',
         data:{labels:distributionLabels,datasets:[{data:distributionData,backgroundColor:colorPalette}]},
-        options:{...chartOptionsBase, plugins:{...chartOptionsBase.plugins, tooltip:{enabled:false}} },
+        options:{...chartOptionsBase, plugins:{...chartOptionsBase.plugins, tooltip:{enabled:false}}, maintainAspectRatio:false},
         plugins: [ChartDataLabels]
       });
     }
@@ -274,7 +302,7 @@ document.addEventListener('DOMContentLoaded', function() {
           labels: progressLabels,
           datasets:[{label:'Progress (%)',data:progressData,backgroundColor:progressData.map(v=>v>=75?'#59a14f':v>=50?'#edc949':'#e15759')}]
         },
-        options:{...chartOptionsBase, scales:{y:{beginAtZero:true,max:100}} },
+        options:{...chartOptionsBase, scales:{y:{beginAtZero:true,max:100}}, maintainAspectRatio:false },
         plugins:[ChartDataLabels]
       });
     }
@@ -292,7 +320,7 @@ document.addEventListener('DOMContentLoaded', function() {
           backgroundColor:colorPalette[i%colorPalette.length]+'33',
           tension:0.3
         }))},
-        options:chartOptionsBase,
+        options:{...chartOptionsBase, maintainAspectRatio:false},
         plugins:[ChartDataLabels]
       });
     }
@@ -303,7 +331,7 @@ document.addEventListener('DOMContentLoaded', function() {
       rankingChart = new Chart('rankingChart',{
         type:'bar',
         data:{labels:topLabels,datasets:[{label:'Top Indicators',data:topData,backgroundColor:colorPalette.slice(0,topData.length)}]},
-        options:chartOptionsBase,
+        options:{...chartOptionsBase, scales:{y:{beginAtZero:true}}, maintainAspectRatio:false},
         plugins:[ChartDataLabels]
       });
     }
@@ -325,7 +353,17 @@ document.addEventListener('DOMContentLoaded', function() {
           width:({chart})=> chart.chartArea ? chart.chartArea.width/monthLabels.length : 0,
           height:({chart})=> chart.chartArea ? chart.chartArea.height/heatmapLabels.length : 0
         }]},
-        options:{...chartOptionsBase, scales:{x:{type:'category',labels:monthLabels,offset:true,grid:{display:true}},y:{type:'category',labels:heatmapLabels,offset:true,grid:{display:true}}}, plugins:{legend:{display:false}, datalabels:{display:false}, background:{color:'#ffffff'}}},
+        options:{...chartOptionsBase,
+          scales:{x:{type:'category',labels:monthLabels,offset:true,grid:{display:true}},
+                  y:{type:'category',labels:heatmapLabels,offset:true,grid:{display:true}}},
+          plugins:{legend:{display:false}, datalabels:{
+            display:true,
+            color:'#000',
+            formatter:val=>Math.round(val.v),
+            font:{weight:'bold'}
+          }, background:{color:'#ffffff'}},
+          maintainAspectRatio:false
+        },
         plugins:[ChartDataLabels]
       });
     }
@@ -336,7 +374,7 @@ document.addEventListener('DOMContentLoaded', function() {
       correlationChart = new Chart('correlationChart',{
         type:'scatter',
         data:{datasets:[{label:'Correlation',data:correlationData,backgroundColor:'#4e79a7'}]},
-        options:{...chartOptionsBase, scales:{x:{beginAtZero:true},y:{beginAtZero:true}} },
+        options:{...chartOptionsBase, scales:{x:{beginAtZero:true},y:{beginAtZero:true}}, maintainAspectRatio:false},
         plugins:[ChartDataLabels]
       });
     }
@@ -347,7 +385,7 @@ document.addEventListener('DOMContentLoaded', function() {
       yoyChart = new Chart('yoyChart',{
         type:'line',
         data:{labels:yoyLabels,datasets:[{label:'Total Value',data:yoyData,fill:false,borderColor:'#4e79a7',tension:0.3}]},
-        options:chartOptionsBase,
+        options:{...chartOptionsBase, maintainAspectRatio:false},
         plugins:[ChartDataLabels]
       });
     }
@@ -355,7 +393,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
   renderCharts();
 
-  // Re-render charts on tab switch
   const tabButtons = document.querySelectorAll('button[data-bs-toggle="tab"]');
   tabButtons.forEach(btn => btn.addEventListener('shown.bs.tab', ()=>{ renderCharts(); }));
 });

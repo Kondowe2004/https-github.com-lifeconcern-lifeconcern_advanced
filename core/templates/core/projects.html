@@ -1,30 +1,38 @@
 {% extends "core/base.html" %}
-
+{% load widget_tweaks %}
 {% block title %}Projects - Life Concern{% endblock %}
 
 {% block content %}
-<!-- Page Header -->
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <div>
-    <h1 class="h3 fw-bold mb-1">📂 Projects</h1>
-    <p class="text-muted mb-0">Manage and track all organisational projects in one place.</p>
-  </div>
-  <a href="{% url 'project_add' %}" class="btn btn-success">
-    <i class="fas fa-plus me-2"></i> Add New Project
+<!-- Page Header (Enhanced) -->
+<div class="mb-4 text-center">
+  <h1 class="display-5 fw-bold text-primary mb-2">📂 Projects</h1>
+  <p class="lead text-secondary fst-italic mb-0">
+    Easily manage and track all your organisational projects in one place.
+  </p>
+  <a href="{% url 'project_add' %}" class="btn btn-success btn-sm mt-3">
+    <i class="fas fa-plus me-1"></i> Add New Project
   </a>
 </div>
 
 <!-- Projects List -->
 <div class="card shadow-sm p-3">
+
+  <!-- Instructional Text (general) -->
+  <div class="mb-3">
+    <p class="text-primary fw-semibold small mb-2">
+      Click on <span class="badge bg-info text-dark">View KPIs</span> to add and edit indicators, entries, and targets for your project.
+    </p>
+  </div>
+
   {% if projects %}
     <div class="table-responsive">
       <table class="table table-hover align-middle mb-0">
         <thead class="table-light">
           <tr>
             <th style="width:5%;">#</th>
-            <th style="width:25%;">Name</th>
-            <th style="width:40%;">Description</th>
-            <th style="width:30%;">Actions</th>
+            <th style="width:20%;">Name</th>
+            <th>Description</th>
+            <th class="text-end" style="width:1%;">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -34,6 +42,10 @@
             <td>
               <i class="fas fa-folder text-primary me-2"></i>
               <strong>{{ project.name }}</strong>
+              <!-- Mini clickable badge per project -->
+              <a href="{% url 'project_detail' project.id %}" class="badge bg-info text-dark ms-2 text-decoration-none">
+                View KPIs
+              </a>
             </td>
             <td class="text-muted">
               {% if project.description %}
@@ -42,15 +54,15 @@
                 <span class="fst-italic">No description available.</span>
               {% endif %}
             </td>
-            <td>
-              <a href="{% url 'project_detail' project.id %}" class="btn btn-primary btn-sm me-1">
+            <td class="text-nowrap text-end">
+              <a href="{% url 'project_detail' project.id %}" class="btn btn-primary btn-sm btn-auto">
                 <i class="fas fa-chart-line me-1"></i> View KPIs
               </a>
-              <a href="{% url 'project_edit' project.id %}" class="btn btn-warning btn-sm me-1">
+              <a href="{% url 'project_edit' project.id %}" class="btn btn-warning btn-sm btn-auto">
                 <i class="fas fa-edit me-1"></i> Edit
               </a>
               <a href="{% url 'project_delete' project.id %}" 
-                 class="btn btn-danger btn-sm"
+                 class="btn btn-danger btn-sm btn-auto"
                  onclick="return confirm('Are you sure you want to delete this project?');">
                 <i class="fas fa-trash-alt me-1"></i> Delete
               </a>
@@ -67,10 +79,23 @@
       </div>
       <h5 class="fw-semibold">No projects found</h5>
       <p class="text-muted mb-3">Get started by creating your first project and tracking its indicators.</p>
-      <a href="{% url 'project_add' %}" class="btn btn-primary">
-        <i class="fas fa-plus me-2"></i> Add Your First Project
+      <a href="{% url 'project_add' %}" class="btn btn-primary btn-sm">
+        <i class="fas fa-plus me-1"></i> Add Your First Project
       </a>
     </div>
   {% endif %}
 </div>
+
+<!-- Custom CSS for auto-width buttons -->
+<style>
+  .btn-auto {
+    width: auto !important;
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+</style>
+
 {% endblock %}

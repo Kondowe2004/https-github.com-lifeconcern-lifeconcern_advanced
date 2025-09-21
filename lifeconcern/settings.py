@@ -2,6 +2,9 @@ from pathlib import Path
 import os
 import sys
 
+# -------------------------
+# Base directory
+# -------------------------
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # -------------------------
@@ -9,7 +12,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # -------------------------
 SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-lifeconcern-advanced-demo")
 
-DEBUG = os.environ.get("DEBUG", "True") == "True"  # ✅ Fix: True by default in dev
+DEBUG = os.environ.get("DEBUG", "True") == "True"  # ✅ True by default in dev
 
 ALLOWED_HOSTS = [
     "127.0.0.1",
@@ -78,14 +81,10 @@ TEMPLATES = [
 WSGI_APPLICATION = 'lifeconcern.wsgi.application'
 
 # -------------------------
-# Database (SQLite cross-platform)
+# Database (SQLite cross-platform fix)
 # -------------------------
-if sys.platform.startswith("win"):
-    # Local Windows
-    DB_PATH = BASE_DIR / "db.sqlite3"
-else:
-    # PythonAnywhere / Linux
-    DB_PATH = os.path.expanduser("~/db_backups/db.sqlite3")
+# Use project folder for SQLite (works on Windows & PythonAnywhere)
+DB_PATH = BASE_DIR / "db.sqlite3"
 
 DATABASES = {
     'default': {
@@ -138,7 +137,7 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = "datamanagementlico@gmail.com"
 EMAIL_HOST_PASSWORD = "jbll pppr owrw doap"  # ✅ App password (never use normal password)
 
-# Default sender (use a neutral updates address for classification as 'Updates')
+# Default sender (use a neutral updates address)
 DEFAULT_FROM_EMAIL = "updates@yourdomain.com"
 SERVER_EMAIL = DEFAULT_FROM_EMAIL  # Used for error emails from Django
 
