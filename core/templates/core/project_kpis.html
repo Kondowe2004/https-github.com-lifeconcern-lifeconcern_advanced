@@ -15,7 +15,6 @@
       <p class="text-muted mb-3">{{ project.description|default:"No description provided." }}</p>
     </div>
     <div class="text-end">
-      <!-- Back Button (black & bigger) -->
       <a href="{% url 'project_detail' project.id %}" class="btn btn-dark btn-sm shadow-sm px-3 py-2" style="font-size: 0.9rem;">
         <i class="fas fa-arrow-left me-1"></i> Back
       </a>
@@ -36,6 +35,9 @@
     <a href="{% url 'export_project_kpis' project.id %}?year={{ year }}" class="btn btn-outline-success btn-sm shadow-sm">
       <i class="fas fa-file-csv me-1"></i> Export CSV
     </a>
+    <a href="{% url 'export_project_kpis_excel' project.id %}?year={{ year }}" class="btn btn-outline-success btn-sm shadow-sm">
+      <i class="fas fa-file-excel me-1"></i> Export Excel
+    </a>
   </div>
 
   <!-- Year Selector -->
@@ -55,42 +57,36 @@
 
     <div class="card shadow-lg border-0 mt-3">
 
-      <!-- Table Title Above Table, Left-aligned -->
+      <!-- Table Title -->
       <div class="d-flex justify-content-start align-items-center p-2 border-bottom">
         <h5 class="fw-bold mb-0">📊 Monthly KPI Entry Grid ({{ year }})</h5>
       </div>
 
-      <div class="card-body" style="font-size: 0.78rem;">  
+      <div class="card-body" style="font-size: 0.78rem; max-height: 550px;">  
         <!-- Search Bar -->
         <div class="input-group mb-3 shadow-sm">
           <span class="input-group-text bg-light">
             <i class="fas fa-search text-secondary"></i>
           </span>
-          <input 
-            type="text" 
-            id="searchInput" 
-            class="form-control" 
-            placeholder="Search indicators..." 
-            onkeyup="filterTable()">
+          <input type="text" id="searchInput" class="form-control" placeholder="Search indicators..." onkeyup="filterTable()">
         </div>
 
         <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-          <table class="table table-sm align-middle text-center w-100 table-hover" id="kpiTable">
+          <table class="table table-sm align-middle w-100 table-hover" id="kpiTable">
             <thead class="table-primary sticky-top" style="top: 0; z-index: 10;">
-              <tr>
+              <tr style="border-top: 2px solid #000; border-bottom: 2px solid #000;">
                 <th style="min-width: 120px;">Annual Target</th>
                 <th class="text-start" style="width: 30%; min-width: 250px;">Indicator</th>
                 {% for m in months %}
-                  <th>{{ m|get_month_name|slice:":3" }}</th>
+                  <th class="text-center">{{ m|get_month_name|slice:":3" }}</th>
                 {% endfor %}
-                <th class="bg-light">Total</th>
+                <th class="bg-light text-center">Total</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
             {% for ind in indicators %}
               <tr class="{% cycle 'table-light' 'table-white' %} hover-shadow">
-                <!-- Annual Target Editable -->
                 <td>
                   <input type="number" step="1" min="0"
                          name="target_{{ ind.id }}"
@@ -107,19 +103,18 @@
 
                 {% for m in months %}
                   {% with val=grid|get_item:ind.id|get_item:m %}
-                  <td>
+                  <td class="text-end">
                     <input type="number" step="1" min="0"
                            name="val_{{ ind.id }}_{{ m }}"
                            value="{{ val|default:'' }}"
-                           class="form-control form-control-sm text-end shadow-sm month-input {% if val %}bg-success-subtle{% endif %}"
+                           class="form-control form-control-sm shadow-sm month-input {% if val %}bg-success-subtle{% endif %}"
                            style="max-width: 70px;">
                   </td>
                   {% endwith %}
                 {% endfor %}
 
-                <td class="fw-bold text-dark bg-light">{{ totals|get_item:ind.id|default:"0" }}</td>
+                <td class="fw-bold text-dark bg-light text-end">{{ totals|get_item:ind.id|default:"0" }}</td>
 
-                <!-- Edit/Delete Buttons with text & colors -->
                 <td class="text-nowrap">
                   <div class="d-flex gap-1 justify-content-center">
                     <a href="{% url 'indicator_edit' project.id ind.id %}" 
@@ -148,9 +143,9 @@
             <tr class="table-secondary fw-bold sticky-bottom" style="bottom: 0; z-index: 10;">
               <td colspan="2" class="text-start">Monthly Totals</td>
               {% for m in months %}
-                <td>{{ monthly_totals|get_item:m|default:"0" }}</td>
+                <td class="text-end">{{ monthly_totals|get_item:m|default:"0" }}</td>
               {% endfor %}
-              <td>{{ grand_total }}</td>
+              <td class="text-end">{{ grand_total }}</td>
               <td>-</td>
             </tr>
             {% endif %}
@@ -158,7 +153,6 @@
           </table>
         </div>
 
-        <!-- Save Button -->
         <div class="mt-4 d-flex justify-content-center">
           <button id="saveBtn" class="btn btn-lg btn-success px-5 shadow-lg" type="submit">
             <i class="fas fa-save me-2"></i> Save All Entries
@@ -175,27 +169,15 @@
 
 <style>
 .hover-shadow:hover { background-color: #f0f8ff !important; }
-
-/* Highlight valid and invalid entries */
 .target-input.valid, .month-input.valid { background-color: #e9f7ef !important; border-color: #198754 !important; }
 .target-input.invalid, .month-input.invalid { background-color: #ffe6e6 !important; border-color: #dc3545 !important; }
-
-/* Remove spinner arrows */
-input[type=number]::-webkit-inner-spin-button,
-input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 input[type=number] { -moz-appearance: textfield; }
-
-/* Hover effect for Edit/Delete buttons */
-.hover-scale {
-  transition: transform 0.15s ease-in-out;
-}
-.hover-scale:hover {
-  transform: scale(1.05);
-}
+.hover-scale { transition: transform 0.15s ease-in-out; }
+.hover-scale:hover { transform: scale(1.05); }
 </style>
 
 <script>
-// Filter table rows by indicator name
 function filterTable() {
   let input = document.getElementById("searchInput").value.toLowerCase();
   let table = document.getElementById("kpiTable");
@@ -209,36 +191,23 @@ function filterTable() {
   }
 }
 
-// Validate whole numbers
 function validateWholeNumber(e) {
   const val = e.target.value.trim();
-  if (val === "" || /^\d+$/.test(val)) {
-    e.target.classList.remove("invalid");
-    e.target.classList.add("valid");
-  } else {
-    e.target.classList.remove("valid");
-    e.target.classList.add("invalid");
-  }
+  if (val === "" || /^\d+$/.test(val)) { e.target.classList.remove("invalid"); e.target.classList.add("valid"); }
+  else { e.target.classList.remove("valid"); e.target.classList.add("invalid"); }
 }
 
 document.querySelectorAll(".target-input, .month-input").forEach(input => {
   input.addEventListener("input", validateWholeNumber);
 });
 
-// Form submission validation
 document.getElementById("kpiForm").addEventListener("submit", function(e) {
   let invalid = false;
   document.querySelectorAll(".target-input, .month-input").forEach(input => {
     const val = input.value.trim();
-    if (val !== "" && !/^\d+$/.test(val)) {
-      input.classList.add("invalid");
-      invalid = true;
-    }
+    if (val !== "" && !/^\d+$/.test(val)) { input.classList.add("invalid"); invalid = true; }
   });
-  if (invalid) {
-    e.preventDefault();
-    alert("Please correct non-whole-number values before saving.");
-  }
+  if (invalid) { e.preventDefault(); alert("Please correct non-whole-number values before saving."); }
 });
 </script>
 {% endblock %}

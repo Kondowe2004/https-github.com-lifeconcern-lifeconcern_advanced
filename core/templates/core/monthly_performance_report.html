@@ -1,0 +1,222 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="container-fluid py-4" style="background-color:#f5f6fa;">
+  <h3 class="mb-4 text-primary">Monthly Performance Report</h3>
+
+  <!-- Filters -->
+  <form id="filterForm" class="card p-3 shadow-sm bg-white rounded mb-4" method="get">
+    <div class="d-flex flex-wrap gap-3 align-items-end">
+      <div>
+        <label class="form-label">Year</label>
+        <select class="form-select" name="year" id="year">
+          {% for y in years %}
+          <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="form-label">Unit</label>
+        <select class="form-select" name="unit" id="unit">
+          <option value="">All Units</option>
+          {% for u in units %}
+          <option value="{{ u }}" {% if u == selected_unit %}selected{% endif %}>{{ u }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="form-label">Indicator</label>
+        <select class="form-select" name="indicator" id="indicator">
+          <option value="">All Indicators</option>
+          {% for ind in indicators %}
+          <option value="{{ ind.id }}" {% if ind.id == selected_indicator %}selected{% endif %}>{{ ind.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="form-label">From Month</label>
+        <select class="form-select" name="month_from" id="month_from">
+          {% for num, name in month_choices %}
+          <option value="{{ num }}" {% if num == month_from %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="form-label">To Month</label>
+        <select class="form-select" name="month_to" id="month_to">
+          {% for num, name in month_choices %}
+          <option value="{{ num }}" {% if num == month_to %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <button type="submit" class="btn btn-primary">Apply Filters</button>
+      </div>
+    </div>
+  </form>
+
+  {% if monthly_trends|length == 0 %}
+  <div class="alert alert-info">No data available for the selected filters.</div>
+  {% else %}
+  <!-- Project Tabs -->
+  <ul class="nav nav-tabs mb-3" id="projectTabs" role="tablist">
+    {% for proj in monthly_trends %}
+    <li class="nav-item">
+      <button class="nav-link {% if forloop.first %}active{% endif %}" 
+              data-bs-toggle="tab" data-bs-target="#proj{{ proj.project_id }}">
+        {{ proj.project_name }}
+      </button>
+    </li>
+    {% endfor %}
+  </ul>
+
+  <!-- Project Charts -->
+  <div class="tab-content">
+    {% for proj in monthly_trends %}
+    <div class="tab-pane fade {% if forloop.first %}show active{% endif %}" 
+         id="proj{{ proj.project_id }}" role="tabpanel">
+      <div class="card shadow-sm mb-4 p-3 bg-white rounded chart-wrapper" style="opacity:0; transform: translateY(20px); transition: all 0.6s ease;">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h5 class="card-title mb-0">Project: {{ proj.project_name }}</h5>
+          <button class="btn btn-outline-primary btn-sm" 
+                  onclick="downloadChart('chartProj{{ proj.project_id }}', '{{ proj.project_name }}_{{ selected_year }}.png')">
+            Download Chart
+          </button>
+        </div>
+        <div class="chart-container" style="min-height:450px;">
+          <canvas id="chartProj{{ proj.project_id }}"></canvas>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const monthLabels = {{ month_headers|safe }};
+    const monthlyTrends = {{ monthly_trends|safe }};
+    const charts = {};
+
+    const monthFrom = parseInt('{{ month_from|default:1 }}');
+    const monthTo = parseInt('{{ month_to|default:12 }}');
+
+    // Slice visible months based on selected range
+    const visibleMonthLabels = monthLabels.slice(monthFrom - 1, monthTo);
+
+    function getGradientColor(value, min, max) {
+        if (min === max) {
+            const ratio = 0.5;
+            const r = Math.round(220 - (220 - 40) * ratio);
+            const g = Math.round(53 + (200 - 53) * ratio);
+            const b = Math.round(69 - 69 * ratio);
+            return `rgb(${r},${g},${b})`;
+        }
+        const ratio = (value - min) / (max - min);
+        const r = Math.round(220 - (220 - 40) * ratio);
+        const g = Math.round(53 + (200 - 53) * ratio);
+        const b = Math.round(69 - 69 * ratio);
+        return `rgb(${r},${g},${b})`;
+    }
+
+    function renderChart(proj) {
+        if(charts[proj.project_id]) return;
+
+        const values = proj.values.slice(monthFrom - 1, monthTo);
+        const maxVal = Math.max(...values);
+        const minVal = Math.min(...values);
+        const bgColors = values.map(v => getGradientColor(v, minVal, maxVal));
+
+        const ctx = document.getElementById('chartProj' + proj.project_id).getContext('2d');
+        charts[proj.project_id] = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: visibleMonthLabels,
+                datasets: [{
+                    label: proj.project_name,
+                    data: values,
+                    backgroundColor: bgColors,
+                    borderColor: bgColors,
+                    borderWidth: 1,
+                    maxBarThickness: 60   // ✅ Prevent oversized bars
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false, // ✅ Keep chart flexible
+                animation: { duration: 1000, easing: 'easeOutBack' },
+                plugins: {
+                    legend: { display: false },
+                    title: {
+                        display: true,
+                        text: `Monthly Performance (${proj.indicator_summary})`,
+                        font: { size: 16, weight: 'bold' }
+                    },
+                    datalabels: {
+                        anchor:'end', align:'top', color:'#000', font:{weight:'bold'}
+                    }
+                },
+                scales: {
+                    y: { beginAtZero:true, title:{display:true,text:'Value'} },
+                    x: { title:{display:true,text:'Month'} }
+                }
+            },
+            plugins: [ChartDataLabels]
+        });
+    }
+
+    function animateChartWrapper(tabContent) {
+        const wrapper = tabContent.querySelector('.chart-wrapper');
+        if(wrapper) {
+            wrapper.style.opacity = 0;
+            wrapper.style.transform = 'translateY(20px)';
+            setTimeout(() => {
+                wrapper.style.opacity = 1;
+                wrapper.style.transform = 'translateY(0)';
+            }, 50);
+        }
+    }
+
+    if(monthlyTrends.length > 0){
+        renderChart(monthlyTrends[0]);
+        animateChartWrapper(document.querySelector('.tab-pane.show.active'));
+    }
+
+    const tabButtons = document.querySelectorAll('#projectTabs button');
+    tabButtons.forEach((btn, idx) => {
+        btn.addEventListener('shown.bs.tab', function(){
+            renderChart(monthlyTrends[idx]);
+            const tabContent = document.querySelector(btn.dataset.bsTarget);
+            animateChartWrapper(tabContent);
+        });
+    });
+
+    window.downloadChart = function(chartId, filename) {
+        const chart = Chart.getChart(chartId);
+        if(chart){
+            const link = document.createElement('a');
+            link.href = chart.toBase64Image();
+            link.download = filename;
+            link.click();
+        }
+    }
+
+    const form = document.getElementById('filterForm');
+    form.querySelectorAll('select').forEach(sel => {
+        sel.addEventListener('change', () => form.submit());
+    });
+});
+</script>
+{% endblock %}

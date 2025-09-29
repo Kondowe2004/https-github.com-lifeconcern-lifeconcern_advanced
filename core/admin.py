@@ -1,7 +1,8 @@
 from django.contrib import admin
 from django.contrib.auth.models import User
 from django.contrib.auth.admin import UserAdmin
-from .models import Project, Indicator, MonthlyEntry, IndicatorTarget
+from .models import Project, Indicator, MonthlyEntry, IndicatorTarget, Facility
+
 
 # -----------------------------
 # User Admin Customization
@@ -15,9 +16,22 @@ class CustomUserAdmin(UserAdmin):
     # Optional: search by username or email
     search_fields = ("username", "email", "first_name", "last_name")
 
+
 # Unregister the default User admin and register our custom one
 admin.site.unregister(User)
 admin.site.register(User, CustomUserAdmin)
+
+
+# -----------------------------
+# Facility Admin
+# -----------------------------
+@admin.register(Facility)
+class FacilityAdmin(admin.ModelAdmin):
+    list_display = ("name", "latitude", "longitude")
+    search_fields = ("name",)
+    list_filter = ()  # you can later add filters if you want
+    ordering = ("name",)
+
 
 # -----------------------------
 # Project Admin
@@ -28,6 +42,8 @@ class ProjectAdmin(admin.ModelAdmin):
     list_editable = ("start_year", "end_year", "active")   # ✅ Inline editing
     list_filter = ("active", "start_year", "end_year")
     search_fields = ("name",)
+    filter_horizontal = ("facilities",)  # ✅ easier selection for many-to-many
+
 
 # -----------------------------
 # Indicator Admin
@@ -44,6 +60,7 @@ class IndicatorAdmin(admin.ModelAdmin):
         return target_obj.value if target_obj else "-"
     latest_target.short_description = "Latest Target"
 
+
 # -----------------------------
 # Indicator Target Admin
 # -----------------------------
@@ -52,6 +69,7 @@ class IndicatorTargetAdmin(admin.ModelAdmin):
     list_display = ("indicator", "year", "value")
     list_filter = ("year", "indicator__project")
     search_fields = ("indicator__name",)
+
 
 # -----------------------------
 # Monthly Entry Admin

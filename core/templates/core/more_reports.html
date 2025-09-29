@@ -12,82 +12,188 @@
 
 <!-- Combined Year + Pivot Filters -->
 <form method="get" id="pivotFilterForm" class="row g-3 mb-4 align-items-end">
+  <!-- Year Filter -->
   <div class="col-md-2">
     <label for="year" class="form-label">Year</label>
     <select name="year" id="year" class="form-select">
+      <option value="">All</option>
       {% for y in years %}
-        <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
+        <option value="{{ y }}" {% if selected_year|default:''|stringformat:"s" == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
       {% endfor %}
     </select>
   </div>
 
+  <!-- Unit Filter -->
   <div class="col-md-2">
     <label for="unit" class="form-label">Unit</label>
     <select name="unit" id="unit" class="form-select">
       <option value="">All</option>
       {% for u in units %}
-        <option value="{{ u }}" {% if selected_unit == u %}selected{% endif %}>{{ u }}</option>
+        <option value="{{ u }}" {% if selected_unit|default_if_none:'' == u %}selected{% endif %}>{{ u }}</option>
       {% endfor %}
     </select>
   </div>
 
+  <!-- Project Filter -->
   <div class="col-md-2">
     <label for="project" class="form-label">Project</label>
     <select name="project" id="project" class="form-select">
       <option value="">All</option>
+      {% if selected_project_obj and selected_project_obj.id not in project_ids %}
+        <option value="{{ selected_project_obj.id }}" selected>{{ selected_project_obj.name }}</option>
+      {% endif %}
       {% for p in projects %}
-        <option value="{{ p.id }}" {% if selected_project|default:'' == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
+        <option value="{{ p.id }}" {% if selected_project|default_if_none:''|stringformat:"s" == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
       {% endfor %}
     </select>
   </div>
 
+  <!-- Indicator Filter -->
   <div class="col-md-2">
     <label for="indicator" class="form-label">Indicator</label>
     <select name="indicator" id="indicator" class="form-select">
       <option value="">All</option>
+      {% if selected_indicator_obj and selected_indicator_obj.id not in indicator_ids %}
+        <option value="{{ selected_indicator_obj.id }}" selected>{{ selected_indicator_obj.name }}</option>
+      {% endif %}
       {% for i in indicators %}
-        <option value="{{ i.id }}" {% if selected_indicator|default:'' == i.id|stringformat:"s" %}selected{% endif %}>{{ i.name }}</option>
+        <option value="{{ i.id }}" {% if selected_indicator|default_if_none:''|stringformat:"s" == i.id|stringformat:"s" %}selected{% endif %}>{{ i.name }}</option>
       {% endfor %}
     </select>
   </div>
-
-  <div class="col-md-4 d-flex gap-2">
-    <a id="download-csv" href="{% url 'more_reports_export_csv' %}?year={{ selected_year }}&unit={{ selected_unit }}&project={{ selected_project }}&indicator={{ selected_indicator }}" class="btn btn-success">
-      Download CSV
-    </a>
-    <button type="button" class="btn btn-primary" id="downloadChartBtn">
-      Download Chart
-    </button>
-  </div>
 </form>
 
+
+<!-- Actions: CSV, Excel, PDF, and Chart Download -->
+<div class="d-flex justify-content-end mb-3 gap-2">
+  <a id="download-csv" href="#" class="btn btn-success">Download CSV</a>
+  <a id="download-excel" href="#" class="btn btn-warning">Download Excel</a>
+  <a id="download-pdf" href="#" class="btn btn-danger">Download PDF</a> <!-- New PDF button -->
+  <button type="button" class="btn btn-primary" id="downloadChartBtn">Download Chart</button>
+</div>
+
+<!-- Pivot Table Section -->
+<div id="pivot-table-container">
+  {# Your pivot table rendering goes here #}
+</div>
+
+<!-- Update CSV, Excel & PDF links dynamically based on filters -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('pivotFilterForm');
+    const selects = form.querySelectorAll('select');
+
+    const csvLink = document.getElementById('download-csv');
+    const excelLink = document.getElementById('download-excel');
+    const pdfLink = document.getElementById('download-pdf'); // New PDF link
+
+    function updateLinks() {
+        const params = new URLSearchParams({
+            year: document.getElementById('year').value,
+            unit: document.getElementById('unit').value,
+            project: document.getElementById('project').value,
+            indicator: document.getElementById('indicator').value
+        });
+        csvLink.href = `{% url 'more_reports_export_csv' %}?` + params.toString();
+        excelLink.href = `{% url 'more_reports_export_excel' %}?` + params.toString();
+        pdfLink.href = `{% url 'more_reports_pdf' %}?` + params.toString(); // Attach filters to PDF
+    }
+
+    // Update links on page load
+    updateLinks();
+
+    // Update links whenever a filter changes
+    selects.forEach(select => {
+        select.addEventListener('change', function() {
+            updateLinks();
+            form.submit();  // Optional: auto-refresh the table
+        });
+    });
+});
+</script>
+
+
+
 <!-- Tabs for Analytics -->
-<ul class="nav nav-tabs mb-3" id="analyticsTabs" role="tablist">
-  <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#distribution">Distribution</button></li>
-  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#progress">Progress</button></li>
-  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#cumulative">Cumulative</button></li>
-  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#top-bottom">Top/Bottom</button></li>
-  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#heatmap">Heatmap</button></li>
-  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#correlation">Correlation</button></li>
-  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#year-over-year">Year-over-Year</button></li>
+<ul class="nav nav-tabs mb-3" id="analyticsTabs" role="tablist" aria-label="Analytics tabs">
+  <li class="nav-item" role="presentation">
+    <button id="tab-distribution" class="nav-link active" data-bs-toggle="tab" data-bs-target="#distribution" type="button" role="tab" aria-controls="distribution" aria-selected="true">
+      Distribution
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button id="tab-progress" class="nav-link" data-bs-toggle="tab" data-bs-target="#progress" type="button" role="tab" aria-controls="progress" aria-selected="false">
+      Progress
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button id="tab-cumulative" class="nav-link" data-bs-toggle="tab" data-bs-target="#cumulative" type="button" role="tab" aria-controls="cumulative" aria-selected="false">
+      Cumulative
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button id="tab-top-bottom" class="nav-link" data-bs-toggle="tab" data-bs-target="#top-bottom" type="button" role="tab" aria-controls="top-bottom" aria-selected="false">
+      Top/Bottom
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button id="tab-heatmap" class="nav-link" data-bs-toggle="tab" data-bs-target="#heatmap" type="button" role="tab" aria-controls="heatmap" aria-selected="false">
+      Heatmap
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button id="tab-correlation" class="nav-link" data-bs-toggle="tab" data-bs-target="#correlation" type="button" role="tab" aria-controls="correlation" aria-selected="false">
+      Correlation
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button id="tab-yoy" class="nav-link" data-bs-toggle="tab" data-bs-target="#year-over-year" type="button" role="tab" aria-controls="year-over-year" aria-selected="false">
+      Year-over-Year
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+  <button id="tab-monthly-trend" class="nav-link" data-bs-toggle="tab" data-bs-target="#monthly-trend" type="button" role="tab" aria-controls="monthly-trend" aria-selected="false">
+    Monthly Trend
+  </button>
+</li>
 </ul>
 
 <style>
+  /* Tab pane fade animation */
   .tab-content .tab-pane {
-    padding-top: 20px;
+    padding-top: 25px;
     opacity: 0;
-    transition: opacity 0.6s ease-in-out;
+    transition: opacity 0.45s ease-in-out;
+    min-height: 420px; /* ensures a minimum visible area even when content is briefly hidden */
   }
-  .tab-content .tab-pane.show.active {
-    opacity: 1;
-  }
+  .tab-content .tab-pane.show.active { opacity: 1; }
+
+  /* Chart container: keep a stable height so canvases don't collapse */
   .chart-container {
-    margin-top: 10px;
-    min-height: 420px; /* ensures charts maintain space when switching tabs */
+    margin-top: 20px;
+    width: 100%;
+    min-height: 550px;   /* main visible height for charts */
+    position: relative;
+    display: flex;
+    align-items: stretch; /* let child canvas fill vertically */
+  }
+
+  /* Heatmap: give Leaflet a definite height (avoid height:100% pitfalls) */
+  #heatmapMapContainer {
+    width: 100%;
+    height: 520px;       /* fixed, reliable height for Leaflet */
+    min-height: 380px;
+  }
+
+  /* Ensure chart canvases fill their container (prevents 0px height issues) */
+  .chart-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
   }
 
   /* Pivot Table Coloring */
-  table.table-striped tbody tr:nth-of-type(odd) { background-color: #f9f9f9; }
+  table.table-striped tbody tr:nth-of-type(odd)  { background-color: #f9f9f9; }
   table.table-striped tbody tr:nth-of-type(even) { background-color: #ffffff; }
   table.table-bordered th { background-color: #4e79a7; color: #fff; }
 
@@ -96,75 +202,98 @@
     display: grid !important;
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     gap: 6px 18px;
-    max-height: 120px;
+    max-height: 140px;
     overflow-y: auto;
     padding: 8px;
-    margin-top: 8px;
+    margin-top: 10px;
+  }
+
+  /* Small screens tweaks */
+  @media (max-width: 768px) {
+    .chart-container { min-height: 420px; }
+    #heatmapMapContainer { height: 360px; }
   }
 </style>
 
+
+
 <div class="tab-content">
   <!-- Distribution -->
-  <div class="tab-pane fade show active" id="distribution">
-    <div class="chart-container mb-4" style="max-width:800px; margin:auto;">
+  <div class="tab-pane fade show active" id="distribution" role="tabpanel" aria-labelledby="tab-distribution">
+    <div class="chart-container" style="height:500px;">
       <canvas id="distributionChart"></canvas>
+      <p id="distributionNoData" class="text-center mt-3 d-none">No data available.</p>
     </div>
   </div>
 
   <!-- Progress -->
-  <div class="tab-pane fade" id="progress">
-    <div class="chart-container mb-4" style="max-width:800px; margin:auto;">
+  <div class="tab-pane fade" id="progress" role="tabpanel" aria-labelledby="tab-progress">
+    <div class="chart-container" style="height:500px;">
       <canvas id="progressChart"></canvas>
       <p id="progressNoData" class="text-center mt-3 d-none">No data available.</p>
     </div>
   </div>
 
   <!-- Cumulative -->
-  <div class="tab-pane fade" id="cumulative">
-    <div class="chart-container mb-4" style="max-width:800px; margin:auto;">
+  <div class="tab-pane fade" id="cumulative" role="tabpanel" aria-labelledby="tab-cumulative">
+    <div class="chart-container" style="height:500px;">
       <canvas id="cumulativeChart"></canvas>
+      <p id="cumulativeNoData" class="text-center mt-3 d-none">No data available.</p>
     </div>
   </div>
 
   <!-- Top/Bottom -->
-  <div class="tab-pane fade" id="top-bottom">
-    <div class="chart-container mb-4" style="max-width:800px; margin:auto;">
+  <div class="tab-pane fade" id="top-bottom" role="tabpanel" aria-labelledby="tab-top-bottom">
+    <div class="chart-container" style="height:500px;">
       <canvas id="rankingChart"></canvas>
+      <p id="rankingNoData" class="text-center mt-3 d-none">No data available.</p>
     </div>
   </div>
 
-  <!-- Heatmap -->
-  <div class="tab-pane fade" id="heatmap">
-    <div class="chart-container mb-4" style="max-width:800px; margin:auto;">
-      <canvas id="heatmapChart"></canvas>
-      <p id="heatmapNoData" class="text-center mt-3 d-none">No data available.</p>
+  <!-- Heatmap (Leaflet) -->
+  <div class="tab-pane fade" id="heatmap" role="tabpanel" aria-labelledby="tab-heatmap">
+    <div class="chart-container" style="height:520px;">
+      <div id="heatmapMapContainer"></div>
     </div>
+    <p id="heatmapNoData" class="text-center mt-3 d-none">No data available.</p>
   </div>
 
   <!-- Correlation -->
-  <div class="tab-pane fade" id="correlation">
-    <div class="chart-container mb-4" style="max-width:800px; margin:auto;">
+  <div class="tab-pane fade" id="correlation" role="tabpanel" aria-labelledby="tab-correlation">
+    <div class="chart-container" style="height:500px;">
       <canvas id="correlationChart"></canvas>
       <p id="correlationNoData" class="text-center mt-3 d-none">No data available.</p>
     </div>
   </div>
 
   <!-- Year-over-Year -->
-  <div class="tab-pane fade" id="year-over-year">
-    <div class="chart-container mb-4" style="max-width:800px; margin:auto; height:380px;">
+  <div class="tab-pane fade" id="year-over-year" role="tabpanel" aria-labelledby="tab-yoy">
+    <div class="chart-container" style="height:500px;">
       <canvas id="yoyChart"></canvas>
       <p id="yoyNoData" class="text-center mt-3 d-none">No data available.</p>
     </div>
   </div>
+
+  <!-- Monthly Trend -->
+  <div class="tab-pane fade" id="monthly-trend" role="tabpanel" aria-labelledby="tab-monthly-trend">
+    <div class="chart-container" style="height:500px;">
+      <canvas id="monthlyTrendChart"></canvas>
+      <p id="monthlyTrendNoData" class="text-center mt-3 d-none">No data available.</p>
+    </div>
+  </div>
 </div>
+
+
 
 <div class="my-9"></div>
 
 <!-- Pivot Table -->
 <h4 class="mt-5">Custom Reports (Pivot Table)</h4>
-<table class="table table-bordered table-striped">
+<table class="table table-bordered table-striped table-sm" style="font-size:0.85rem;">
   <thead>
     <tr>
+      <th>Year</th>
+      <th>Project</th>
       <th>Indicator</th>
       <th>Unit</th>
       {% for m in month_headers %}<th>{{ m }}</th>{% endfor %}
@@ -176,225 +305,364 @@
   <tbody>
     {% for row in pivot_data %}
       <tr>
+        <td>{{ row.year|default:selected_year }}</td>
+        <td>{{ row.project|default:"-" }}</td>
         <td>{{ row.indicator }}</td>
         <td>{{ row.unit }}</td>
-        {% for val in row.values %}<td>{{ val }}</td>{% endfor %}
-        <td>{{ row.total }}</td>
-        <td>{{ row.target }}</td>
+        {% for val in row.values %}
+          <td>{{ val|default:"0" }}</td>
+        {% endfor %}
+        <td>{{ row.total|default:"0" }}</td>
+        <td>{{ row.target|default:"0" }}</td>
         <td style="color:{% if row.progress >= 75 %}#59a14f{% elif row.progress >= 50 %}#edc949{% else %}#e15759{% endif %}; font-weight:bold;">
-          {{ row.progress }}%
+          {{ row.progress|default:"0" }}%
         </td>
       </tr>
     {% empty %}
-      <tr><td colspan="{{ 5|add:month_headers|length }}" class="text-center">No data available.</td></tr>
+      <tr>
+        <td colspan="{{ 8|add:month_headers|length }}" class="text-center">No data available.</td>
+      </tr>
     {% endfor %}
   </tbody>
   <tfoot>
     <tr>
-      <th colspan="2">Column Totals</th>
-      {% for m in month_headers %}<th>{{ column_totals|get_item:m }}</th>{% endfor %}
-      <th>{{ grand_total }}</th>
+      <th colspan="4">Column Totals</th>
+      {% for m in month_headers %}<th>{{ column_totals|get_item:m|default:"0" }}</th>{% endfor %}
+      <th>{{ grand_total|default:"0" }}</th>
       <th>-</th>
       <th>-</th>
     </tr>
   </tfoot>
 </table>
-
+ 
 <!-- Chart.js Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix@2.0.0/dist/chartjs-chart-matrix.min.js"></script>
 
+<!-- Leaflet for Heatmap -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   const form = document.getElementById('pivotFilterForm');
+  if (!form) return;
   const selects = form.querySelectorAll('select');
   const csvLink = document.getElementById('download-csv');
   const chartDownloadBtn = document.getElementById('downloadChartBtn');
 
+  // --- State ---
+  let distributionChart, progressChart, cumulativeChart, rankingChart, correlationChart, yoyChart, monthlyTrendChart;
+  let heatmapMap = null, heatLayer = null, facilityMarkers = [];
+
+  // --- Chart & Heatmap Data ---
+  let distributionLabels = {{ indicator_distribution_labels|safe }};
+  let distributionData   = {{ indicator_distribution_data|safe }};
+  let progressLabels     = {{ indicator_progress_labels|safe }};
+  let progressData       = {{ indicator_progress_data|safe }};
+  let cumulativeData     = {{ cumulative_performance|safe }};
+  let topLabels          = {{ top_indicators_labels|safe }};
+  let topData            = {{ top_indicators_data|safe }};
+  let correlationData    = {{ correlation_data|safe }};
+  let yoyLabels          = {{ yoy_labels|safe }};
+  let yoyData            = {{ yoy_data_values|safe }};
+  let monthLabels        = {{ month_headers|safe }};
+  let facilitiesData     = {{ facilities_json|safe }};
+  let monthlyTrendsData  = {{ monthly_trends_data|default:'[]'|safe }};
+
+  const chartOptionsBase = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation:{ duration:1000, easing:'easeOutQuart' },
+    plugins: {
+      legend:{ position:'bottom', labels:{ usePointStyle:true, boxWidth:12, padding:10 }},
+      datalabels:{ color:'#000', anchor:'end', align:'top', font:{weight:'bold'}},
+      background:{ color:'#ffffff' }
+    }
+  };
+
+  // --- Chart download ---
+  if(chartDownloadBtn){
+    chartDownloadBtn.addEventListener('click', function() {
+      const activeCanvas = document.querySelector('.tab-pane.active canvas');
+      if(activeCanvas){
+        const chart = Chart.getChart(activeCanvas.id);
+        if(chart){
+          const originalBg = chart.options.plugins.background;
+          chart.options.plugins.background = { color:'#ffffff' };
+          chart.update();
+          const link = document.createElement('a');
+          link.href = chart.toBase64Image();
+          link.download = activeCanvas.id+'.png';
+          link.click();
+          chart.options.plugins.background = originalBg;
+          chart.update();
+        }
+      }
+    });
+  }
+
+  // --- Helper: create/update chart ---
+  function createOrUpdateChart(varRef, ctxId, config){
+    if(varRef){
+      varRef.data = config.data;
+      varRef.options = config.options;
+      varRef.update();
+      return varRef;
+    } else {
+      return new Chart(ctxId, config);
+    }
+  }
+
+  // --- Render all charts ---
+  function renderAllCharts() {
+    const colors = ['#4e79a7','#f28e2b','#59a14f','#edc949','#e15759','#76b7b2','#af7aa1','#ff9da7'];
+
+    if(distributionData?.length){
+      distributionChart = createOrUpdateChart(distributionChart, 'distributionChart', {
+        type:'bar',
+        data:{ labels:distributionLabels, datasets:[{ label:'Distribution', data:distributionData, backgroundColor:colors.slice(0,distributionData.length), barThickness:45, categoryPercentage:0.7 }] },
+        options:{...chartOptionsBase, scales:{ y:{ beginAtZero:true }}},
+        plugins:[ChartDataLabels]
+      });
+    }
+
+    if(progressData?.length){
+      progressChart = createOrUpdateChart(progressChart, 'progressChart', {
+        type:'bar',
+        data:{ labels:progressLabels, datasets:[{ label:'Progress (%)', data:progressData, backgroundColor:progressData.map(v=>v>=75?'#59a14f':v>=50?'#edc949':'#e15759'), barThickness:50, categoryPercentage:0.7 }] },
+        options:{...chartOptionsBase, scales:{ y:{ beginAtZero:true, max:100 }}},
+        plugins:[ChartDataLabels]
+      });
+    }
+
+    if(cumulativeData?.length){
+      cumulativeChart = createOrUpdateChart(cumulativeChart, 'cumulativeChart', {
+        type:'line',
+        data:{ labels:monthLabels, datasets:cumulativeData.map((item,i)=>({ label:item.indicator, data:item.values, fill:true, borderColor:colors[i%colors.length], backgroundColor:colors[i%colors.length]+'33', tension:0.3 })) },
+        options:{...chartOptionsBase},
+        plugins:[ChartDataLabels]
+      });
+    }
+
+    if(topData?.length){
+      rankingChart = createOrUpdateChart(rankingChart, 'rankingChart', {
+        type:'bar',
+        data:{ labels:topLabels, datasets:[{ label:'Top Indicators', data:topData, backgroundColor:colors.slice(0,topData.length), barThickness:45, categoryPercentage:0.7 }] },
+        options:{...chartOptionsBase, scales:{ y:{ beginAtZero:true }}},
+        plugins:[ChartDataLabels]
+      });
+    }
+
+    if(correlationData?.length){
+      correlationChart = createOrUpdateChart(correlationChart, 'correlationChart', {
+        type:'scatter',
+        data:{ datasets:[{ label:'Correlation', data:correlationData, backgroundColor:'#4e79a7' }] },
+        options:{...chartOptionsBase, scales:{ x:{ beginAtZero:true }, y:{ beginAtZero:true }}},
+        plugins:[ChartDataLabels]
+      });
+    }
+
+    if(yoyData?.length){
+      yoyChart = createOrUpdateChart(yoyChart, 'yoyChart', {
+        type:'line',
+        data:{ labels:yoyLabels, datasets:[{ label:'Total Value', data:yoyData, fill:false, borderColor:'#4e79a7', tension:0.3 }] },
+        options:{...chartOptionsBase},
+        plugins:[ChartDataLabels]
+      });
+    }
+
+    // --- Monthly Trend Chart ---
+    renderMonthlyTrendChart({ monthly_trends_data: monthlyTrendsData, month_headers: monthLabels });
+  }
+
+// --- Monthly Trend Chart Renderer ---
+function renderMonthlyTrendChart(data) {
+  const colors = ['#4e79a7','#f28e2b','#59a14f','#edc949','#e15759','#76b7b2','#af7aa1','#ff9da7'];
+  const noDataEl = document.getElementById('monthlyTrendNoData');
+
+  if(data.monthly_trends_data?.length){
+    // Hide "No data" message
+    if(noDataEl) noDataEl.classList.add('d-none');
+
+    if(monthlyTrendChart){
+      monthlyTrendChart.data.labels = data.month_headers;
+      monthlyTrendChart.data.datasets = data.monthly_trends_data.map((item,i)=>({
+        label: item.indicator,
+        data: item.values,
+        borderColor: colors[i % colors.length],
+        backgroundColor: colors[i % colors.length]+'33',
+        fill:true,
+        tension:0.3,
+        pointRadius: 5,
+        pointHoverRadius: 7
+      }));
+      monthlyTrendChart.update();
+    } else {
+      monthlyTrendChart = new Chart('monthlyTrendChart', {
+        type: 'line',
+        data: {
+          labels: data.month_headers,
+          datasets: data.monthly_trends_data.map((item,i)=>({
+            label: item.indicator,
+            data: item.values,
+            borderColor: colors[i % colors.length],
+            backgroundColor: colors[i % colors.length]+'33',
+            fill:true,
+            tension:0.3,
+            pointRadius: 5,
+            pointHoverRadius: 7
+          }))
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { usePointStyle: true } },
+            datalabels: {
+              color: '#000',
+              anchor: 'end',
+              align: 'top',
+              font: { weight: 'bold', size: 12 },
+              formatter: function(value) { return value; }
+            }
+          },
+          scales: { y: { beginAtZero:true } }
+        },
+        plugins: [ChartDataLabels]
+      });
+    }
+  } else {
+    if(noDataEl) noDataEl.classList.remove('d-none');
+  }
+}
+
+
+  // --- Heatmap ---
+  function initHeatmap(){
+    if(!heatmapMap){
+      heatmapMap = L.map('heatmapMapContainer').setView([0,0],2);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ attribution:'&copy; OpenStreetMap contributors' }).addTo(heatmapMap);
+    }
+
+    if(heatLayer && heatmapMap.hasLayer(heatLayer)) heatmapMap.removeLayer(heatLayer);
+    facilityMarkers.forEach(m=>heatmapMap.removeLayer(m));
+    facilityMarkers = [];
+
+    const heatPoints = facilitiesData.filter(f=>f.latitude && f.longitude && f.total>0).map(f=>[f.latitude,f.longitude,f.total]);
+    if(heatPoints.length){
+      const maxI = Math.max(...heatPoints.map(p=>p[2]));
+      const norm = heatPoints.map(p=>[p[0],p[1],p[2]/maxI]);
+      heatLayer = L.heatLayer(norm,{ radius:25, blur:15, maxZoom:17 }).addTo(heatmapMap);
+      heatmapMap.fitBounds(norm.map(p=>[p[0],p[1]]),{ padding:[50,50] });
+
+      facilitiesData.filter(f=>f.latitude && f.longitude && f.total>0).forEach(f=>{
+        const marker = L.marker([f.latitude, f.longitude]).addTo(heatmapMap);
+        marker.bindTooltip(`${f.name}: ${f.total}`, { permanent:true, direction:'top', className:'facility-label' });
+        facilityMarkers.push(marker);
+      });
+
+    } else {
+      document.getElementById('heatmapNoData')?.classList.remove('d-none');
+    }
+
+    setTimeout(()=>heatmapMap.invalidateSize(),200);
+  }
+
+  // --- Update CSV link ---
   function updateCsvLink() {
+    if (!csvLink) return;
     const params = new URLSearchParams({
-      year: document.getElementById('year').value,
-      unit: document.getElementById('unit').value,
-      project: document.getElementById('project').value,
-      indicator: document.getElementById('indicator').value
+      year: document.getElementById('year')?.value || '',
+      unit: document.getElementById('unit')?.value || '',
+      project: document.getElementById('project')?.value || '',
+      indicator: document.getElementById('indicator')?.value || ''
     });
     csvLink.href = `{% url 'more_reports_export_csv' %}?` + params.toString();
   }
 
-  selects.forEach(select => select.addEventListener('change', () => { updateCsvLink(); form.submit(); }));
-  updateCsvLink();
-
-  function hasData(data) { return Array.isArray(data) && data.length > 0; }
-
-  const distributionLabels = {{ indicator_distribution_labels|safe }};
-  const distributionData = {{ indicator_distribution_data|safe }};
-  const progressLabels = {{ indicator_progress_labels|safe }};
-  const progressData = {{ indicator_progress_data|safe }};
-  const cumulativeData = {{ cumulative_performance|safe }};
-  const topLabels = {{ top_indicators_labels|safe }};
-  const topData = {{ top_indicators_data|safe }};
-  const heatmapData = {{ heatmap|safe }};
-  const heatmapLabels = {{ indicator_labels|safe }};
-  const correlationData = {{ correlation_data|safe }};
-  const yoyLabels = {{ yoy_labels|safe }};
-  const yoyData = {{ yoy_data_values|safe }};
-  const monthLabels = {{ month_headers|safe }};
-
-  const chartOptionsBase = {
-    responsive:true,
-    maintainAspectRatio:false,
-    animation:{duration:1000,easing:'easeOutQuart'},
-    plugins: { 
-      legend:{
-        position:'bottom',
-        labels:{ usePointStyle:true, boxWidth:12, padding:10 },
-      }, 
-      datalabels:{color:'#000', anchor:'center', align:'center', font:{weight:'bold'}}, 
-      background:{color:'#ffffff'} 
-    }
-  };
-
-  window.downloadChart = function(chartId, filename) {
-    const chart = Chart.getChart(chartId);
-    if(chart){
-      const originalBg = chart.options.plugins.background;
-      chart.options.plugins.background = { color:'#ffffff' };
-      chart.update();
-      const link = document.createElement('a');
-      link.href = chart.toBase64Image();
-      link.download = filename;
-      link.click();
-      chart.options.plugins.background = originalBg;
-      chart.update();
-    }
-  };
-
-  chartDownloadBtn.addEventListener('click', function() {
-    const activeTab = document.querySelector('.tab-pane.active canvas');
-    if(activeTab){
-      downloadChart(activeTab.id, activeTab.id + '.png');
-    }
-  });
-
-  let distributionChart, progressChart, cumulativeChart, rankingChart, heatmapChart, correlationChart, yoyChart;
-
-  function renderCharts() {
-    const colorPalette = ['#4e79a7','#f28e2b','#59a14f','#edc949','#e15759','#76b7b2','#af7aa1','#ff9da7'];
-
-    // Distribution
-    if(hasData(distributionData)){
-      if(distributionChart) distributionChart.destroy();
-      distributionChart = new Chart('distributionChart', {
-        type:'doughnut',
-        data:{labels:distributionLabels,datasets:[{data:distributionData,backgroundColor:colorPalette}]},
-        options:{...chartOptionsBase, plugins:{...chartOptionsBase.plugins, tooltip:{enabled:false}}, maintainAspectRatio:false},
-        plugins: [ChartDataLabels]
+  // --- Fetch new data via AJAX ---
+  function fetchFilteredData() {
+    const params = {
+      year: document.getElementById('year')?.value || '',
+      unit: document.getElementById('unit')?.value || '',
+      project: document.getElementById('project')?.value || '',
+      indicator: document.getElementById('indicator')?.value || ''
+    };
+    fetch("{% url 'pivot_filter_data_json' %}?" + new URLSearchParams(params))
+      .then(res => res.json())
+      .then(data => {
+        distributionLabels = data.indicator_distribution_labels;
+        distributionData   = data.indicator_distribution_data;
+        progressLabels     = data.indicator_progress_labels;
+        progressData       = data.indicator_progress_data;
+        cumulativeData     = data.cumulative_performance;
+        topLabels          = data.top_indicators_labels;
+        topData            = data.top_indicators_data;
+        correlationData    = data.correlation_data;
+        yoyLabels          = data.yoy_labels;
+        yoyData            = data.yoy_data_values;
+        monthLabels        = data.month_headers;
+        facilitiesData     = data.facilities_json;
+        monthlyTrendsData  = data.monthly_trends_data || [];
+        renderAllCharts();
+        const activeTab = document.querySelector('.tab-pane.show.active');
+        if(activeTab && activeTab.id === 'heatmap') initHeatmap();
+        updateCsvLink();
       });
-    }
-
-    // Progress
-    if(hasData(progressData)){
-      if(progressChart) progressChart.destroy();
-      progressChart = new Chart('progressChart', {
-        type:'bar',
-        data:{
-          labels: progressLabels,
-          datasets:[{label:'Progress (%)',data:progressData,backgroundColor:progressData.map(v=>v>=75?'#59a14f':v>=50?'#edc949':'#e15759')}]
-        },
-        options:{...chartOptionsBase, scales:{y:{beginAtZero:true,max:100}}, maintainAspectRatio:false },
-        plugins:[ChartDataLabels]
-      });
-    }
-
-    // Cumulative
-    if(hasData(cumulativeData)){
-      if(cumulativeChart) cumulativeChart.destroy();
-      cumulativeChart = new Chart('cumulativeChart',{
-        type:'line',
-        data:{labels:monthLabels,datasets:cumulativeData.map((item,i)=>({
-          label:item.indicator,
-          data:item.values,
-          fill:true,
-          borderColor:colorPalette[i%colorPalette.length],
-          backgroundColor:colorPalette[i%colorPalette.length]+'33',
-          tension:0.3
-        }))},
-        options:{...chartOptionsBase, maintainAspectRatio:false},
-        plugins:[ChartDataLabels]
-      });
-    }
-
-    // Top/Bottom
-    if(hasData(topData)){
-      if(rankingChart) rankingChart.destroy();
-      rankingChart = new Chart('rankingChart',{
-        type:'bar',
-        data:{labels:topLabels,datasets:[{label:'Top Indicators',data:topData,backgroundColor:colorPalette.slice(0,topData.length)}]},
-        options:{...chartOptionsBase, scales:{y:{beginAtZero:true}}, maintainAspectRatio:false},
-        plugins:[ChartDataLabels]
-      });
-    }
-
-    // Heatmap
-    if(hasData(heatmapData)){
-      if(heatmapChart) heatmapChart.destroy();
-      heatmapChart = new Chart('heatmapChart',{
-        type:'matrix',
-        data:{datasets:[{
-          label:'Heatmap',
-          data:heatmapData.flatMap((row,i)=>row.map((v,j)=>({x:j,y:i,v:v}))),
-          backgroundColor: ctx=>{
-            const val = ctx.dataset.data[ctx.dataIndex].v;
-            const max = Math.max(...ctx.dataset.data.map(d=>d.v));
-            const intensity = max ? val/max : 0;
-            return `rgba(54,162,235,${0.3 + 0.7*intensity})`;
-          },
-          width:({chart})=> chart.chartArea ? chart.chartArea.width/monthLabels.length : 0,
-          height:({chart})=> chart.chartArea ? chart.chartArea.height/heatmapLabels.length : 0
-        }]},
-        options:{...chartOptionsBase,
-          scales:{x:{type:'category',labels:monthLabels,offset:true,grid:{display:true}},
-                  y:{type:'category',labels:heatmapLabels,offset:true,grid:{display:true}}},
-          plugins:{legend:{display:false}, datalabels:{
-            display:true,
-            color:'#000',
-            formatter:val=>Math.round(val.v),
-            font:{weight:'bold'}
-          }, background:{color:'#ffffff'}},
-          maintainAspectRatio:false
-        },
-        plugins:[ChartDataLabels]
-      });
-    }
-
-    // Correlation
-    if(hasData(correlationData)){
-      if(correlationChart) correlationChart.destroy();
-      correlationChart = new Chart('correlationChart',{
-        type:'scatter',
-        data:{datasets:[{label:'Correlation',data:correlationData,backgroundColor:'#4e79a7'}]},
-        options:{...chartOptionsBase, scales:{x:{beginAtZero:true},y:{beginAtZero:true}}, maintainAspectRatio:false},
-        plugins:[ChartDataLabels]
-      });
-    }
-
-    // Year-over-Year
-    if(hasData(yoyData)){
-      if(yoyChart) yoyChart.destroy();
-      yoyChart = new Chart('yoyChart',{
-        type:'line',
-        data:{labels:yoyLabels,datasets:[{label:'Total Value',data:yoyData,fill:false,borderColor:'#4e79a7',tension:0.3}]},
-        options:{...chartOptionsBase, maintainAspectRatio:false},
-        plugins:[ChartDataLabels]
-      });
-    }
   }
 
-  renderCharts();
+  selects.forEach(sel => sel.addEventListener('change', fetchFilteredData));
 
-  const tabButtons = document.querySelectorAll('button[data-bs-toggle="tab"]');
-  tabButtons.forEach(btn => btn.addEventListener('shown.bs.tab', ()=>{ renderCharts(); }));
+  // --- Initial render ---
+  renderAllCharts();
+
+  // --- Tab handling ---
+  document.querySelectorAll('button[data-bs-toggle="tab"]').forEach(btn=>{
+    btn.addEventListener('shown.bs.tab',(e)=>{
+      const target = e.target.dataset.bsTarget;
+      if(target==='#heatmap'){ 
+        initHeatmap(); 
+      } else if(target==='#monthly-trend'){
+        const params = new URLSearchParams({
+          year: document.getElementById('year')?.value || '',
+          unit: document.getElementById('unit')?.value || '',
+          project: document.getElementById('project')?.value || '',
+          indicator: document.getElementById('indicator')?.value || ''
+        });
+        fetch("{% url 'monthly_trend_report' %}?" + params.toString())
+          .then(res => res.json())
+          .then(data => renderMonthlyTrendChart(data));
+      } else {
+        setTimeout(()=>{
+          const activeCanvas = document.querySelector('.tab-pane.show.active canvas');
+          if(activeCanvas){
+            const c = Chart.getChart(activeCanvas.id);
+            if(c){ c.resize(); c.update(); }
+          }
+        },120);
+      }
+    });
+  });
+
+  // --- Window resize ---
+  window.addEventListener('resize',()=>{
+    [distributionChart,progressChart,cumulativeChart,rankingChart,correlationChart,yoyChart,monthlyTrendChart].forEach(c=>{ if(c){ c.resize(); c.update(); }});
+    if(heatmapMap) heatmapMap.invalidateSize();
+  });
+
 });
 </script>
 {% endblock %}
+
+
+
+
+
+
+
+
+
+

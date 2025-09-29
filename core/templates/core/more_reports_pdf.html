@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Pivot Table PDF - Life Concern</title>
+    <style>
+        /* --- Page settings --- */
+        @page {
+            size: A4 landscape;
+            margin: 10mm 5mm 10mm 5mm;
+        }
+
+        body {
+            font-family: "Segoe UI", Arial, sans-serif;  /* QuickBooks-like font */
+            font-size: 8px;  /* smaller font to fit all columns */
+            color: #000;
+        }
+
+        /* --- Titles --- */
+        .title {
+            text-align: center;
+            font-size: 15px;
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+
+        .subtitle {
+            text-align: center;
+            font-size: 10px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        /* --- Table styling --- */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            page-break-inside: auto;
+            table-layout: fixed; /* fixed column widths */
+        }
+
+        thead {
+            display: table-header-group;
+        }
+
+        tr {
+            page-break-inside: avoid; /* avoid splitting rows */
+        }
+
+        th, td {
+            border: 1px solid #000;
+            padding: 1px 2px;
+            text-align: center;
+            vertical-align: middle;
+            word-break: break-word;
+            hyphens: auto;
+            font-size: 7px; /* smaller font inside table */
+        }
+
+        th {
+            color: #000;      /* black headers */
+            font-weight: bold; /* bold headers */
+        }
+
+        /* --- Alternating row colors --- */
+        tr:nth-child(even) td {
+            background-color: #f2f2f2;
+        }
+
+        /* --- Footer --- */
+        .footer {
+            text-align: center;
+            font-size: 6px;
+            margin-top: 5px;
+            font-style: italic;
+        }
+
+        /* --- Progress % coloring --- */
+        .progress-high { color: #006100; font-weight: bold; }
+        .progress-medium { color: #9C6500; font-weight: bold; }
+        .progress-low { color: #9C0006; font-weight: bold; }
+
+        /* --- Column widths (approx, total 100%) --- */
+        th:nth-child(1) { width: 3%; }    /* Year */
+        th:nth-child(2) { width: 9%; }    /* Project */
+        th:nth-child(3) { width: 18%; }   /* Indicator */
+        th:nth-child(4) { width: 6%; }    /* Unit */
+        th:nth-child(n+5):nth-child(-n+16) { width: 3%; } /* Months Jan-Dec */
+        th:nth-child(17), th:nth-child(18), th:nth-child(19) { width: 5%; } /* Total, Target, Progress */
+    </style>
+</head>
+<body>
+
+    <!-- --- Report Titles --- -->
+    <div class="title">Life Concern</div>
+    <div class="subtitle">Report Showing Selected Project Indicators and Progress</div>
+
+    <!-- --- Pivot Table --- -->
+    <table>
+        <thead>
+            <tr>
+                <th>Year</th>
+                <th>Project</th>
+                <th>Indicator</th>
+                <th>Unit</th>
+                {% for month in month_headers %}
+                    <th>{{ month }}</th>
+                {% endfor %}
+                <th>Total</th>
+                <th>Target</th>
+                <th>Progress (%)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in pivot_data %}
+            <tr>
+                <td>{{ row.year }}</td>
+                <td>{{ row.project }}</td>
+                <td>{{ row.indicator }}</td>
+                <td>{{ row.unit }}</td>
+                {% for val in row.values %}
+                    <td>{{ val }}</td>
+                {% endfor %}
+                <td>{{ row.total }}</td>
+                <td>{{ row.target }}</td>
+                <td class="
+                    {% if row.progress >= 75 %}
+                        progress-high
+                    {% elif row.progress >= 50 %}
+                        progress-medium
+                    {% else %}
+                        progress-low
+                    {% endif %}
+                ">{{ row.progress }}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- --- Footer --- -->
+    <div class="footer">
+        Life Concern Data Management System - Exported on {{ now|date:"Y-m-d" }}
+    </div>
+
+</body>
+</html>

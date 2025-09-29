@@ -7,7 +7,11 @@
 {% block content %}
 
 <style>
-  body { background: linear-gradient(135deg, #f0f4f8, #e0f7fa); }
+  body {
+    background: linear-gradient(135deg, #f0f4f8, #e0f7fa);
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+  }
 
   .clock-widget {
     background: linear-gradient(90deg, #ff512f, #dd2476);
@@ -22,86 +26,100 @@
   .stat-card {
     border-radius: 15px;
     color: #fff;
-    padding: 20px;
+    padding: 16px;
     transition: all 0.3s ease;
     cursor: pointer;
     border: 3px solid transparent;
     text-align: center;
   }
   .stat-card:hover {
-    transform: translateY(-6px) scale(1.04);
-    box-shadow: 0 12px 28px rgba(0,0,0,0.28), 0 0 10px rgba(255,255,255,0.2);
+    transform: translateY(-4px) scale(1.03);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2), 0 0 6px rgba(255,255,255,0.15);
   }
   .stat-card.past-year { border-color: #ffc107; }
   .icon-animate { animation: float 2s ease-in-out infinite; }
-  @keyframes float { 0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);} }
+  @keyframes float { 0%,100%{transform:translateY(0);}50%{transform:translateY(-4px);} }
 
-  .logo-container { background: #fff; padding: 8px 12px; border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+  .logo-container { background: #fff; padding: 6px 10px; border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
 
   .indicator-card {
     color: #fff;
-    padding: 1.2rem;
-    border-radius: 15px;
-    transition: all 0.3s ease;
+    padding: 1rem;
+    border-radius: 12px;
     word-wrap: break-word;
     white-space: normal;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.12);
     text-align: center;
+    opacity: 0;
+    transform: scale(0.98);
+    transition: opacity 0.6s ease-in-out, transform 0.6s ease-in-out;
+    cursor: pointer;
+    margin-bottom: 12px;  /* space between cards */
   }
+  .indicator-card.show {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+  .indicator-card:hover {
+    transform: translateY(-4px) scale(1.04);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.18), 0 0 6px rgba(255,255,255,0.15);
+  }
+
   .indicator-card.green { background: linear-gradient(135deg, #11998e, #38ef7d); }
   .indicator-card.yellow { background: linear-gradient(135deg, #f7971e, #ffd200); }
   .indicator-card.red { background: linear-gradient(135deg, #ff416c, #ff4b2b); }
-  .indicator-card:hover { transform: translateY(-5px) scale(1.03); box-shadow: 0 12px 24px rgba(0,0,0,0.25); }
 
   .chart-card {
-    border-radius: 15px;
-    padding: 1rem;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-radius: 12px;
+    padding: 0.75rem;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.12);
     background: #fff;
-    transition: all 0.3s ease;
+    transition: all 0.25s ease;
+    margin-top: 0.5rem;
   }
-  .chart-card:hover { transform: scale(1.02); box-shadow: 0 12px 24px rgba(0,0,0,0.2); }
+  .chart-card:hover { transform: scale(1.015); box-shadow: 0 8px 16px rgba(0,0,0,0.15); }
 
   .quick-btn {
-    background: linear-gradient(135deg, #0d6efd, #6610f2);
-    color: #fff;
-    border-radius: 12px;
-    padding: 10px 16px;
+    border-radius: 10px;
+    padding: 8px 14px;
     font-weight: 600;
+    color: #fff;  /* ensure text is readable */
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
     transition: transform 0.2s, box-shadow 0.2s;
   }
   .quick-btn:hover {
-    transform: scale(1.05);
-    box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+    transform: scale(1.04);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.18);
     text-decoration: none;
     color: #fff;
   }
 
-  .table-responsive { max-height: 450px; overflow-y: auto; }
-  .chart-card h5 { font-size: 1rem; line-height: 1.2; }
+  .table-responsive { max-height: 400px; overflow-y: auto; }
+  .chart-card h5 { font-size: 1rem; line-height: 1.2; margin-bottom:0.5rem; }
 
-  .indicator-values { display: flex; justify-content: space-around; margin-top: 0.5rem; }
-  .indicator-values div { text-align: center; font-size: 0.9rem; }
+  .indicator-values { display: flex; justify-content: space-around; margin-top: 0.35rem; }
+  .indicator-values div { text-align: center; font-size: 0.85rem; }
 
-  /* Legend styles */
   .legend-box {
     display: inline-block;
-    width: 18px;
-    height: 18px;
-    margin-right: 6px;
+    width: 16px;
+    height: 16px;
+    margin-right: 5px;
     border-radius: 4px;
   }
   .legend-item {
     display: inline-flex;
     align-items: center;
-    margin-right: 15px;
-    font-size: 0.85rem;
+    margin-right: 12px;
+    font-size: 0.8rem;
     font-weight: 500;
     color: #444;
   }
   .legend-green { background: linear-gradient(135deg, #11998e, #38ef7d); }
   .legend-yellow { background: linear-gradient(135deg, #f7971e, #ffd200); }
   .legend-red { background: linear-gradient(135deg, #ff416c, #ff4b2b); }
+
+  .card:last-of-type { margin-bottom: 0 !important; }
 </style>
 
 <div class="position-absolute top-0 end-0 p-2">
@@ -121,67 +139,67 @@ setInterval(updateClock, 1000);
 updateClock();
 </script>
 
-<div class="dashboard-header p-4 mb-4 text-white rounded-3" style="background: linear-gradient(90deg, #1e3c72, #2a5298);">
+<div class="dashboard-header p-3 mb-3 text-white rounded-3" style="background: linear-gradient(90deg, #1e3c72, #2a5298); margin-top:0;">
   <div class="d-flex justify-content-between align-items-center">
     <div class="d-flex align-items-center">
-      <div class="logo-container me-3">
-        <img src="{% static 'logo/logo.png' %}" alt="Logo" style="height:50px;">
+      <div class="logo-container me-2">
+        <img src="{% static 'logo/logo.png' %}" alt="Logo" style="height:45px;">
       </div>
       <div>
-        <h1 class="h3 fw-bold mb-1">Dashboard</h1>
-        <p class="mb-0">Overview of your organisation’s performance and activities.</p>
+        <h1 class="h4 fw-bold mb-1">LICO Dashboard</h1>
+        <p class="mb-0" style="font-size:0.85rem;">Overview of your organisation’s performance and activities.</p>
       </div>
     </div>
     <div>
-      <a href="{% url 'reports' %}" class="btn btn-light">
-        <i class="fas fa-chart-line me-2"></i> View Reports
+      <a href="{% url 'reports' %}" class="btn btn-light btn-sm">
+        <i class="fas fa-chart-line me-1"></i> View Reports
       </a>
     </div>
   </div>
 </div>
 
-<div class="card mb-4 p-3 shadow-sm rounded-3">
+<div class="card mb-3 p-3 shadow-sm rounded-3">
   <div class="row align-items-center">
     <div class="col-md-6 col-12">
-      <h4 class="fw-semibold mb-1">👋 Welcome, <a href="{% url 'profile' %}">{{ user.first_name|default:user.username }}</a></h4>
-      <p class="text-muted mb-0">Here’s a quick summary of your progress today.</p>
+      <h5 class="fw-semibold mb-1">👋 Welcome, <a href="{% url 'profile' %}">{{ user.first_name|default:user.username }}</a></h5>
+      <p class="text-muted mb-0" style="font-size:0.85rem;">Here’s a quick summary of your progress today.</p>
     </div>
-    <div class="col-md-6 col-12 text-md-end mt-3 mt-md-0">
+    <div class="col-md-6 col-12 text-md-end mt-2 mt-md-0">
       <form method="get" class="d-flex align-items-center gap-2 justify-content-md-end">
-        <label for="year" class="mb-0 fw-semibold">Select Year:</label>
-        <select name="year" id="year" class="form-select w-auto" onchange="this.form.submit()">
+        <label for="year" class="mb-0 fw-semibold" style="font-size:0.85rem;">Select Year:</label>
+        <select name="year" id="year" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
           {% for y in years %}
             <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
           {% endfor %}
         </select>
       </form>
-      <p class="text-muted mt-1 mb-0">Showing <strong>{{ selected_year }}</strong></p>
+      <p class="text-muted mt-1 mb-0" style="font-size:0.8rem;">Showing <strong>{{ selected_year }}</strong></p>
     </div>
   </div>
 </div>
 
-<div class="row g-4">
+<div class="row g-3">
   {% for stat in stats %}
   <div class="col-md-3 col-sm-6">
     <a href="{{ stat.url }}" class="text-decoration-none">
       <div class="card stat-card {% if selected_year != current_year %}past-year{% endif %}" style="background: {{ stat.bg_gradient }};">
-        <div class="mb-2"><i class="{{ stat.icon }} fa-2x icon-animate"></i></div>
-        <h3 class="fw-bold">{{ stat.value|default_if_none:0 }}</h3>
-        <p class="mb-0">{{ stat.label }}</p>
+        <div class="mb-1"><i class="{{ stat.icon }} fa-2x icon-animate"></i></div>
+        <h4 class="fw-bold">{{ stat.value|default_if_none:0 }}</h4>
+        <p class="mb-0" style="font-size:0.85rem;">{{ stat.label }}</p>
       </div>
     </a>
   </div>
   {% endfor %}
 </div>
 
-<div class="row g-4 mt-4">
+<div class="row g-3 mt-1">
   <div class="col-md-6">
     <div class="chart-card">
       <h5 class="fw-semibold text-primary">📊 Comparative analysis of people reached per project</h5>
       {% if comparative_labels %}
-        <canvas id="comparativeChart" height="280"></canvas>
+        <canvas id="comparativeChart" height="260"></canvas>
       {% else %}
-        <p class="text-muted m-3">No comparative data available</p>
+        <p class="text-muted m-2" style="font-size:0.85rem;">No comparative data available</p>
       {% endif %}
     </div>
   </div>
@@ -189,42 +207,49 @@ updateClock();
     <div class="chart-card">
       <h5 class="fw-semibold text-success">📈 Trend analysis of people reached per month</h5>
       {% if trend_months %}
-        <canvas id="trendChart" height="280"></canvas>
+        <canvas id="trendChart" height="260"></canvas>
       {% else %}
-        <p class="text-muted m-3">No trend data available</p>
+        <p class="text-muted m-2" style="font-size:0.85rem;">No trend data available</p>
       {% endif %}
     </div>
   </div>
 </div>
 
-<div class="card mt-4 p-3 shadow-lg rounded-3">
-  <h5 class="fw-semibold text-info">🗺️ Geographic Visualization</h5>
-  <p class="text-muted">Map will appear here (coming soon).</p>
-</div>
-
-<div class="card mt-4 p-3 shadow-lg rounded-3">
+<div class="card p-3 shadow-lg rounded-3 mt-2">
   <h5 class="fw-semibold text-warning">🔄 Key Indicators</h5>
-  
-  <!-- Legend -->
-  <div class="mb-3">
+  <div class="mb-2">
     <span class="legend-item"><span class="legend-box legend-green"></span> ≥ 90% of Target</span>
     <span class="legend-item"><span class="legend-box legend-yellow"></span> 60–89% of Target</span>
     <span class="legend-item"><span class="legend-box legend-red"></span> < 60% of Target</span>
   </div>
-
   <div id="indicator-carousel" class="row g-3">
     {% if not indicators %}
-      <p class="text-muted m-3">No indicators available</p>
+      <p class="text-muted m-2" style="font-size:0.85rem;">No indicators available</p>
     {% endif %}
   </div>
 </div>
 
-<div class="card mt-4 p-3 shadow-lg rounded-3">
+<div class="card p-3 shadow-lg rounded-3 mt-2">
   <h5 class="fw-semibold text-success">⚡ Quick Actions</h5>
-  <div class="d-flex flex-wrap gap-3 mt-3">
-    <a href="{% url 'projects' %}" class="btn quick-btn"><i class="fas fa-tasks me-2"></i> Manage Projects</a>
-    <a href="{% url 'reports' %}" class="btn quick-btn"><i class="fas fa-file-alt me-2"></i> View Reports</a>
-    <a href="{% url 'profile' %}" class="btn quick-btn"><i class="fas fa-user-circle me-2"></i> My Profile</a>
+  <div class="d-flex flex-row flex-wrap gap-2 mt-2">
+    <a href="{% url 'projects' %}" class="quick-btn" style="background: linear-gradient(135deg, #0d6efd, #6610f2);">
+      <i class="fas fa-project-diagram"></i> Manage Projects
+    </a>
+    <a href="{% url 'reports' %}" class="quick-btn" style="background: linear-gradient(135deg, #28a745, #20c997);">
+      <i class="fas fa-file-alt"></i> View Reports
+    </a>
+    <a href="{% url 'profile' %}" class="quick-btn" style="background: linear-gradient(135deg, #ffc107, #ff851b);">
+      <i class="fas fa-user"></i> My Profile
+    </a>
+    <a href="http://127.0.0.1:8000/facilities/map/" class="quick-btn" style="background: linear-gradient(135deg, #17a2b8, #0dcaf0);">
+      <i class="fas fa-map-marked-alt"></i> Maps
+    </a>
+    <a href="{% url 'data_story' %}" class="quick-btn" style="background: linear-gradient(135deg, #6f42c1, #d63384);">
+      <i class="fas fa-chart-pie"></i> Data Story
+    </a>
+    <a href="http://127.0.0.1:8000/reports/monthly-performance/" class="quick-btn" style="background: linear-gradient(135deg, #fd7e14, #ff6f61);">
+      <i class="fas fa-calendar-alt"></i> Monthly Performance
+    </a>
   </div>
 </div>
 
@@ -234,7 +259,6 @@ updateClock();
 const actualColor = {% if selected_year == current_year %}"#007bff"{% else %}"#ffc107"{% endif %};
 const targetColor = {% if selected_year == current_year %}"#28a745"{% else %}"#ffca28"{% endif %};
 
-// Force integers for chart values
 const compLabels = {{ comparative_labels|default:"[]"|safe }};
 const compActuals = {{ comparative_actuals|default:"[]"|safe }}.map(v => parseInt(v)||0);
 const compTargets = {{ comparative_targets|default:"[]"|safe }}.map(v => parseInt(v)||0);
@@ -246,7 +270,7 @@ if (compLabels.length) {
       { label: 'Actual', data: compActuals, backgroundColor: actualColor },
       { label: 'Target', data: compTargets, backgroundColor: targetColor }
     ]},
-    options: { responsive:true, plugins:{ legend:{ position:'top' }, tooltip:{ mode:'index', intersect:false }, zoom:{ zoom:{ wheel:{ enabled:true }, pinch:{ enabled:true }, mode:'x' }, pan:{ enabled:true, mode:'x' } }, title:{ display:false } }, scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1 } }, x:{ stacked:false } } }
+    options: { responsive:true, plugins:{ legend:{ position:'top' }, tooltip:{ mode:'index', intersect:false }, zoom:{ zoom:{ wheel:{ enabled:true }, pinch:{ enabled:true }, mode:'x' }, pan:{ enabled:true, mode:'x' } } }, scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1 } }, x:{ stacked:false } } }
   });
 }
 
@@ -261,41 +285,52 @@ if (trendLabels.length) {
       { label: 'Actual', data: trendActuals, borderColor: actualColor, backgroundColor:'rgba(0,123,255,0.1)', tension:0.3, fill:true },
       { label: 'Target', data: trendTargets, borderColor: targetColor, backgroundColor:'rgba(40,167,69,0.1)', tension:0.3, fill:true }
     ]},
-    options: { responsive:true, plugins:{ legend:{ position:'top' }, tooltip:{ mode:'index', intersect:false }, zoom:{ zoom:{ wheel:{ enabled:true }, pinch:{ enabled:true }, mode:'x' }, pan:{ enabled:true, mode:'x' } }, title:{ display:false } }, scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1 } } } }
+    options: { responsive:true, plugins:{ legend:{ position:'top' }, tooltip:{ mode:'index', intersect:false }, zoom:{ zoom:{ wheel:{ enabled:true }, pinch:{ enabled:true }, mode:'x' }, pan:{ enabled:true, mode:'x' } } }, scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1 } } } }
   });
 }
 
-// Indicator carousel with color coding
 const indicators = {{ indicators|default:"[]"|safe }};
 const carousel = document.getElementById("indicator-carousel");
 if (indicators.length) {
   let index = 0;
   function showIndicators() {
-    carousel.innerHTML = "";
-    const slice = indicators.slice(index, index+3);
-    slice.forEach(ind => {
-      const col = document.createElement("div");
-      col.className = "col-md-4";
-      const ratio = ind.target > 0 ? (ind.value / ind.target) * 100 : 0;
-      let statusClass = "red";
-      if (ratio >= 90) statusClass = "green";
-      else if (ratio >= 60) statusClass = "yellow";
-      const card = document.createElement("div");
-      card.className = `indicator-card h-100 ${statusClass}`;
-      const trendArrow = ind.value>ind.previous_value?"⬆️":ind.value<ind.previous_value?"⬇️":"➡️";
-      card.innerHTML = `
-        <h6 class="fw-bold mb-1">${ind.name}</h6>
-        <p class="mb-1 small">${ind.project||""}</p>
-        <div class="indicator-values">
-          <div>Last Month: <strong>${ind.last_month_value||0}</strong></div>
-          <div>Cumulative: <strong>${ind.value||0}</strong> ${trendArrow}</div>
-        </div>
-        <p class="mb-0 mt-1"><small>Target: ${ind.target||0}</small></p>
-      `;
-      col.appendChild(card);
-      carousel.appendChild(col);
+    const oldCards = Array.from(carousel.children);
+    oldCards.forEach(c => {
+      const card = c.querySelector('.indicator-card');
+      if(card) card.classList.remove('show');
     });
-    index = (index + 3) % indicators.length;
+
+    setTimeout(() => {
+      carousel.innerHTML = '';
+      const slice = indicators.slice(index, index+3);
+      slice.forEach((ind, i) => {
+        const col = document.createElement("div");
+        col.className = "col-md-4";
+        const ratio = ind.target > 0 ? (ind.value / ind.target) * 100 : 0;
+        let statusClass = "red";
+        if (ratio >= 90) statusClass = "green";
+        else if (ratio >= 60) statusClass = "yellow";
+
+        const card = document.createElement("div");
+        card.className = `indicator-card h-100 ${statusClass}`;
+        const trendArrow = ind.value > ind.previous_value ? "⬆️" : ind.value < ind.previous_value ? "⬇️" : "➡️";
+        card.innerHTML = `
+          <h6 class="fw-bold mb-1">${ind.name}</h6>
+          <p class="mb-1 small">${ind.project||""}</p>
+          <div class="indicator-values">
+            <div>Last Month: <strong>${ind.last_month_value||0}</strong></div>
+            <div>Cumulative: <strong>${ind.value||0}</strong> ${trendArrow}</div>
+          </div>
+          <p class="mb-0 mt-1"><small>Target: ${ind.target||0}</small></p>
+        `;
+        col.appendChild(card);
+        carousel.appendChild(col);
+
+        setTimeout(() => card.classList.add('show'), 50 + i*100);
+      });
+
+      index = (index + 3) % indicators.length;
+    }, 800);
   }
   showIndicators();
   setInterval(showIndicators, 15000);

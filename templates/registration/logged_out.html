@@ -6,7 +6,45 @@
   <div class="login-card">
     <h2>You have logged out</h2>
     <p class="text-muted">Thank you for using Life Concern Data Management System.</p>
-    <a href="{% url 'login' %}" class="btn-login">Log In Again</a>
+
+    <!-- Form for secure logout if needed -->
+    <form method="post" action="{% url 'logout' %}">
+      {% csrf_token %}
+      <button type="submit" class="btn-login">Log Out Completely</button>
+    </form>
+
+    <!-- Link to log in again -->
+    <a href="{% url 'login' %}" class="btn-login mt-3">Log In Again</a>
   </div>
 </div>
+
+<style>
+.login-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 80vh;
+}
+.login-card {
+  background: #fff;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  text-align: center;
+}
+.btn-login {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.6rem 1.5rem;
+  background-color: #007bff;
+  color: #fff;
+  border-radius: 6px;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+}
+.btn-login:hover {
+  background-color: #0056b3;
+}
+</style>
 {% endblock %}

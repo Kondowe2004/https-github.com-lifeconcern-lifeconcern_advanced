@@ -9,6 +9,18 @@ from .utils import send_email_alert
 
 
 # -------------------------
+# Facility Model
+# -------------------------
+class Facility(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6)
+
+    def __str__(self):
+        return self.name
+
+
+# -------------------------
 # Project Model
 # -------------------------
 class Project(models.Model):
@@ -17,7 +29,10 @@ class Project(models.Model):
     start_year = models.IntegerField(null=True, blank=True)
     end_year = models.IntegerField(null=True, blank=True)
     active = models.BooleanField(default=True)
-    
+
+    # NEW: Link projects to facilities
+    facilities = models.ManyToManyField(Facility, related_name="projects", blank=True)
+
     def __str__(self):
         return self.name
 
