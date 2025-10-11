@@ -1,138 +1,414 @@
 {% extends 'core/base.html' %}
 {% load widget_tweaks %}
+{% load custom_tags %}
+{% load static %}
 {% block title %}Data Story{% endblock %}
 
 {% block content %}
-<!-- Page Heading -->
+<!-- Heading -->
 <div class="mb-4 text-center">
-  <h2 class="display-5 fw-bold text-gradient" style="background: linear-gradient(90deg, #0d6efd, #198754); -webkit-background-clip: text; color: transparent;">
+  <h2 class="display-5 fw-bold text-gradient"
+      style="background: linear-gradient(90deg, #0d6efd, #198754); -webkit-background-clip: text; color: transparent;">
     📖 Data Story Dashboard
   </h2>
-  <p class="lead text-muted">Visualizing your Top 10 KPIs with insights, trends, and targets.</p>
+  <p class="lead text-muted">Visualizing your KPIs with insights, trends, and targets per project.</p>
+</div>
+
+<!-- Summary Section -->
+<div class="row g-3 justify-content-center mb-4 text-center">
+  <!-- Total KPIs -->
+  <div class="col-md-3">
+    <div class="card shadow-sm summary-card border-0 text-white" style="background: linear-gradient(135deg, #0d6efd, #6610f2);">
+      <div class="card-body py-3">
+        <i class="bi bi-kanban-fill fs-3 mb-1"></i>
+        <h6 class="fw-semibold mt-1 mb-0">Total KPIs</h6>
+        <h4 class="fw-bold mb-0">{{ total_kpis|default:"0" }}</h4>
+      </div>
+    </div>
+  </div>
+
+  <!-- % Improving -->
+  <div class="col-md-3">
+    <div class="card shadow-sm summary-card border-0 text-white" style="background: linear-gradient(135deg, #198754, #20c997);">
+      <div class="card-body py-3">
+        <i class="bi bi-graph-up-arrow fs-3 mb-1"></i>
+        <h6 class="fw-semibold mt-1 mb-0">% Improving</h6>
+        <h4 class="fw-bold mb-0">{{ percent_improving|default:"0" }}</h4>
+      </div>
+    </div>
+  </div>
+
+  <!-- % Declining -->
+  <div class="col-md-3">
+    <div class="card shadow-sm summary-card border-0 text-white" style="background: linear-gradient(135deg, #dc3545, #fd7e14);">
+      <div class="card-body py-3">
+        <i class="bi bi-graph-down-arrow fs-3 mb-1"></i>
+        <h6 class="fw-semibold mt-1 mb-0">% Declining</h6>
+        <h4 class="fw-bold mb-0">{{ percent_declining|default:"0" }}</h4>
+      </div>
+    </div>
+  </div>
+
+  <!-- Performance Score -->
+  <div class="col-md-3">
+    <div class="card shadow-sm summary-card border-0 text-white" style="background: linear-gradient(135deg, #ffc107, #fd7e14);">
+      <div class="card-body py-3">
+        <i class="bi bi-award-fill fs-3 mb-1"></i>
+        <h6 class="fw-semibold mt-1 mb-0">Performance Score</h6>
+        <h4 class="fw-bold mb-0">{{ performance_score|default:"0" }}</h4>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Overall Story Animated Card -->
+<div class="container text-center mb-4">
+  <div class="card overall-story border-0 p-4 mx-auto">
+    <p class="overall-story-text mb-0">{{ overall_story }}</p>
+  </div>
 </div>
 
 <!-- Year Filter -->
-<div class="mb-4 d-flex align-items-center justify-content-center gap-3">
+<div class="mb-4 d-flex align-items-center justify-content-center gap-2 flex-wrap">
   <label for="yearSelect" class="form-label fw-semibold mb-0">Select Year:</label>
-  <select id="yearSelect" class="form-select w-auto">
+  <select id="yearSelect" class="form-select w-auto" onchange="location.href='?year=' + this.value;">
     {% for year in year_list %}
       <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }}</option>
     {% endfor %}
   </select>
 </div>
 
-<!-- Container for KPI cards -->
-<div id="dataStoryContainer" class="row g-4">
-  {% include "core/partials/_data_story_cards.html" %}
+
+<!-- Project Tabs -->
+<ul class="nav nav-tabs mb-3 custom-tabs" id="projectTabs" role="tablist">
+  {% for proj in project_insights %}
+    <li class="nav-item" role="presentation">
+      <button class="nav-link {% if forloop.first %}active{% endif %}"
+              id="tab-{{ proj.project.id }}"
+              data-bs-toggle="tab"
+              data-bs-target="#proj-{{ proj.project.id }}"
+              type="button" role="tab"
+              aria-controls="proj-{{ proj.project.id }}"
+              aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">
+        {{ proj.project.name }}
+      </button>
+    </li>
+  {% endfor %}
+</ul>
+
+<div class="tab-content" id="projectTabsContent">
+  {% for proj in project_insights %}
+    <div class="tab-pane fade {% if forloop.first %}show active{% endif %}" id="proj-{{ proj.project.id }}" role="tabpanel" aria-labelledby="tab-{{ proj.project.id }}">
+      <div class="row g-4">
+        {% for kpi in proj.best %}
+          <div class="col-md-3 kpi-card">
+            <div class="card kpi-hover border-0 h-100" style="background: linear-gradient(145deg, #e8f8f0, #ffffff);">
+              <div class="card-body d-flex flex-column justify-content-between">
+                <div class="chart-container flex-grow-1">
+                  <canvas data-chart='{{ kpi.chart_data|safe }}'
+                          data-tag="{{ kpi.tag }}"
+                          data-progress="{{ kpi.progress_percent|default:0 }}"></canvas>
+                </div>
+                <div class="mt-2">
+                  <p class="text-muted small mb-1">{{ kpi.story }}</p>
+                  <p class="mb-0 text-dark small">{{ kpi.title }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+
+        {% for kpi in proj.others %}
+          <div class="col-md-3 kpi-card">
+            <div class="card kpi-hover border-0 h-100" style="background: linear-gradient(145deg, #f8f9fa, #ffffff);">
+              <div class="card-body d-flex flex-column justify-content-between">
+                <div class="chart-container flex-grow-1">
+                  <canvas data-chart='{{ kpi.chart_data|safe }}'
+                          data-tag="{{ kpi.tag }}"
+                          data-progress="{{ kpi.progress_percent|default:0 }}"></canvas>
+                </div>
+                <div class="mt-2">
+                  <p class="text-muted small mb-1">{{ kpi.story }}</p>
+                  <p class="mb-0 text-dark small">{{ kpi.title }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+
+        {% for kpi in proj.worst %}
+          <div class="col-md-3 kpi-card">
+            <div class="card kpi-hover border-0 h-100" style="background: linear-gradient(145deg, #fff0f0, #ffffff);">
+              <div class="card-body d-flex flex-column justify-content-between">
+                <div class="chart-container flex-grow-1">
+                  <canvas data-chart='{{ kpi.chart_data|safe }}'
+                          data-tag="{{ kpi.tag }}"
+                          data-progress="{{ kpi.progress_percent|default:0 }}"></canvas>
+                </div>
+                <div class="mt-2">
+                  <p class="text-muted small mb-1">{{ kpi.story }}</p>
+                  <p class="mb-0 text-dark small">{{ kpi.title }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% empty %}
+    <p class="text-center text-muted">No indicators available for the selected year.</p>
+  {% endfor %}
 </div>
+
+<style>
+.text-gradient {
+  background: linear-gradient(90deg, #0d6efd, #198754);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.kpi-hover { transition: all 0.32s cubic-bezier(.2,.8,.2,1); border-radius: 0.8rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.kpi-hover:hover { transform: translateY(-8px); box-shadow: 0 10px 30px rgba(0,0,0,0.12); }
+.summary-card { border-radius: 1rem; transition: all 0.3s ease; }
+.summary-card:hover { transform: translateY(-4px); box-shadow: 0 6px 15px rgba(0,0,0,0.15); }
+.chart-container { height: 100%; display: flex; align-items: center; justify-content: center; max-height: 250px; padding: 0.6rem 0.4rem; }
+canvas { width: 100% !important; height: 100% !important; }
+
+/* Fancy Tab Styling */
+.custom-tabs .nav-link {
+  border: none;
+  color: #495057;
+  background-color: #f8f9fa;
+  margin-right: 6px;
+  border-radius: 8px 8px 0 0;
+  transition: all 0.28s ease;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+}
+.custom-tabs .nav-link:hover {
+  background-color: #eef2ff;
+  color: #0d6efd;
+  transform: translateY(-3px);
+  box-shadow: 0 6px 18px rgba(13,110,253,0.06);
+}
+.custom-tabs .nav-link.active {
+  background: linear-gradient(90deg, #0d6efd, #198754);
+  color: white;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+/* -----------------------------
+   Overall Story Animation Card
+------------------------------*/
+.overall-story {
+  max-width: 900px;
+  background: linear-gradient(145deg, rgba(13,110,253,0.06), rgba(25,135,84,0.06));
+  border-radius: 1rem;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.06);
+  transition: all 0.36s ease;
+  animation: fadeInUp 1.0s ease;
+  border-left: 5px solid rgba(13,110,253,0.55);
+  cursor: default;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+}
+.overall-story:hover {
+  background: linear-gradient(145deg, rgba(13,110,253,0.12), rgba(25,135,84,0.12));
+  box-shadow: 0 12px 36px rgba(0,0,0,0.10);
+  transform: translateY(-6px);
+  border-left-color: rgba(25,135,84,0.9);
+}
+.overall-story-text {
+  color: #495057;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  transition: color 0.28s ease;
+}
+.overall-story:hover .overall-story-text { color: #0d6efd; }
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+</style>
 {% endblock %}
 
 {% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+
 <script>
-  // Function to render charts for KPI cards
-  function renderCharts() {
-    document.querySelectorAll('#dataStoryContainer .kpi-card canvas').forEach((canvas) => {
-      const ctx = canvas.getContext('2d');
-      const chartData = JSON.parse(canvas.dataset.chart || '{}');
-      const labels = chartData.labels || [];
-      const values = (chartData.values || []).map(v => parseFloat(v) || 0);
-      const target = parseFloat(canvas.dataset.target) || 0;
-      const tag = canvas.dataset.tag;
-      const title = canvas.dataset.title || 'KPI';
-
-      // Determine bar color based on KPI tag
-      let barColor;
-      switch(tag){
-        case "Improving": barColor='rgba(25, 135, 84, 0.6)'; break;
-        case "Declining": barColor='rgba(220, 53, 69, 0.6)'; break;
-        case "Stable": barColor='rgba(255, 193, 7, 0.6)'; break;
-        case "New": barColor='rgba(13, 110, 253, 0.6)'; break;
-        default: barColor='rgba(108, 117, 125, 0.6)';
-      }
-
-      // Destroy previous chart instance if exists
-      if (canvas.chartInstance) {
-        canvas.chartInstance.destroy();
-      }
-
-      canvas.chartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: labels,
-          datasets: [
-            {
-              label: 'Actual',
-              data: values,
-              backgroundColor: barColor,
-              borderColor: barColor.replace('0.6','1'),
-              borderWidth: 1
-            },
-            {
-              label: 'Target',
-              type: 'line',
-              data: Array(labels.length).fill(target),
-              borderColor: 'rgba(13, 110, 253, 0.8)',
-              borderWidth: 2,
-              fill: false,
-              pointRadius: 0,
-              tension: 0.1
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: { display: true, position: 'top' },
-            tooltip: {
-              mode: 'index',
-              intersect: false,
-              callbacks: {
-                label: function(context) {
-                  if(context.dataset.type === 'line') {
-                    return 'Target: ' + context.raw;
-                  } else {
-                    const actual = context.raw;
-                    const percent = target > 0 ? ((actual / target) * 100).toFixed(1) : 0;
-                    return 'Actual / Target: ' + actual + ' / ' + target + ' (' + percent + '%)';
-                  }
-                }
-              }
-            },
-            datalabels: {
-              anchor: 'end',
-              align: 'top',
-              offset: 0,
-              color: '#000000',
-              font: { weight: 'bold', size: 12 },
-              formatter: function(value) {
-                const percent = target > 0 ? ((value / target) * 100).toFixed(1) : 0;
-                return percent + '%';
-              }
-            }
-          },
-          interaction: { mode: 'nearest', axis: 'x', intersect: false },
-          scales: {
-            y: { beginAtZero: true },
-            x: { stacked: false }
-          }
-        },
-        plugins: [ChartDataLabels]
-      });
-    });
+/**
+ * Robust progress calculation:
+ * - Prefer cumulative actuals & cumulative target up to last actual month,
+ * - Fallback to data-progress attribute if chart data has no actuals,
+ * - Normalize to 0..100.
+ */
+function computeProgressFromChartData(actual, target, progressAttr) {
+  // find last index with an actual > 0
+  let lastActualIndex = -1;
+  for (let i = actual.length - 1; i >= 0; i--) {
+    const v = Number(actual[i]);
+    if (!isNaN(v) && v !== 0) { lastActualIndex = i; break; }
   }
 
-  // Initial render
-  renderCharts();
+  if (lastActualIndex === -1) {
+    // fallback: try parse progressAttr (handles "95" or "95%" or "0.95")
+    let p = parseFloat(String(progressAttr || '').replace('%',''));
+    if (isNaN(p)) return 0;
+    if (p <= 1) p = p * 100; // if fraction like 0.95 -> 95
+    return Math.min(Math.max(p, 0), 100);
+  }
 
-  // AJAX year filter
-  document.getElementById('yearSelect').addEventListener('change', function() {
-    const year = this.value;
-    fetch("{% url 'data_story' %}?year=" + year, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-      .then(response => response.text())
-      .then(html => {
-        document.getElementById('dataStoryContainer').innerHTML = html;
-        renderCharts();
-      });
+  const sliceActual = actual.slice(0, lastActualIndex + 1).map(v => Number(v) || 0);
+  const sliceTarget = target.slice(0, lastActualIndex + 1).map(v => Number(v) || 0);
+  const cumActual = sliceActual.reduce((s, x) => s + x, 0);
+  const cumTarget = sliceTarget.reduce((s, x) => s + x, 0);
+
+  if (!cumTarget) {
+    // fallback to progressAttr if target sum is zero
+    let p = parseFloat(String(progressAttr || '').replace('%',''));
+    if (isNaN(p)) return 0;
+    if (p <= 1) p = p * 100;
+    return Math.min(Math.max(p, 0), 100);
+  }
+
+  const pct = (cumActual / cumTarget) * 100;
+  return Math.min(Math.max(pct, 0), 100);
+}
+
+function getRGBfromRGBAString(rgba) {
+  const m = rgba.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+  if (m) return { r: m[1], g: m[2], b: m[3] };
+  return null;
+}
+
+function renderCharts() {
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  document.querySelectorAll('canvas').forEach(canvas => {
+    const ctx = canvas.getContext('2d');
+    let chartData = {};
+    try { chartData = JSON.parse(canvas.dataset.chart || '{}'); } catch(e){ chartData = {}; }
+
+    const actual = (chartData.actual || []).map(Number);
+    const target = (chartData.target || []).map(Number);
+    while (actual.length < 12) actual.push(0);
+    while (target.length < 12) target.push(0);
+
+    // compute robust progress (0..100)
+    const rawProgressAttr = canvas.getAttribute('data-progress') || canvas.dataset.progress || 0;
+    const progress = computeProgressFromChartData(actual, target, rawProgressAttr);
+
+    // determine colour by thresholds
+    let baseColor;
+    if (progress >= 95) baseColor = 'rgba(25,135,84,0.9)';      // green (strong)
+    else if (progress >= 80) baseColor = 'rgba(255,193,7,0.9)'; // yellow (close)
+    else baseColor = 'rgba(220,53,69,0.9)';                     // red (below)
+
+    // create gradient using parsed RGB for consistent alpha stops
+    let gradient;
+    const rgb = getRGBfromRGBAString(baseColor);
+    if (rgb) {
+      gradient = ctx.createLinearGradient(0, 0, 0, 260);
+      gradient.addColorStop(0, `rgba(${rgb.r},${rgb.g},${rgb.b},0.95)`);
+      gradient.addColorStop(1, `rgba(${rgb.r},${rgb.g},${rgb.b},0.45)`);
+    } else {
+      gradient = baseColor;
+    }
+
+    if (canvas.chartInstance) {
+      try { canvas.chartInstance.destroy(); } catch (e) { /* ignore */ }
+    }
+
+    canvas.chartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: months,
+        datasets: [
+          {
+            label: 'Actual',
+            data: actual,
+            backgroundColor: gradient,
+            borderColor: baseColor.replace(/0\.9/, '1'),
+            borderWidth: 1,
+            borderRadius: 4
+          },
+          {
+            label: 'Target',
+            type: 'line',
+            data: target,
+            borderColor: 'rgba(13,110,253,0.95)',
+            borderWidth: 2,
+            pointRadius: 4,
+            fill: false,
+            tension: 0.3,
+            // make line slightly dashed if target is zero-heavy (visual hint)
+            borderDash: target.every(v => !v) ? [4,4] : []
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 1200, easing: 'easeOutQuart' },
+        plugins: {
+          legend: { display: false },
+          tooltip: { mode: 'index', intersect: false },
+          datalabels: {
+            display: function(context) {
+              // Show labels only for actual (datasetIndex === 0)
+              return context.datasetIndex === 0;
+            },
+            anchor: 'end',
+            align: 'top',
+            color: '#000',
+            font: { weight: '600', size: 10 },
+            formatter: function(value) { return (value || value === 0) ? value : ''; }
+          }
+        },
+        scales: {
+          y: { beginAtZero: true }
+        }
+      },
+      plugins: [ChartDataLabels]
+    });
   });
+}
+
+// Re-animate charts when tab is shown
+document.addEventListener('shown.bs.tab', function () {
+  // small delay so tab becomes visible, then re-render (recreates charts -> animation)
+  setTimeout(renderCharts, 180);
+});
+
+function updateDataStory() {
+  const year = document.getElementById('yearSelect').value;
+  const url = `{% url 'data_story' %}?year=${year}`;
+  fetch(url, { headers: {'X-Requested-With':'XMLHttpRequest'} })
+    .then(r => r.json())
+    .then(data => {
+      if (data.html) {
+        const parser = new DOMParser();
+        const newHTML = parser.parseFromString(data.html, 'text/html');
+        const newContainer = newHTML.querySelector('.tab-content');
+        if (newContainer) {
+          document.querySelector('.tab-content').innerHTML = newContainer.innerHTML;
+          setTimeout(renderCharts, 260);
+        }
+        // update overall story container (if returned in HTML it will replace automatically,
+        // otherwise you may want to set via a dedicated key in JSON)
+        const newOverall = newHTML.querySelector('.overall-story-text');
+        if (newOverall) document.querySelector('.overall-story-text').innerHTML = newOverall.innerHTML;
+      }
+    })
+    .catch(err => console.error('AJAX error:', err));
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  renderCharts();
+  const yearEl = document.getElementById('yearSelect');
+  if (yearEl) yearEl.addEventListener('change', updateDataStory);
+  // periodic refresh (keeps dynamic paragraph & KPIs in sync)
+  setInterval(updateDataStory, 30000);
+});
 </script>
 {% endblock %}

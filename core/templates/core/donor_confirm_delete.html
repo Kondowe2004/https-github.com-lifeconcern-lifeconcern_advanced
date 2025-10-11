@@ -1,0 +1,20 @@
+{% extends "core/base.html" %}
+{% block title %}Delete Donor - {{ donor.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="card shadow-sm p-4 text-center">
+    <h2 class="text-danger mb-4"><i class="fas fa-exclamation-triangle"></i> Confirm Delete</h2>
+    <p class="mb-4">Are you sure you want to delete the donor <strong>{{ donor.name }}</strong>?</p>
+    <p class="text-muted mb-4">
+      This action cannot be undone. All links to projects funded by this donor will be removed.
+    </p>
+
+    <form method="POST" class="d-flex justify-content-center gap-2">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger">Yes, Delete</button>
+      <a href="{% url 'donor_detail' donor.id %}" class="btn btn-secondary">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

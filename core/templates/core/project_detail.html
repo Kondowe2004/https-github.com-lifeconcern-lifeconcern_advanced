@@ -6,47 +6,53 @@
 {% block title %}{{ project.name }} - KPI Grid{% endblock %}
 
 {% block content %}
-<div class="container-fluid" style="max-width: 1100px; margin: 0 auto;"> 
-  <!-- 🔹 Limit width to 1100px and center -->
+<div class="container-fluid px-3">
 
   <!-- Page Header -->
-  <div class="text-center mb-4">
-    <!-- Project Name -->
-    <h1 class="h5 fw-bold text-primary mb-2">{{ project.name }}</h1>
-    <!-- Project Description -->
-    <p class="text-muted mb-3">{{ project.description|default:"No description provided." }}</p>
+  <div class="mb-3">
+    <h1 class="fw-bold text-primary mb-1" style="font-size:1.5rem;">{{ project.name }}</h1>
+    <p class="text-muted mb-2" style="font-size:0.9rem;">{{ project.description|default:"No description provided." }}</p>
 
-    <!-- Action Buttons on the same line, centered -->
-    <div class="d-flex justify-content-center gap-2" style="white-space: nowrap;">
-      <a href="{% url 'project_kpis' project.id %}" class="btn btn-info btn-sm shadow-sm">
-        <i class="fas fa-chart-line me-1"></i> View KPIs
-      </a>
-      <a href="{% url 'indicator_add' project.pk %}" class="btn btn-success btn-sm shadow-sm">
-        <i class="fas fa-plus me-1"></i> Add KPI
-      </a>
-      <a href="{% url 'bulk_save_entries' project.id %}?year={{ year }}" class="btn btn-primary btn-sm shadow-sm">
-        <i class="fas fa-file-alt me-1"></i> Bulk Save Entries
-      </a>
+    <!-- Action Buttons -->
+    <div class="d-flex justify-content-between mb-3">
+      <div>
+        <a href="{% url 'project_kpis' project.id %}" class="btn btn-info shadow-sm" 
+           style="width:180px; font-size:0.9rem; padding:0.45rem 0.65rem;">
+          <i class="fas fa-chart-line me-1"></i> View KPIs
+        </a>
+      </div>
+      <div class="text-center">
+        <a href="{% url 'indicator_add' project.pk %}" class="btn btn-success shadow-sm" 
+           style="width:180px; font-size:0.9rem; padding:0.45rem 0.65rem;">
+          <i class="fas fa-plus me-1"></i> Add KPI
+        </a>
+      </div>
+      <div class="text-end">
+        <a href="{% url 'bulk_save_entries' project.id %}?year={{ year }}" class="btn btn-primary shadow-sm" 
+           style="width:180px; font-size:0.9rem; padding:0.45rem 0.65rem;">
+          <i class="fas fa-file-alt me-1"></i> Bulk Save Entries
+        </a>
+      </div>
+    </div>
+
+    <!-- Year Selector -->
+    <div class="card shadow-sm p-2 mb-3">
+      <form method="get" class="d-flex align-items-center justify-content-start flex-wrap gap-2">
+        <label class="form-label fw-semibold mb-0 me-2" style="font-size:0.85rem;">Select Year:</label>
+        <input type="number" name="year" value="{{ year }}" min="2000" max="2100"
+               class="form-control form-control-sm me-2"
+               style="width:110px; font-size:0.85rem; height:32px;">
+        <button class="btn btn-primary btn-sm" type="submit" 
+                style="font-size:0.8rem; padding:0.25rem 0.6rem; height:32px; width:60px;">
+          Go
+        </button>
+      </form>
     </div>
   </div>
 
-  <!-- Year Selector -->
-  <div class="card shadow-sm p-3 mb-4">
-    <form method="get" class="d-flex align-items-center flex-wrap gap-3">
-      <div>
-        <label class="form-label fw-semibold mb-0">Select Year:</label>
-        <input type="number" name="year" value="{{ year }}" min="2000" max="2100"
-               class="form-control d-inline-block w-auto ms-2">
-      </div>
-      <button class="btn btn-primary btn-sm" type="submit">
-        <i class="fas fa-search me-1"></i> Go
-      </button>
-    </form>
-  </div>
-
-  <!-- Instructional Text with badge links -->
+  <!-- Instruction -->
   <div class="mb-2 text-center">
-    <p class="text-muted small mb-0">
+    <p class="text-muted small mb-0" style="font-size:0.75rem;">
       ⚠️ Click on 
       <a href="{% url 'project_kpis' project.id %}" class="badge bg-info text-decoration-none">View KPIs</a> 
       to edit monthly entries. Use 
@@ -55,125 +61,113 @@
     </p>
   </div>
 
-  <!-- Indicators Table (Inline Bulk Save) -->
+  <!-- Table -->
   <form method="post" action="{% url 'bulk_save_entries' project.id %}">
     {% csrf_token %}
     <input type="hidden" name="year" value="{{ year }}">
 
     <div class="card shadow-sm p-3">
 
-      <!-- Table Header: Title + Back Button -->
-      <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <h3 class="h6 fw-bold mb-0">📊 Monthly KPI Entry Grid ({{ year }})</h3>
-        <a href="{% url 'projects' %}" class="btn btn-dark btn-sm shadow-sm">
+      <!-- Header -->
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="h6 fw-bold mb-0" style="font-size:0.9rem;">📊 Monthly KPI Entry Grid ({{ year }})</h3>
+        <a href="{% url 'projects' %}" 
+           class="btn btn-dark btn-sm shadow-sm ms-auto" 
+           style="font-size:0.8rem; padding:0.25rem 0.6rem; height:30px; width:auto;">
           <i class="fas fa-arrow-left me-1"></i> Back
         </a>
       </div>
 
-      <!-- Zoom Control -->
-      <div class="d-flex justify-content-end align-items-center mb-2 gap-2">
-        <label class="form-label mb-0 small fw-semibold">Zoom:</label>
-        <input type="range" id="zoomSlider" min="50" max="150" value="100" step="10"
-               class="form-range w-100" style="max-width:150px;">
-        <span id="zoomValue" class="small text-muted">100%</span>
-      </div>
-
-      <div class="table-responsive" id="zoomContainer">
-        <table class="table table-bordered table-striped align-middle text-center table-sm" 
-               style="table-layout: fixed; font-size: 0.8rem; width: 100%;">
+      <div class="table-responsive">
+        <table class="table table-bordered table-striped align-middle text-center table-sm w-100">
           <thead class="table-light">
             <tr>
-              <th class="text-start" style="min-width: 180px;">Indicator</th>
+              <th class="text-start" style="min-width:160px; font-size:0.75rem;">Indicator</th>
               {% for m in months %}
-                <th style="width: 55px;">{{ m|get_month_name|slice:":3" }}</th>
+                <th style="min-width:70px; font-size:0.75rem;">{{ m|get_month_name|slice:":3" }}</th>
               {% endfor %}
-              <th style="min-width: 120px;">Actions</th>
+              <th style="min-width:120px; font-size:0.75rem;">Actions</th>
             </tr>
           </thead>
           <tbody>
-          {% for ind in indicators %}
+            {% for ind in indicators %}
             <tr>
-              <td class="text-start">
+              <td class="text-start" style="font-size:0.75rem;">
                 <strong>{{ ind.name }}</strong><br>
-                <small class="text-muted">Unit: {{ ind.unit }}</small>
-                {% if ind.is_kpi %}
-                  <span class="badge bg-success ms-2">KPI</span>
-                {% endif %}
+                <small class="text-muted">{{ ind.unit }}</small>
+                {% if ind.is_kpi %}<span class="badge bg-success ms-1">KPI</span>{% endif %}
               </td>
               {% for m in months %}
                 {% with val=grid|get_item:ind.id|get_item:m %}
-                <td>
-                  <input type="number" step="0.01"
+                <td class="p-1">
+                  <input type="text"
+                         inputmode="numeric"
+                         pattern="[0-9]*"
                          name="val_{{ ind.id }}_{{ m }}"
                          value="{{ val|default:'' }}"
                          class="form-control form-control-sm text-center {% if val %}bg-success bg-opacity-10{% endif %}"
-                         style="width: 55px; font-size: 0.75rem; padding: 2px;">
+                         style="width:100%; font-size:0.75rem; padding:6px;"
+                         maxlength="8"
+                         onfocus="this.select();"
+                         autocomplete="off">
                 </td>
                 {% endwith %}
               {% endfor %}
-              <td class="text-nowrap">
-                <div class="d-flex gap-1 justify-content-center">
-                  <!-- Edit Button -->
+              <td>
+                <div class="d-flex justify-content-between">
                   <a href="{% url 'indicator_edit' project.pk ind.pk %}" 
-                     class="btn btn-warning btn-sm d-flex align-items-center justify-content-center hover-scale"
-                     style="width: 60px;">
+                     class="btn btn-warning btn-sm hover-scale" 
+                     style="flex:1; margin-right:2px; font-size:0.75rem; padding:0.25rem;">
                     <i class="fas fa-edit me-1"></i> Edit
                   </a>
-                  <!-- Delete Button -->
                   <a href="{% url 'indicator_delete' project.pk ind.pk %}" 
-                     class="btn btn-danger btn-sm d-flex align-items-center justify-content-center hover-scale"
-                     style="width: 60px;"
+                     class="btn btn-danger btn-sm hover-scale" 
+                     style="flex:1; margin-left:2px; font-size:0.75rem; padding:0.25rem;"
                      onclick="return confirm('Are you sure you want to delete this KPI?');">
                     <i class="fas fa-trash-alt me-1"></i> Delete
                   </a>
                 </div>
               </td>
             </tr>
-          {% empty %}
+            {% empty %}
             <tr>
-              <td colspan="{{ months|length|add:2 }}" class="text-center py-4 text-muted">
+              <td colspan="{{ months|length|add:2 }}" class="text-center py-4 text-muted" style="font-size:0.75rem;">
                 🚀 No KPIs available for this project.
               </td>
             </tr>
-          {% endfor %}
+            {% endfor %}
           </tbody>
         </table>
       </div>
 
       <!-- Save Button -->
-      <div class="mt-4">
-        <button class="btn btn-success w-100 py-2 fs-6" type="submit">
+      <div class="mt-3">
+        <button class="btn btn-success w-100 py-2 fs-6" type="submit" style="font-size:0.85rem;">
           💾 Save All
         </button>
       </div>
-      <p class="text-muted small mt-2">
+      <p class="text-muted small mt-2" style="font-size:0.75rem;">
         <strong>Tip:</strong> Leave a cell blank to keep it unchanged. Re-enter a value to update it.
       </p>
     </div>
   </form>
-</div> <!-- /container-fluid -->
+</div>
 
-<!-- Zoom Script -->
-<script>
-  const zoomSlider = document.getElementById("zoomSlider");
-  const zoomValue = document.getElementById("zoomValue");
-  const zoomContainer = document.getElementById("zoomContainer");
-
-  zoomSlider.addEventListener("input", () => {
-    const scale = zoomSlider.value / 100;
-    zoomContainer.style.transform = `scale(${scale})`;
-    zoomContainer.style.transformOrigin = "top left";
-    zoomValue.textContent = zoomSlider.value + "%";
-  });
-</script>
-
-<!-- Hover effect for buttons -->
+<!-- Styles -->
 <style>
 .hover-scale {
   transition: transform 0.15s ease-in-out;
 }
 .hover-scale:hover {
-  transform: scale(1.1);
+  transform: scale(1.05);
+}
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type=number] {
+  -moz-appearance: textfield;
 }
 </style>
 

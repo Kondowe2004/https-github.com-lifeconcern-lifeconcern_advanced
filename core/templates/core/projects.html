@@ -3,10 +3,10 @@
 {% block title %}Projects - Life Concern{% endblock %}
 
 {% block content %}
-<!-- Page Header (Enhanced) -->
+<!-- Page Header -->
 <div class="mb-4 text-center">
-  <h1 class="display-5 fw-bold text-primary mb-2">📂 Projects</h1>
-  <p class="lead text-secondary fst-italic mb-0">
+  <h2 class="fw-bold text-primary mb-2" style="font-size: 1.75rem;">📂 Projects</h2>
+  <p class="lead text-secondary fst-italic mb-0" style="font-size: 0.95rem;">
     Easily manage and track all your organisational projects in one place.
   </p>
   <a href="{% url 'project_add' %}" class="btn btn-success btn-sm mt-3">
@@ -18,41 +18,75 @@
 <div class="card shadow-sm p-3">
 
   <!-- Instructional Text -->
-  <div class="mb-3">
-    <p class="text-primary fw-semibold small mb-2">
-      Click on <span class="badge bg-info text-dark">View KPIs</span> to add and edit indicators, entries, and targets for your project.<br>
-      Use the <span class="badge bg-success text-dark">Facilities</span> button to link facilities to projects for mapping.
+  <div class="text-center mb-3">
+    <p class="text-primary fw-semibold small mb-0">
+      Click on <span class="badge bg-info text-dark">View KPIs</span> to manage indicators, entries, and targets — 
+      Use <span class="badge bg-success text-dark">Facilities</span> to link facilities to projects for mapping.
     </p>
   </div>
 
-  {% if projects %}
+  {% if projects_with_status %}
     <div class="table-responsive">
       <table class="table table-hover align-middle mb-0">
         <thead class="table-light">
           <tr>
             <th style="width:5%;">#</th>
-            <th style="width:20%;">Name</th>
-            <th>Description</th>
-            <th class="text-end" style="width:1%;">Actions</th>
+            <th style="width:20%;">Project & Donors</th>
+            <th style="width:15%;">Coordinator</th>
+            <th style="width:30%;">Description</th>
+            <th style="width:20%;">Dates & Status</th>
+            <th class="text-end" style="width:10%;">Actions</th>
           </tr>
         </thead>
         <tbody>
-          {% for project in projects %}
-          <tr>
+          {% for item in projects_with_status %}
+          {% with project=item.project %}
+          <tr style="background-color:#f9f9f9;">
             <td class="fw-semibold">{{ forloop.counter }}</td>
             <td>
               <i class="fas fa-folder text-primary me-2"></i>
               <strong>{{ project.name }}</strong>
-              <a href="{% url 'project_detail' project.id %}" class="badge bg-info text-dark ms-2 text-decoration-none">
-                View KPIs
-              </a>
+              <div class="small text-muted mt-1">
+                Donors:
+                {% if item.donors %}
+                  {% for donor in item.donors %}
+                    <a href="{% url 'donor_detail' donor.id %}" class="text-decoration-none text-muted me-1">
+                      {{ donor.name }}
+                    </a>{% if not forloop.last %},{% endif %}
+                  {% endfor %}
+                {% else %}
+                  <span class="fst-italic">Not assigned</span>
+                {% endif %}
+              </div>
             </td>
-            <td class="text-muted">
+            <td class="small text-muted">
+              {% if project.coordinator %}
+                {{ project.coordinator.first_name }} {{ project.coordinator.last_name }}{% if not project.coordinator.is_active %} (Inactive){% endif %}
+              {% else %}
+                <span class="fst-italic">Not assigned</span>
+              {% endif %}
+            </td>
+            <td class="text-muted small" style="font-size: 0.85rem;">
               {% if project.description %}
                 {{ project.description }}
               {% else %}
                 <span class="fst-italic">No description available.</span>
               {% endif %}
+            </td>
+            <td class="text-muted small">
+              Start: {% if project.start_date %}{{ project.start_date|date:"M d, Y" }}{% else %}N/A{% endif %}<br>
+              End: {% if project.end_date %}{{ project.end_date|date:"M d, Y" }}{% else %}N/A{% endif %}<br>
+              <span class="fst-italic">
+                {% if item.status_text == "Active" %}
+                  <span class="text-success">{{ item.status_text }}</span>
+                {% elif item.status_text == "Ending Soon" %}
+                  <span class="text-warning">{{ item.status_text }}</span>
+                {% elif item.status_text == "Completed" %}
+                  <span class="text-secondary">{{ item.status_text }}</span>
+                {% elif item.status_text == "Overdue" %}
+                  <span class="text-danger">{{ item.status_text }}</span>
+                {% endif %}
+              </span>
             </td>
             <td class="text-nowrap text-end">
               <a href="{% url 'project_detail' project.id %}" class="btn btn-primary btn-sm btn-auto">
@@ -76,9 +110,9 @@
             </td>
           </tr>
 
-          <!-- Collapsible Facilities Selection Row -->
+          <!-- Collapsible Facilities Row -->
           <tr class="table-light">
-            <td colspan="4" class="p-0 border-0">
+            <td colspan="6" class="p-0 border-0">
               <div class="collapse" id="facilitiesCollapse{{ project.id }}">
                 <div class="p-3 border-top bg-white">
                   <form class="facilities-form" method="post" data-project-id="{{ project.id }}">
@@ -104,7 +138,7 @@
               </div>
             </td>
           </tr>
-
+          {% endwith %}
           {% endfor %}
         </tbody>
       </table>
@@ -135,7 +169,7 @@
   </div>
 </div>
 
-<!-- Custom CSS for auto-width buttons -->
+<!-- Custom CSS -->
 <style>
   .btn-auto {
     width: auto !important;
@@ -145,9 +179,17 @@
     align-items: center;
     justify-content: center;
   }
+
+  tbody tr {
+    transition: background-color 0.2s ease;
+  }
+
+  tbody tr:hover {
+    background-color: #e9f7ff;
+  }
 </style>
 
-<!-- AJAX Script to save facilities without reload -->
+<!-- AJAX Script to save facilities -->
 <script>
 document.addEventListener("DOMContentLoaded", function() {
   const forms = document.querySelectorAll(".facilities-form");
@@ -158,7 +200,6 @@ document.addEventListener("DOMContentLoaded", function() {
       const url = "{% url 'projects' %}";
       const csrfToken = form.querySelector('[name=csrfmiddlewaretoken]').value;
 
-      // Collect checked facilities
       const facilities = [];
       form.querySelectorAll('input[name="facilities"]:checked').forEach(cb => {
         facilities.push(cb.value);
@@ -186,5 +227,4 @@ document.addEventListener("DOMContentLoaded", function() {
   });
 });
 </script>
-
 {% endblock %}

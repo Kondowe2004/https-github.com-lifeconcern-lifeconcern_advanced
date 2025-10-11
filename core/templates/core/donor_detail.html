@@ -1,0 +1,315 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}{{ donor.name }} - Life Concern{% endblock %}
+
+{% block content %}
+
+<!-- Google Fonts QuickBooks-like -->
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+
+<div class="container mt-3" style="font-family: 'Work Sans', sans-serif;">
+
+    <!-- Page Title Centered -->
+    <div class="text-center mb-4">
+        <h2 class="fw-bold text-primary mb-1"><i class="fas fa-hand-holding-heart"></i> Donor Details</h2>
+        <p class="text-muted fst-italic">Detailed information about the donor and the projects they support.</p>
+    </div>
+
+    <!-- Back Button -->
+    <div class="mb-3 text-start">
+        <a href="{% url 'donors_list' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-arrow-left me-1"></i> Back to List
+        </a>
+    </div>
+
+    <!-- Donor Info & KPI Summary -->
+    <div class="row g-3 mb-4">
+
+        <!-- Donor Info Card -->
+        <div class="col-lg-4 col-md-12">
+            <div class="card shadow-lg border-0 rounded-3 h-100 donor-card">
+                <div class="card-body text-white" style="background: linear-gradient(135deg, #6a11cb, #2575fc); min-height: 160px;">
+                    <h3 class="mb-2">{{ donor.name }}</h3>
+                    <p class="mb-1"><i class="fas fa-envelope"></i> <strong>Email:</strong> {{ donor.contact_email|default:"Not provided" }}</p>
+                    <p class="mb-0"><i class="fas fa-phone-alt"></i> <strong>Phone:</strong> {{ donor.phone|default:"Not provided" }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI Summary Cards -->
+        <div class="col-lg-8 col-md-12">
+            <div class="row g-3">
+
+                <!-- Total KPIs -->
+                <div class="col-6 col-md-4">
+                    <div class="card shadow-sm border-0 rounded-3 text-center py-3 h-100 kpi-card" style="background: linear-gradient(135deg, #11998e, #38ef7d); min-height: 140px;">
+                        <div class="d-flex justify-content-center align-items-center mb-2">
+                            <i class="fas fa-chart-pie fa-lg me-2 text-white"></i>
+                            <h5 class="fw-bold mb-0 text-white">Total KPIs</h5>
+                        </div>
+                        <h3 class="kpi-number text-white" data-count="{{ donor_total_kpis }}">0</h3>
+                        <canvas class="kpi-sparkline" data-trend="{{ kpi_trend_total|safe }}"></canvas>
+                    </div>
+                </div>
+
+                <!-- Active KPIs -->
+                <div class="col-6 col-md-4">
+                    <div class="card shadow-sm border-0 rounded-3 text-center py-3 h-100 kpi-card" style="background: linear-gradient(135deg, #f7971e, #ffd200); min-height: 140px;">
+                        <div class="d-flex justify-content-center align-items-center mb-2">
+                            <i class="fas fa-check-circle fa-lg me-2 text-white"></i>
+                            <h5 class="fw-bold mb-0 text-white">Active KPIs</h5>
+                        </div>
+                        <h3 class="kpi-number text-white" data-count="{{ donor_active_kpis }}">0</h3>
+                        <canvas class="kpi-sparkline" data-trend="{{ kpi_trend_active|safe }}"></canvas>
+                    </div>
+                </div>
+
+                <!-- Inactive KPIs -->
+                <div class="col-6 col-md-4">
+                    <div class="card shadow-sm border-0 rounded-3 text-center py-3 h-100 kpi-card" style="background: linear-gradient(135deg, #ff416c, #ff4b2b); min-height: 140px;">
+                        <div class="d-flex justify-content-center align-items-center mb-2">
+                            <i class="fas fa-times-circle fa-lg me-2 text-white"></i>
+                            <h5 class="fw-bold mb-0 text-white">Inactive KPIs</h5>
+                        </div>
+                        <h3 class="kpi-number text-white" data-count="{{ donor_inactive_kpis }}">0</h3>
+                        <canvas class="kpi-sparkline" data-trend="{{ kpi_trend_inactive|safe }}"></canvas>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Donor Facilities Section -->
+    <h4 class="mb-2 text-primary"><i class="fas fa-map-marker-alt"></i> Linked Facilities</h4>
+    <div class="mb-4">
+        {% if donor_facilities %}
+            <ul class="list-group list-group-flush">
+                {% for facility in donor_facilities %}
+                    <li class="list-group-item">
+                        <i class="fas fa-hospital"></i>
+                        <a href="#" class="facility-link text-decoration-none"
+                           data-lat="{{ facility.latitude }}"
+                           data-lng="{{ facility.longitude }}"
+                           data-name="{{ facility.name }}">
+                            {{ facility.name }}
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="text-muted fst-italic"><i class="fas fa-info-circle"></i> No facilities linked to this donor yet.</p>
+        {% endif %}
+    </div>
+
+    <div id="facilityMapPopup" style="height: 400px; width: 100%; display: none;" class="mb-4 border rounded"></div>
+
+    <!-- Projects Section -->
+    <h4 class="mb-2 text-primary"><i class="fas fa-project-diagram"></i> Projects Funded</h4>
+    <div class="table-responsive shadow-sm">
+        <table class="table table-hover align-middle text-center mb-0">
+            <thead class="table-primary">
+                <tr>
+                    <th>Project Name</th>
+                    <th>Description</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Status</th>
+                    <th>Facilities</th>
+                    <th>Total KPIs</th>
+                    <th>Active KPIs</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in projects_with_status %}
+                {% with project=item.project %}
+                <tr>
+                    <td class="fw-bold text-dark">
+                        <a href="{% url 'project_detail' project.id %}" class="text-decoration-none text-dark">
+                            {{ project.name }}
+                        </a>
+                    </td>
+                    <td class="text-muted text-start" style="max-width: 400px; white-space: normal; word-wrap: break-word;">
+                        {{ project.description|default:"No description available." }}
+                    </td>
+                    <td>{% if project.start_date %}{{ project.start_date|date:"M d, Y" }}{% else %}<span class="text-muted fst-italic">N/A</span>{% endif %}</td>
+                    <td>{% if project.end_date %}{{ project.end_date|date:"M d, Y" }}{% else %}<span class="text-muted fst-italic">N/A</span>{% endif %}</td>
+                    <td>
+                        <small class="fst-italic
+                            {% if item.status_text == 'Active' %}text-success
+                            {% elif item.status_text == 'Ending Soon' %}text-warning
+                            {% elif item.status_text == 'Completed' %}text-secondary
+                            {% elif item.status_text == 'Overdue' %}text-danger
+                            {% endif %}">{{ item.status_text }}</small>
+                    </td>
+                    <td class="text-start">
+                        {% if item.facilities %}
+                            <ul class="list-unstyled mb-0">
+                                {% for fac in item.facilities %}
+                                    <li>
+                                        <i class="fas fa-hospital"></i>
+                                        <a href="#" class="facility-link text-decoration-none"
+                                           data-lat="{{ fac.latitude }}"
+                                           data-lng="{{ fac.longitude }}"
+                                           data-name="{{ fac.name }}">
+                                            {{ fac.name }}
+                                        </a>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <span class="text-muted fst-italic">No facilities</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ item.kpi_url }}" class="text-decoration-none fw-bold text-primary">
+                            {{ item.total_kpis }}
+                        </a>
+                    </td>
+                    <td>
+                        <a href="{{ item.kpi_url }}" class="text-decoration-none fw-bold {% if item.active_count > 0 %}text-success{% else %}text-muted{% endif %}">
+                            {{ item.active_count }}
+                        </a>
+                    </td>
+                </tr>
+                {% endwith %}
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted">
+                        <i class="fas fa-info-circle"></i> No projects linked to this donor.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<!-- FontAwesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+<!-- Leaflet CSS & JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+let facilityMap = null;
+
+function showFacility(lat, lng, name) {
+    const mapDiv = document.getElementById('facilityMapPopup');
+    mapDiv.style.display = 'block';
+    mapDiv.innerHTML = "";
+    if (facilityMap) facilityMap.remove();
+
+    facilityMap = L.map('facilityMapPopup').setView([lat, lng], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(facilityMap);
+    L.marker([lat, lng]).addTo(facilityMap).bindPopup('<b>' + name + '</b>').openPopup();
+    L.circle([lat, lng], {radius: 200, color: 'red', fill: false}).addTo(facilityMap);
+    mapDiv.scrollIntoView({behavior: 'smooth'});
+}
+
+document.querySelectorAll('.facility-link').forEach(link => {
+    link.addEventListener('click', e => {
+        e.preventDefault();
+        showFacility(parseFloat(link.dataset.lat), parseFloat(link.dataset.lng), link.dataset.name);
+    });
+});
+
+// Animate KPI numbers
+document.querySelectorAll('.kpi-number').forEach(el => {
+    const target = parseInt(el.dataset.count);
+    let current = 0;
+    const increment = Math.ceil(target / 50);
+    const interval = setInterval(() => {
+        current += increment;
+        if (current >= target) { current = target; clearInterval(interval); }
+        el.textContent = current;
+    }, 20);
+});
+
+// Sparkline charts
+const kpiTrendTotal = {{ kpi_trend_total|safe }};
+const kpiTrendActive = {{ kpi_trend_active|safe }};
+const kpiTrendInactive = {{ kpi_trend_inactive|safe }};
+
+document.querySelectorAll('.kpi-sparkline').forEach((canvas, index) => {
+    let dataSet = [];
+    if (index === 0) dataSet = kpiTrendTotal;
+    if (index === 1) dataSet = kpiTrendActive;
+    if (index === 2) dataSet = kpiTrendInactive;
+
+    const ctx = canvas.getContext('2d');
+    const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: dataSet.map((_, i) => i),
+            datasets: [{
+                data: Array(dataSet.length).fill(null),
+                borderColor: '#fff',
+                borderWidth: 2,
+                fill: false,
+                tension: 0.3,
+                pointRadius: 2,
+                pointHoverRadius: 4
+            }]
+        },
+        options: {
+            responsive: false,
+            plugins: { legend: { display: false }, tooltip: { enabled: true } },
+            scales: { x: { display: false }, y: { display: false } },
+            animation: { duration: 0 }
+        }
+    });
+
+    let idx = 0;
+    function drawNext() {
+        if (idx < dataSet.length) {
+            chart.data.datasets[0].data[idx] = dataSet[idx];
+            chart.update();
+            idx++;
+            requestAnimationFrame(drawNext);
+        } else {
+            canvas.style.transition = "opacity 0.5s ease-in";
+            canvas.style.opacity = 1;
+        }
+    }
+    drawNext();
+});
+</script>
+
+<style>
+td small.fst-italic { font-size: 0.75rem; display: block; margin-top: 0.25rem; }
+.container.mt-3 { margin-top: 1rem !important; }
+td.text-muted { white-space: normal !important; word-break: break-word; }
+ul.list-unstyled li { font-size: 0.875rem; }
+#facilityMapPopup { border: 1px solid #ccc; border-radius: 6px; margin-top: 15px; }
+
+/* Card hover animations */
+.card.h-100 {
+    min-height: 140px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.card.h-100:hover {
+    transform: translateY(-5px) scale(1.02);
+    box-shadow: 0 12px 25px rgba(0,0,0,0.2);
+}
+
+.kpi-card {
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.kpi-card:hover {
+    transform: translateY(-4px) scale(1.03);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.25);
+}
+
+h5.fw-bold { display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+</style>
+
+{% endblock %}

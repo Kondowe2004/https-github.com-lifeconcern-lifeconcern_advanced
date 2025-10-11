@@ -11,13 +11,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Security settings
 # -------------------------
 SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-lifeconcern-advanced-demo")
-
-DEBUG = os.environ.get("DEBUG", "True") == "True"  # ✅ True by default in dev
+DEBUG = os.environ.get("DEBUG", "True") == "True"
 
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
-    "lifeconcern.pythonanywhere.com",  # ✅ PythonAnywhere domain
+    "lifeconcern.pythonanywhere.com",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
@@ -37,7 +36,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     # Third-party
-    'widget_tweaks',   # ✅ Needed for add_class filter
+    'widget_tweaks',      # ✅ Needed for add_class filter
+    'simple_history',     # ✅ Audit trails
 
     # Local apps
     'accounts',
@@ -55,6 +55,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
+    'simple_history.middleware.HistoryRequestMiddleware',  # ✅ Required for simple-history
 ]
 
 ROOT_URLCONF = 'lifeconcern.urls'
@@ -70,7 +72,7 @@ TEMPLATES = [
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.debug',
-                'django.template.context_processors.request',
+                'django.template.context_processors.request',  # Required by admin & history
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
             ],
@@ -81,9 +83,8 @@ TEMPLATES = [
 WSGI_APPLICATION = 'lifeconcern.wsgi.application'
 
 # -------------------------
-# Database (SQLite cross-platform fix)
+# Database (SQLite)
 # -------------------------
-# Use project folder for SQLite (works on Windows & PythonAnywhere)
 DB_PATH = BASE_DIR / "db.sqlite3"
 
 DATABASES = {
@@ -110,11 +111,7 @@ USE_TZ = True
 # Static & Media files
 # -------------------------
 STATIC_URL = '/static/'
-
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, "static"),
-]
-
+STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")  # For collectstatic on PythonAnywhere
 
 MEDIA_URL = '/media/'
@@ -132,14 +129,10 @@ EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-
-# Gmail account credentials
 EMAIL_HOST_USER = "datamanagementlico@gmail.com"
-EMAIL_HOST_PASSWORD = "jbll pppr owrw doap"  # ✅ App password (never use normal password)
-
-# Default sender (use a neutral updates address)
+EMAIL_HOST_PASSWORD = "jbll pppr owrw doap"  # App password
 DEFAULT_FROM_EMAIL = "updates@yourdomain.com"
-SERVER_EMAIL = DEFAULT_FROM_EMAIL  # Used for error emails from Django
+SERVER_EMAIL = DEFAULT_FROM_EMAIL  # For Django error emails
 
 # -------------------------
 # Redirects after login/logout

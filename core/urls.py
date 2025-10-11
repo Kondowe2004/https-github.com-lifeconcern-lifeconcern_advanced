@@ -14,6 +14,9 @@ urlpatterns = [
     path('projects/<int:pk>/kpis/', views.project_kpis, name='project_kpis'),
     path('projects/<int:pk>/bulk-save/', views.bulk_save_entries, name='bulk_save_entries'),
 
+    # Project KPI Bulk Actions
+    path('projects/<int:project_id>/bulk-action/', views.project_bulk_action, name='project_bulk_action'),
+
     # KPI / Indicator routes
     path('projects/<int:project_pk>/indicators/add/', views.indicator_add, name='indicator_add'),
     path('projects/<int:project_pk>/indicators/<int:pk>/edit/', views.indicator_edit, name='indicator_edit'),
@@ -30,19 +33,18 @@ urlpatterns = [
     path('reports/', views.reports, name='reports'),
     path('reports/export/', views.reports_export_csv, name='reports_export_csv'),
 
+    # Actual vs Variance Report
+    path('actual-vs-variance/', views.actual_vs_variance_report, name='actual_vs_variance'),
+
     # More Reports
     path('reports/more/', views.more_reports, name='more_reports'),
     path('reports/more/export/csv/', views.more_reports_export_csv, name='more_reports_export_csv'),
     path('reports/more/export/excel/', views.more_reports_export_excel, name='more_reports_export_excel'),
     path('reports/more/export/pdf/', views.more_reports_pdf, name='more_reports_pdf'),
-
-    # --- AJAX endpoint for dynamic pivot/filter charts ---
     path('reports/more/filter/data/', views.pivot_filter_data_json, name='pivot_filter_data_json'),
 
-    # Monthly Trend Report (new)
+    # Monthly Trend & Performance Reports
     path('reports/more/monthly-trend/', views.monthly_trend_report, name='monthly_trend_report'),
-
-    # Monthly Performance Report
     path('reports/monthly-performance/', views.monthly_performance_report, name='monthly_performance_report'),
 
     # Profile
@@ -51,8 +53,17 @@ urlpatterns = [
     # Data Story Dashboard
     path('data-story/', views.data_story, name='data_story'),
 
-    # Facilities Map & CRUD
+    # -------------------- Facilities Map & CRUD --------------------
+    # Map view and AJAX Add/Edit handled in the same view
     path('facilities/map/', views.facilities_map, name='facilities_map'),
+
+    # Delete facility via AJAX
     path('facilities/<int:pk>/delete/', views.facility_delete, name='facility_delete'),
-    # path('facilities/<int:pk>/update/', views.facility_update, name='facility_update'),  # handled via AJAX
+
+    # -------------------- Donors --------------------
+    path('donors/', views.donors_list, name='donors_list'),
+    path('donors/add/', views.donor_add, name='donor_add'),
+    path('donors/<int:donor_id>/', views.donor_detail, name='donor_detail'),
+    path('donors/<int:donor_id>/edit/', views.donor_edit, name='donor_edit'),
+    path('donors/<int:donor_id>/delete/', views.donor_delete, name='donor_delete'),
 ]

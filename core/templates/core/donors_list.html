@@ -1,0 +1,135 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Donors - Life Concern{% endblock %}
+
+{% block content %}
+<div class="container mt-4 text-center">
+
+    <!-- Page Title -->
+    <h2 class="text-primary mb-1"><i class="fas fa-hand-holding-heart"></i> Donors</h2>
+    <p class="text-muted mb-4 small">
+        Here you can view all donors, their contact information, and the projects they support.
+    </p>
+
+    <!-- Add Donor Button -->
+    <div class="mb-4">
+        <a href="{% url 'donor_add' %}" class="btn btn-success btn-sm shadow-sm">
+            <i class="fas fa-plus me-1"></i> Add Donor
+        </a>
+    </div>
+
+    <!-- Donor Cards -->
+    <div class="row justify-content-center align-items-stretch"> <!-- Stretch columns to equal height -->
+        {% for item in donors_data %}
+        {% with donor=item.donor %}
+        <div class="col-lg-3 col-md-6 col-sm-12 mb-4 d-flex"> <!-- d-flex to stretch card -->
+            <div class="card shadow-lg border-0 donor-card flex-fill d-flex flex-column">
+                <div class="card-body d-flex flex-column p-2"> <!-- Reduced padding -->
+
+                    <!-- Card Header -->
+                    <h5 class="card-title fw-bold text-primary mb-1">{{ donor.name }}</h5>
+                    <p class="card-text contact-info mb-1"><i class="fas fa-envelope text-secondary"></i> {{ donor.contact_email|default:"Not provided" }}</p>
+                    <p class="card-text contact-info mb-2"><i class="fas fa-phone-alt text-secondary"></i> {{ donor.phone|default:"Not provided" }}</p>
+
+                    <!-- Projects Funded with Status Badges -->
+                    <div class="text-start mb-2 small text-muted flex-grow-1">
+                        <i class="fas fa-project-diagram text-secondary"></i> 
+                        Projects Funded: <strong>{{ item.projects_with_status|length }}</strong>
+                        {% if item.projects_with_status %}
+                            <ul class="mb-0 ps-3 mt-1">
+                                {% for p in item.projects_with_status %}
+                                <li class="mb-1 project-item p-1 rounded">
+                                    <a href="{% url 'project_detail' p.project.id %}" class="fw-bold text-primary text-decoration-none">
+                                        {{ p.project.name }}
+                                    </a>
+                                    <span class="fst-italic small">
+                                        Status: 
+                                        {% if p.status == "Active" %}
+                                            <span class="badge bg-success">{{ p.status }}</span>
+                                        {% elif p.status == "Ending Soon" %}
+                                            <span class="badge bg-warning text-dark">{{ p.status }}</span>
+                                        {% elif p.status == "Completed" %}
+                                            <span class="badge bg-secondary">{{ p.status }}</span>
+                                        {% elif p.status == "Overdue" %}
+                                            <span class="badge bg-danger">{{ p.status }}</span>
+                                        {% else %}
+                                            <span class="badge bg-info">{{ p.status }}</span>
+                                        {% endif %}
+                                        <br>
+                                        Start: {% if p.project.start_date %}{{ p.project.start_date|date:"M d, Y" }}{% else %}N/A{% endif %}, 
+                                        End: {% if p.project.end_date %}{{ p.project.end_date|date:"M d, Y" }}{% else %}N/A{% endif %}
+                                    </span>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <span class="fst-italic text-muted d-block mt-1">No projects assigned</span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Action Buttons: View Donor, Edit, Delete -->
+                    <div class="mt-auto d-flex gap-1">
+                        <a href="{% url 'donor_detail' donor.id %}" class="btn btn-primary btn-sm flex-grow-1 shadow-sm">
+                            View
+                        </a>
+                        <a href="{% url 'donor_edit' donor.id %}" class="btn btn-warning btn-sm flex-grow-1 shadow-sm">
+                            Edit
+                        </a>
+                        <form action="{% url 'donor_delete' donor.id %}" method="POST" class="flex-grow-1 m-0 p-0">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger btn-sm w-100 shadow-sm"
+                                    onclick="return confirm('Are you sure you want to delete {{ donor.name }}?');">
+                                Delete
+                            </button>
+                        </form>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        {% endwith %}
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info text-center mb-0 shadow-sm">
+                <i class="fas fa-info-circle"></i> No donors found.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- FontAwesome for icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+<!-- Custom Card Styles -->
+<style>
+/* Hover effect and subtle gradient */
+.donor-card {
+    border-radius: 12px;
+    background: linear-gradient(145deg, #ffffff, #f8f9fa);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    display: flex;
+    flex-direction: column;
+}
+.donor-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 18px rgba(0,0,0,0.15);
+}
+
+/* Card text styling */
+.card-text { font-size: 0.9rem; margin-bottom: 0.25rem; }
+.card-title { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 1rem; }
+
+/* Contact info smaller for long text */
+.contact-info { font-size: 0.8rem; word-break: break-word; }
+
+/* Project list enhancements */
+ul li.project-item { background-color: #f1f5f9; margin-bottom: 2px; padding: 2px 4px; border-radius: 4px; }
+ul li.project-item span { display: block; margin-top: 1px; }
+ul li.project-item a { font-weight: 600; color: #0d6efd; font-size: 0.9rem; }
+
+/* Button shadows and rounded */
+.btn { border-radius: 5px; font-size: 0.8rem; padding: 3px 6px; }
+</style>
+{% endblock %}

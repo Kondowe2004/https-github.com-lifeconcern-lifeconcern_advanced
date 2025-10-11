@@ -1,23 +1,138 @@
 {% extends "core/base.html" %}
+{% load widget_tweaks %}
 
 {% block title %}{{ title }} - Life Concern{% endblock %}
 
 {% block content %}
-<div class="card">
-  <h2>{{ title }} Project</h2>
+<div class="card shadow-sm p-4 mt-4">
+  <h2 class="mb-4">{{ title }} Project</h2>
   <form method="POST">
     {% csrf_token %}
-    <div class="form-group">
-      <label for="id_name">Project Name</label>
-      <input type="text" name="name" id="id_name" class="form-control" value="{{ form.name.value|default:'' }}" required>
+
+    <!-- Project Name -->
+    <div class="mb-3">
+      <label for="id_name" class="form-label">Project Name</label>
+      <input type="text" name="name" id="id_name" class="form-control" value="{{ form.name.value|default_if_none:'' }}" required>
+      {% if form.name.errors %}
+        <div class="text-danger small mt-1">{{ form.name.errors }}</div>
+      {% endif %}
     </div>
-    <div class="form-group">
-      <label for="id_description">Description</label>
-      <textarea name="description" id="id_description" class="form-control" rows="3">{{ form.description.value|default:'' }}</textarea>
+
+    <!-- Description -->
+    <div class="mb-3">
+      <label for="id_description" class="form-label">Description</label>
+      <textarea name="description" id="id_description" class="form-control" rows="3">{{ form.description.value|default_if_none:'' }}</textarea>
+      {% if form.description.errors %}
+        <div class="text-danger small mt-1">{{ form.description.errors }}</div>
+      {% endif %}
     </div>
-    <div class="form-group">
+
+    <!-- Start Date -->
+    <div class="mb-3">
+      <label for="id_start_date" class="form-label">Start Date</label>
+      <input type="date" name="start_date" id="id_start_date" class="form-control" 
+             value="{{ form.start_date.value|date:'Y-m-d' }}">
+      {% if form.start_date.errors %}
+        <div class="text-danger small mt-1">{{ form.start_date.errors }}</div>
+      {% endif %}
+    </div>
+
+    <!-- End Date -->
+    <div class="mb-3">
+      <label for="id_end_date" class="form-label">End Date</label>
+      <input type="date" name="end_date" id="id_end_date" class="form-control" 
+             value="{{ form.end_date.value|date:'Y-m-d' }}">
+      {% if form.end_date.errors %}
+        <div class="text-danger small mt-1">{{ form.end_date.errors }}</div>
+      {% endif %}
+    </div>
+
+    <!-- Project Coordinator -->
+    <div class="mb-3">
+      <label for="id_coordinator" class="form-label">Project Coordinator</label>
+      <select name="coordinator" id="id_coordinator" class="form-select">
+        <option value="">-- Select Coordinator --</option>
+        {% for user in all_users %}
+          <option value="{{ user.id }}" 
+            {% if form.coordinator.value|stringformat:"s" == user.id|stringformat:"s" %}selected{% endif %}>
+            {{ user.get_full_name|default:user.username }}
+            {% if not user.is_active %} (Inactive){% endif %}
+          </option>
+        {% endfor %}
+      </select>
+      {% if form.coordinator.errors %}
+        <div class="text-danger small mt-1">{{ form.coordinator.errors }}</div>
+      {% endif %}
+    </div>
+
+    <!-- Main Donor Selection -->
+    <div class="mb-3">
+      <label for="id_main_donor" class="form-label">Main Donor</label>
+      <select name="main_donor" id="id_main_donor" class="form-select">
+        <option value="">-- Select Main Donor --</option>
+        {% for donor in all_donors|dictsort:"name" %}
+          <option value="{{ donor.id }}" {% if form.main_donor.value|stringformat:"s" == donor.id|stringformat:"s" %}selected{% endif %}>
+            {{ donor.name }}
+          </option>
+        {% endfor %}
+      </select>
+      {% if form.main_donor.errors %}
+        <div class="text-danger small mt-1">{{ form.main_donor.errors }}</div>
+      {% endif %}
+    </div>
+
+    <!-- Additional Donors Multi-select -->
+    <div class="mb-3">
+      <label for="id_additional_donors" class="form-label">Additional Donors</label>
+      <select name="donors" id="id_additional_donors" class="form-select" multiple size="6">
+        {% for donor in all_donors|dictsort:"name" %}
+          <option value="{{ donor.id }}"
+            {% if donor.id|stringformat:"s" in form.donors.value|stringformat:"s" %}selected{% endif %}>
+            {{ donor.name }}
+          </option>
+        {% endfor %}
+      </select>
+      <small class="text-muted">Use Ctrl (Cmd) + Click to select multiple donors.</small>
+      {% if form.donors.errors %}
+        <div class="text-danger small mt-1">{{ form.donors.errors }}</div>
+      {% endif %}
+    </div>
+
+    <!-- Facilities Multi-select -->
+    <div class="mb-3">
+      <label class="form-label">Facilities</label>
+      <div class="d-flex flex-wrap gap-2">
+        {% for facility in all_facilities %}
+          <div class="form-check me-3">
+            <input class="form-check-input" type="checkbox" name="facilities" value="{{ facility.id }}"
+              id="facility{{ facility.id }}"
+              {% if facility.id|stringformat:"s" in form.facilities.value|stringformat:"s" %}checked{% endif %}>
+            <label class="form-check-label" for="facility{{ facility.id }}">{{ facility.name }}</label>
+          </div>
+        {% endfor %}
+      </div>
+      {% if form.facilities.errors %}
+        <div class="text-danger small mt-1">{{ form.facilities.errors }}</div>
+      {% endif %}
+    </div>
+
+    <!-- Active Checkbox -->
+    <div class="form-check mb-4">
+      <input type="checkbox" name="is_active" id="id_is_active" class="form-check-input" {% if form.is_active.value %}checked{% endif %}>
+      <label for="id_is_active" class="form-check-label">Active Project</label>
+    </div>
+
+    <!-- Submit Button -->
+    <div>
       <button type="submit" class="btn btn-primary">{{ title }}</button>
+      <a href="{% url 'projects' %}" class="btn btn-secondary ms-2">Cancel</a>
     </div>
   </form>
 </div>
+
+<style>
+  .form-check-input {
+    margin-top: 0.3rem;
+  }
+</style>
 {% endblock %}

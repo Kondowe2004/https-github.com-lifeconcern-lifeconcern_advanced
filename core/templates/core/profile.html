@@ -13,28 +13,25 @@
       <h2 class="h4 fw-bold ms-3 mb-0">Life Concern</h2>
     </div>
     <p class="text-muted">
-      Life Concern (LICO) is a non-governmental, community-centered initiative dedicated to improving the quality of life for vulnerable groups through sustainable health, education, and social programs. Founded on the belief that every person has the right to live with dignity, LICO works with partners to address pressing challenges such as poverty, HIV and AIDS, gender-based violence, and limited access to essential health services which affect the communities. The organisation also places a strong emphasis on empowering youth and women, creating opportunities for education, economic independence, and leadership within their communities. By fostering collaboration among local structures and promoting innovative solutions, LICO seeks to build resilience and long-lasting positive change. Its vision is a healthier, empowered society where communities take ownership of their development and individuals are supported to achieve their full potential. 
+      Life Concern (LICO) is a non-governmental, community-centered initiative dedicated to improving the quality of life for vulnerable groups through sustainable health, education, and social programs. Founded on the belief that every person has the right to live with dignity, LICO works with partners to address pressing challenges such as poverty, HIV and AIDS, gender-based violence, and limited access to essential health services which affect the communities. The organisation also places a strong emphasis on empowering youth and women, creating opportunities for education, economic independence, and leadership within their communities. By fostering collaboration among local structures and promoting innovative solutions, LICO seeks to build resilience and long-lasting positive change. Its vision is a healthier, empowered society where communities take ownership of their development and individuals are supported to achieve their full potential.
     </p>
     <p class="text-muted">
-      🌍 Official website: 
-      <a href="https://www.licomw.org" target="_blank" class="fw-semibold text-decoration-none">
-        www.licomw.org
-      </a>
+      🌍 Official website:
+      <a href="https://www.licomw.org" target="_blank" class="fw-semibold text-decoration-none">www.licomw.org</a>
     </p>
   </div>
 </div>
 
 <!-- User Profile Card -->
-<div class="card shadow-sm border-0">
-  <div class="card-body text-center">
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-body text-center pt-3">  {# reduced top padding #}
     <!-- Avatar (initials) -->
-    <div class="bg-gradient rounded-circle d-flex align-items-center justify-content-center text-white fw-bold mb-3 mx-auto"
-         style="width:100px; height:100px; font-size:2rem;
-                background: linear-gradient(135deg, #007bff, #6f42c1);">
-      {{ user.first_name|default:user.username|slice:":1" }}
+    <div class="bg-gradient rounded-circle d-flex align-items-center justify-content-center text-white fw-bold mb-2 mx-auto"
+         style="width:100px; height:100px; font-size:2rem;">
+      {{ user.first_name|default:user.username|slice:":1" }}{{ user.last_name|slice:":1" }}
     </div>
 
-    <h2 class="h5 fw-bold mb-1">{{ user.first_name|default:user.username }} {{ user.last_name }}</h2>
+    <h2 class="h5 fw-bold mb-2">{{ user.first_name|default:user.username }} {{ user.last_name }}</h2>
 
     <!-- Member since -->
     <p class="text-muted mb-1">
@@ -81,6 +78,52 @@
       </div>
     </div>
 
+    <!-- Projects Coordinated -->
+    <div class="text-start mb-4">
+      <h5 class="fw-bold mb-3">Projects Coordinated</h5>
+      {% if projects_coordinated %}
+        {% for project in projects_coordinated %}
+          <div class="p-3 mb-2 border rounded bg-light">
+            <strong>Project:</strong> 
+            <a href="{% url 'project_detail' project.id %}" class="text-decoration-none fw-semibold">
+              {{ project.name }}
+            </a>
+            <br>
+            <strong>Coordinator:</strong> 
+            {% if project.coordinator %}
+              {{ project.coordinator.first_name }} {{ project.coordinator.last_name }}
+              {% if not project.coordinator.is_active %} (Inactive){% endif %}
+            {% else %}
+              <span class="text-muted">Not assigned</span>
+            {% endif %}
+            <br>
+            <strong>Donor:</strong> 
+            {% if project.main_donor %}
+              <a href="{% url 'donor_detail' project.main_donor.id %}" class="text-decoration-none text-success">
+                {{ project.main_donor.name }}
+              </a>
+            {% else %}
+              <span class="text-muted">No main donor assigned</span>
+            {% endif %}
+            <br>
+            <strong>Facilities:</strong>
+            {% if project.facilities.all %}
+              {% for facility in project.facilities.all %}
+                <a href="{% url 'facilities_map' %}?lat={{ facility.latitude }}&lng={{ facility.longitude }}&facility={{ facility.id }}"
+                   class="badge bg-primary text-white me-1 mb-1 text-decoration-none">
+                  {{ facility.name }}
+                </a>
+              {% endfor %}
+            {% else %}
+              <span class="text-muted">No facilities assigned</span>
+            {% endif %}
+          </div>
+        {% endfor %}
+      {% else %}
+        <p class="text-muted">You are not coordinating any projects currently.</p>
+      {% endif %}
+    </div>
+
     <!-- Action Buttons -->
     <div class="d-flex flex-wrap gap-2 justify-content-center">
       <a href="{% url 'password_change' %}" class="btn btn-warning text-white">
@@ -110,8 +153,6 @@
       const utcDate = el.getAttribute("data-login");
       if (utcDate) {
         const localDate = new Date(utcDate);
-
-        // Format with timezone abbreviation
         const formatted = localDate.toLocaleString(undefined, {
           weekday: "short",
           year: "numeric",
@@ -122,7 +163,6 @@
           second: "2-digit",
           timeZoneName: "short"
         });
-
         el.textContent = formatted;
       }
     }

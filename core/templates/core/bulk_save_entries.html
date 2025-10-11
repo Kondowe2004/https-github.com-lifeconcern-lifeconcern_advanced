@@ -3,71 +3,85 @@
 {% block title %}Bulk Save KPI Entries{% endblock %}
 
 {% block content %}
-<div class="card shadow-lg border-0">
+<div class="card shadow-sm border-0">
   <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-    <h3 class="mb-0">📥 Bulk Save KPI Entries</h3>
-    <small class="text-light">Enter values for indicators below</small>
+    <h5 class="mb-0">📥 Bulk Save KPI Entries</h5>
+    <small class="text-light fst-italic">Enter values for indicators below</small>
   </div>
   <div class="card-body">
     <form method="post" id="bulkEntriesForm">
       {% csrf_token %}
 
+      <!-- Hidden project ID -->
+      <input type="hidden" name="project_id" value="{{ project.id }}">
+
       <!-- Year & Month -->
-      <div class="row g-3 mb-3">
+      <div class="row g-2 mb-3">
         <div class="col-md-6">
-          <label for="year" class="form-label fw-semibold">Year</label>
+          <label for="year" class="form-label fw-semibold small">Year</label>
           <input type="number" id="year" name="year" value="{{ year }}" required 
-                 class="form-control shadow-sm" step="1" min="2000" max="2100">
+                 class="form-control form-control-sm shadow-sm" step="1" min="2000" max="2100">
         </div>
         <div class="col-md-6">
-          <label for="month" class="form-label fw-semibold">Month</label>
+          <label for="month" class="form-label fw-semibold small">Month</label>
           <input type="number" id="month" name="month" value="{{ month }}" min="1" max="12" required 
-                 class="form-control shadow-sm" step="1">
+                 class="form-control form-control-sm shadow-sm" step="1">
         </div>
       </div>
 
-      <hr>
+      <hr class="my-3">
 
       <!-- 🔎 Search Bar -->
       <div class="mb-3">
-        <input type="text" id="searchInput" class="form-control shadow-sm" 
+        <input type="text" id="searchInput" class="form-control form-control-sm shadow-sm" 
                placeholder="🔎 Search indicators..." onkeyup="filterIndicators()">
       </div>
 
       <!-- Indicators -->
-      <div class="row g-3" id="indicatorList">
+      <div class="row g-2" id="indicatorList">
         {% for indicator in indicators %}
-          <div class="col-md-6 indicator-item">
-            <label for="indicator_{{ indicator.id }}" class="form-label fw-semibold">
+          <div class="col-md-6 indicator-item mb-2">
+            <label for="indicator_{{ indicator.id }}" class="form-label fw-semibold small">
               {{ indicator.name }}
             </label>
-            <input type="number" id="indicator_{{ indicator.id }}" 
+            <input type="text" id="indicator_{{ indicator.id }}" 
                    name="indicator_{{ indicator.id }}" 
-                   class="form-control shadow-sm"
-                   step="1" min="0"
-                   placeholder="Enter value for {{ indicator.name }}">
-            <div class="invalid-feedback">Please enter a valid whole number.</div>
+                   class="form-control form-control-sm shadow-sm"
+                   placeholder="Enter value"
+                   oninput="this.value = this.value.replace(/[^0-9]/g,'');">
+            <div class="invalid-feedback small">Please enter a valid whole number.</div>
           </div>
         {% endfor %}
       </div>
 
-      <!-- Save Button -->
+      <!-- Save & Cancel Buttons -->
       <div class="mt-4 text-center">
-        <button type="submit" class="btn btn-success btn-lg px-5 shadow-sm">
+        <button type="submit" class="btn btn-success btn-sm px-4 me-2 shadow-sm">
           💾 Save Entries
         </button>
+        <a href="{% url 'project_detail' project.id %}" class="btn btn-secondary btn-sm px-4 shadow-sm">
+          ❌ Cancel
+        </a>
       </div>
     </form>
   </div>
 </div>
 
-<!-- 🔎 JavaScript: Search & Whole-Number Validation -->
+<!-- Toast Notification -->
+<div id="saveToast" class="toast align-items-center text-bg-success border-0 position-fixed bottom-0 end-0 m-3 p-2" role="alert" aria-live="assertive" aria-atomic="true" style="display:none;">
+  <div class="d-flex">
+    <div class="toast-body small">
+      ✅ Saved successfully!
+    </div>
+  </div>
+</div>
+
+<!-- 🔎 JavaScript: Search, Validation & Auto-Redirect with Toast -->
 <script>
 function filterIndicators() {
   let input = document.getElementById("searchInput");
   let filter = input.value.toLowerCase();
   let items = document.getElementsByClassName("indicator-item");
-
   for (let i = 0; i < items.length; i++) {
     let label = items[i].getElementsByTagName("label")[0];
     let textValue = label.textContent || label.innerText;
@@ -75,19 +89,15 @@ function filterIndicators() {
   }
 }
 
-// ✅ Highlight filled inputs & check whole numbers
+// Highlight filled inputs & check whole numbers
 const form = document.getElementById('bulkEntriesForm');
-
-function isWholeNumber(val) {
-  return /^\d+$/.test(val);
-}
 
 form.addEventListener('input', function(e) {
   if (e.target.tagName === 'INPUT' && e.target.id.startsWith('indicator_')) {
     const val = e.target.value.trim();
     if (val === "") {
       e.target.classList.remove('filled', 'is-invalid');
-    } else if (!isWholeNumber(val)) {
+    } else if (!/^\d+$/.test(val)) {
       e.target.classList.add('is-invalid');
       e.target.classList.remove('filled');
     } else {
@@ -97,20 +107,51 @@ form.addEventListener('input', function(e) {
   }
 });
 
+// Submit via AJAX to auto-redirect after saving
 form.addEventListener('submit', function(e) {
+  e.preventDefault();
+
+  // Validate all inputs first
   let invalid = false;
   const inputs = form.querySelectorAll('input[id^="indicator_"]');
   inputs.forEach(input => {
     const val = input.value.trim();
-    if (val !== "" && !isWholeNumber(val)) {
+    if (val !== "" && !/^\d+$/.test(val)) {
       input.classList.add('is-invalid');
       invalid = true;
     }
   });
+
   if (invalid) {
-    e.preventDefault();
     alert('Please correct non-whole-number values before saving.');
+    return;
   }
+
+  // Prepare form data
+  const formData = new FormData(form);
+
+  // AJAX POST
+  fetch(form.action || window.location.href, {
+    method: 'POST',
+    body: formData,
+    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+  })
+  .then(response => {
+    if (response.ok) {
+      // Show toast notification
+      const toast = document.getElementById('saveToast');
+      toast.style.display = 'flex';
+      setTimeout(() => {
+        window.location.href = "{% url 'project_detail' project.id %}";
+      }, 1500); // redirect after 1.5 seconds
+    } else {
+      alert('An error occurred while saving entries. Please try again.');
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    alert('An unexpected error occurred.');
+  });
 });
 </script>
 
@@ -118,7 +159,7 @@ form.addEventListener('submit', function(e) {
 <style>
   .form-control:focus {
     border-color: #0d6efd;
-    box-shadow: 0 0 6px rgba(13,110,253,0.25);
+    box-shadow: 0 0 4px rgba(13,110,253,0.25);
   }
   .indicator-item input.filled {
     background-color: #e9f7ef !important;
@@ -128,14 +169,22 @@ form.addEventListener('submit', function(e) {
     background-color: #ffe6e6 !important;
     border-color: #dc3545 !important;
   }
-  /* Remove spinner arrows in number inputs */
   input[type=number]::-webkit-inner-spin-button,
   input[type=number]::-webkit-outer-spin-button {
       -webkit-appearance: none;
       margin: 0;
   }
-  input[type=number] {
-      -moz-appearance: textfield;
+  input[type=number] { -moz-appearance: textfield; }
+  .form-label.small { font-size: 0.85rem; }
+  .btn-sm { font-size: 0.85rem; }
+  .card-header h5 { font-size: 1rem; }
+  .card-header small { font-size: 0.75rem; }
+
+  /* Toast styling */
+  #saveToast {
+    z-index: 1100;
+    border-radius: 0.25rem;
+    opacity: 0.95;
   }
 </style>
 {% endblock %}

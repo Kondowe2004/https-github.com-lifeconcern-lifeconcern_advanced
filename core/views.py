@@ -62,112 +62,270 @@ def safe_int(value, default=0):
 # -----------------------------
 # Dashboard
 # -----------------------------
+from collections import defaultdict
+from django.db.models import Sum, Prefetch
+from .utils import safe_int
+
 @login_required
 def dashboard(request):
-    """Dashboard view showing KPIs, comparative analysis, trend analysis, and rotating indicators."""
+    """Dashboard view showing KPIs, comparative analysis, trend analysis, rotating indicators,
+    gamification stats, and system-wide highlights/risks."""
 
     today_year = datetime.date.today().year
     selected_year = safe_int(request.GET.get("year"), default=today_year)
 
-    # Available years for dropdown (ensure current year is always included)
+    # -----------------------------
+    # Available years for dropdown
+    # -----------------------------
     years_set = set(
         list(MonthlyEntry.objects.values_list("year", flat=True).distinct()) +
         list(IndicatorTarget.objects.values_list("year", flat=True).distinct()) +
-        [today_year]  # Ensure current year is included
+        [today_year]
     )
     years = sorted(years_set, reverse=True)
 
-    # Active projects only
-    projects = Project.objects.filter(active=True)
+    # -----------------------------
+    # Active projects & indicators
+    # -----------------------------
+    projects = Project.objects.filter(is_active=True)
     total_projects = projects.count()
 
-    # Active indicators
-    all_indicators = Indicator.objects.filter(project__active=True).select_related("project")
+    # Only active indicators
+    all_indicators = Indicator.objects.filter(project__is_active=True, is_active=True).select_related("project")
     total_indicators = all_indicators.count()
 
-    # KPI: total entries for selected year
-    total_entries = MonthlyEntry.objects.filter(year=selected_year).count()
+    total_entries = MonthlyEntry.objects.filter(year=selected_year, indicator__is_active=True).count()
 
-    # Annual total for "People Reached"
+    # -----------------------------
+    # Annual totals & users
+    # -----------------------------
     annual_total = safe_int(
         MonthlyEntry.objects.filter(
             year=selected_year,
+            indicator__is_active=True,
             indicator__unit__iexact="People Reached"
         ).aggregate(total=Sum("value"))["total"]
     )
-
     user_count = User.objects.filter(is_active=True).count()
 
-    # Comparative Analysis (Actual vs Target per active project)
-    comparative_labels, comparative_actuals, comparative_targets = [], [], []
+    # -----------------------------
+    # System-wide KPI performance
+    # -----------------------------
+    system_achieved = system_pending = system_behind = 0
+    indicator_entries = MonthlyEntry.objects.filter(
+        year=selected_year,
+        indicator__is_active=True
+    ).values('indicator').annotate(total=Sum('value'))
+    indicator_totals = {entry['indicator']: entry['total'] for entry in indicator_entries}
 
+    for ind in all_indicators:
+        total_actual = safe_int(indicator_totals.get(ind.id, 0))
+        target_obj = IndicatorTarget.objects.filter(indicator=ind, year=selected_year).first()
+        target_value = safe_int(target_obj.value) if target_obj else 0
+
+        if target_value == 0:
+            system_pending += 1
+            continue
+
+        ratio = (total_actual / target_value) * 100
+        if ratio >= 90:
+            system_achieved += 1
+        elif ratio >= 60:
+            system_pending += 1
+        else:
+            system_behind += 1
+
+    system_progress = round((system_achieved / total_indicators) * 100, 2) if total_indicators else 0
+    overall_progress = system_progress
+
+    # -----------------------------
+    # Overall Trend Calculation (All KPIs)
+    # -----------------------------
+    monthly_totals = (
+        MonthlyEntry.objects.filter(year=selected_year, indicator__is_active=True)
+        .values("month")
+        .annotate(total=Sum("value"))
+        .order_by("month")
+    )
+    monthly_dict = {entry["month"]: safe_int(entry["total"]) for entry in monthly_totals}
+
+    if monthly_dict:
+        last_month = max(monthly_dict.keys())
+        last_value = monthly_dict[last_month]
+
+        prev_months = [m for m in monthly_dict.keys() if m < last_month]
+        prev_value = monthly_dict[max(prev_months)] if prev_months else 0
+    else:
+        last_value = prev_value = 0
+
+    if prev_value == 0 and last_value == 0:
+        overall_trend = 0
+    elif prev_value == 0 and last_value > 0:
+        overall_trend = 100
+    else:
+        overall_trend = round(((last_value - prev_value) / prev_value) * 100, 2)
+
+    # -----------------------------
+    # System-wide Highlights & Risks
+    # -----------------------------
+    highlights, risks = [], []
+
+    for ind in all_indicators:
+        total_actual = safe_int(indicator_totals.get(ind.id, 0))
+        target_obj = IndicatorTarget.objects.filter(indicator=ind, year=selected_year).first()
+        target_value = safe_int(target_obj.value) if target_obj else None
+
+        ratio = (total_actual / target_value * 100) if target_value else 0
+
+        if target_value and ratio >= 90:
+            highlights.append({
+                "name": ind.name,
+                "project": ind.project.name if ind.project else "—",
+                "value": total_actual,
+                "target": target_value,
+                "ratio": round(ratio, 1),
+            })
+        if target_value and ratio < 60:
+            risks.append({
+                "name": ind.name,
+                "project": ind.project.name if ind.project else "—",
+                "value": total_actual,
+                "target": target_value,
+                "ratio": round(ratio, 1),
+            })
+
+    if not highlights:
+        temp = []
+        for ind in all_indicators:
+            total_actual = safe_int(indicator_totals.get(ind.id, 0))
+            target_obj = IndicatorTarget.objects.filter(indicator=ind, year=selected_year).first()
+            target_value = safe_int(target_obj.value) if target_obj else 0
+            ratio = (total_actual / target_value * 100) if target_value else 0
+            temp.append({
+                "name": ind.name,
+                "project": ind.project.name if ind.project else "—",
+                "value": total_actual,
+                "target": target_value,
+                "ratio": round(ratio, 1),
+            })
+        highlights = sorted(temp, key=lambda x: x['ratio'], reverse=True)[:3]
+
+    if not risks:
+        temp = []
+        for ind in all_indicators:
+            total_actual = safe_int(indicator_totals.get(ind.id, 0))
+            target_obj = IndicatorTarget.objects.filter(indicator=ind, year=selected_year).first()
+            target_value = safe_int(target_obj.value) if target_obj else 0
+            ratio = (total_actual / target_value * 100) if target_value else 0
+            temp.append({
+                "name": ind.name,
+                "project": ind.project.name if ind.project else "—",
+                "value": total_actual,
+                "target": target_value,
+                "ratio": round(ratio, 1),
+            })
+        risks = sorted(temp, key=lambda x: x['ratio'])[:3]
+
+    # -----------------------------
+    # User projects & gamification
+    # -----------------------------
+    user_projects = Project.objects.filter(coordinator=request.user, is_active=True)
+    if not user_projects.exists():
+        user_projects = Project.objects.filter(
+            coordinator__first_name=request.user.first_name,
+            coordinator__last_name=request.user.last_name,
+            is_active=True
+        )
+
+    user_projects_count = user_projects.count()
+    user_project_indicators = Indicator.objects.filter(project__in=user_projects, is_active=True)
+    user_total_indicators = user_project_indicators.count()
+    user_kpi_url = f"/projects/{user_projects.first().id}/kpis/" if user_projects.exists() else "#"
+
+    user_achieved = user_pending = user_behind = 0
+    user_entries = MonthlyEntry.objects.filter(
+        year=selected_year,
+        created_by=request.user,
+        indicator__in=user_project_indicators
+    ).values('indicator').annotate(total=Sum('value'))
+    user_totals = {entry['indicator']: entry['total'] for entry in user_entries}
+
+    for ind in user_project_indicators:
+        user_total_actual = safe_int(user_totals.get(ind.id, 0))
+        target_obj = IndicatorTarget.objects.filter(indicator=ind, year=selected_year).first()
+        target_value = safe_int(target_obj.value) if target_obj else 0
+
+        if target_value == 0:
+            user_pending += 1
+        else:
+            ratio = (user_total_actual / target_value) * 100
+            if ratio >= 90:
+                user_achieved += 1
+            elif ratio >= 60:
+                user_pending += 1
+            else:
+                user_behind += 1
+
+    user_progress = round((user_achieved / user_total_indicators) * 100, 2) if user_total_indicators else 0
+
+    # -----------------------------
+    # Comparative & Trend Analysis (People Reached only)
+    # -----------------------------
+    comparative_labels, comparative_actuals, comparative_targets = [], [], []
     for proj in projects:
         comparative_labels.append(proj.name)
-
+        active_indicators = Indicator.objects.filter(project=proj, is_active=True)
         actual_total = safe_int(
             MonthlyEntry.objects.filter(
                 year=selected_year,
-                indicator__project=proj,
+                indicator__in=active_indicators,
                 indicator__unit__iexact="People Reached"
             ).aggregate(total=Sum("value"))["total"]
         )
-
         indicator_total = safe_int(
             IndicatorTarget.objects.filter(
-                indicator__project=proj,
+                indicator__in=active_indicators,
                 year=selected_year,
                 indicator__unit__iexact="People Reached"
             ).aggregate(total=Sum("value"))["total"]
         )
-
         comparative_actuals.append(actual_total)
         comparative_targets.append(indicator_total)
 
-    # Trend Analysis (Monthly Actual vs Monthly Target)
     trend_months, trend_actuals, trend_targets = [], [], []
-
     total_annual_target = safe_int(
         IndicatorTarget.objects.filter(
             year=selected_year,
-            indicator__unit__iexact="People Reached"
+            indicator__unit__iexact="People Reached",
+            indicator__is_active=True
         ).aggregate(total=Sum("value"))["total"]
     )
-
     monthly_target = int(total_annual_target / 12) if total_annual_target else 0
-
     for month_num in range(1, 13):
         trend_months.append(datetime.date(1900, month_num, 1).strftime("%b"))
-
         monthly_actual = safe_int(
             MonthlyEntry.objects.filter(
                 year=selected_year,
                 month=month_num,
-                indicator__unit__iexact="People Reached"
+                indicator__unit__iexact="People Reached",
+                indicator__is_active=True
             ).aggregate(total=Sum("value"))["total"]
         )
-
         trend_actuals.append(monthly_actual)
         trend_targets.append(monthly_target)
 
-    # Rotating Indicators (timeless for active projects)
+    # -----------------------------
+    # Rotating Indicators
+    # -----------------------------
     indicators_data = []
     for ind in all_indicators:
-        total_actual = safe_int(
-            MonthlyEntry.objects.filter(
-                indicator=ind,
-                year=selected_year
-            ).aggregate(total=Sum("value"))["total"]
-        )
-
+        total_actual = safe_int(indicator_totals.get(ind.id, 0))
         last_entry = MonthlyEntry.objects.filter(indicator=ind, year=selected_year).order_by("-id").first()
         prev_entry_qs = MonthlyEntry.objects.filter(indicator=ind, year=selected_year).order_by("-id")[1:2]
-
         previous_value = safe_int(prev_entry_qs[0].value) if prev_entry_qs else 0
         last_value = safe_int(last_entry.value) if last_entry else 0
-
         target_obj = IndicatorTarget.objects.filter(indicator=ind, year=selected_year).first()
         target_value = safe_int(target_obj.value) if target_obj else 0
-
         indicators_data.append({
             "id": ind.id,
             "name": ind.name,
@@ -178,38 +336,63 @@ def dashboard(request):
             "last_month_value": last_value,
         })
 
-    # Stats for KPI cards
+    # -----------------------------
+    # KPI Summary Cards
+    # -----------------------------
     stats = [
-        {
-            "label": "Projects",
-            "value": total_projects,
-            "icon": "fas fa-folder-open",
-            "bg_gradient": "linear-gradient(135deg, #6a11cb, #2575fc)",
-            "url": "/projects/",
-        },
-        {
-            "label": "Indicators",
-            "value": total_indicators,
-            "icon": "fas fa-bullseye",
-            "bg_gradient": "linear-gradient(135deg, #11998e, #38ef7d)",
-            "url": "/projects/",
-        },
-        {
-            "label": f"People Reached ({selected_year})",
-            "value": annual_total,
-            "icon": "fas fa-calendar-alt",
-            "bg_gradient": "linear-gradient(135deg, #f7971e, #ffd200)",
-            "url": "#",
-        },
-        {
-            "label": "Active Users",
-            "value": user_count,
-            "icon": "fas fa-users",
-            "bg_gradient": "linear-gradient(135deg, #ff416c, #ff4b2b)",
-            "url": "/profile/",
-        },
+        {"label": "Projects", "value": total_projects, "icon": "fas fa-folder-open", "bg_gradient": "linear-gradient(135deg, #6a11cb, #2575fc)", "url": "/projects/"},
+        {"label": "Indicators", "value": total_indicators, "icon": "fas fa-bullseye", "bg_gradient": "linear-gradient(135deg, #11998e, #38ef7d)", "url": "/projects/"},
+        {"label": f"People Reached ({selected_year})", "value": annual_total, "icon": "fas fa-calendar-alt", "bg_gradient": "linear-gradient(135deg, #f7971e, #ffd200)", "url": "#"},
+        {"label": "Active Users", "value": user_count, "icon": "fas fa-users", "bg_gradient": "linear-gradient(135deg, #ff416c, #ff4b2b)", "url": "/profile/"},
     ]
 
+    # -----------------------------
+    # Leaderboard
+    # -----------------------------
+    user_points = defaultdict(int)
+    user_badges_dict = defaultdict(list)
+    for proj in Project.objects.filter(is_active=True):
+        coordinator = proj.coordinator
+        if not coordinator:
+            continue
+        active_indicators = Indicator.objects.filter(project=proj, is_active=True)
+        total_value = MonthlyEntry.objects.filter(year=selected_year, indicator__in=active_indicators).aggregate(total=Sum('value'))['total'] or 0
+        user_points[coordinator.id] += total_value
+        if total_value >= 1000:
+            user_badges_dict[coordinator.id].append("Gold")
+        elif total_value >= 500:
+            user_badges_dict[coordinator.id].append("Silver")
+        elif total_value >= 100:
+            user_badges_dict[coordinator.id].append("Bronze")
+
+    top_users = []
+    for uid, points in user_points.items():
+        user_obj = User.objects.filter(id=uid).first()
+        if user_obj:
+            top_users.append({
+                "username": f"{user_obj.first_name} {user_obj.last_name}".strip() or user_obj.username,
+                "total_points": points,
+                "badges": user_badges_dict.get(uid, []),
+            })
+    top_users = sorted(top_users, key=lambda x: x['total_points'], reverse=True)[:3]
+
+    # -----------------------------
+    # User Badges
+    # -----------------------------
+    user_badges = []
+    if user_total_indicators:
+        if user_progress >= 90:
+            user_badges.append("Gold")
+        elif user_progress >= 60:
+            user_badges.append("Silver")
+        elif user_progress > 0:
+            user_badges.append("Bronze")
+        else:
+            user_badges.append("No Badge")
+
+    # -----------------------------
+    # Context
+    # -----------------------------
     context = {
         "projects": projects,
         "total_projects": total_projects,
@@ -228,6 +411,23 @@ def dashboard(request):
         "trend_targets": trend_targets,
         "indicators": indicators_data,
         "stats": stats,
+        "system_achieved": system_achieved,
+        "system_pending": system_pending,
+        "system_behind": system_behind,
+        "system_progress": system_progress,
+        "overall_progress": overall_progress,
+        "overall_trend": overall_trend,
+        "user_achieved": user_achieved,
+        "user_pending": user_pending,
+        "user_behind": user_behind,
+        "user_progress": user_progress,
+        "highlights": highlights,
+        "risks": risks,
+        "user_projects_count": user_projects_count,
+        "user_total_indicators": user_total_indicators,
+        "user_kpi_url": user_kpi_url,
+        "top_users": top_users,
+        "user_badges": user_badges,
     }
 
     return render(request, "core/dashboard.html", context)
@@ -235,10 +435,20 @@ def dashboard(request):
 
 
 
+
+
 @login_required
 def project_detail(request, pk):
-    project = get_object_or_404(Project, pk=pk)
-    indicators = Indicator.objects.filter(project=project)
+    """
+    Show project details with monthly KPI grid.
+    Only includes active projects and active indicators.
+    """
+    # Ensure project is active
+    project = get_object_or_404(Project.objects.filter(is_active=True), pk=pk)
+
+    # Only active indicators for this project
+    indicators = Indicator.objects.filter(project=project, is_active=True)
+
     months = list(range(1, 13))
     year = int(request.GET.get("year", datetime.datetime.now().year))
 
@@ -247,7 +457,9 @@ def project_detail(request, pk):
     for ind in indicators:
         grid[ind.id] = {}
         for month in months:
-            entry = MonthlyEntry.objects.filter(indicator=ind, year=year, month=month).first()
+            entry = MonthlyEntry.objects.filter(
+                indicator=ind, year=year, month=month
+            ).first()
             grid[ind.id][month] = entry.value if entry else None
 
     return render(request, "core/project_detail.html", {
@@ -259,15 +471,24 @@ def project_detail(request, pk):
     })
 
 
-
-
 # -----------------------------
-# KPI Data Entry View
+# KPI Data Entry View (Strict Numeric Validation)
 # -----------------------------
+
 @login_required
 def project_kpis(request, pk):
-    project = get_object_or_404(Project, pk=pk)
-    indicators = Indicator.objects.filter(project=project)
+    """
+    KPI Data entry for a project.
+    Only active projects and active indicators are included.
+    Handles monthly entries and optional annual target updates.
+    Strictly rejects non-numeric values (letters, commas, dots, symbols).
+    """
+    # Ensure project is active
+    project = get_object_or_404(Project.objects.filter(is_active=True), pk=pk)
+
+    # Only active indicators
+    indicators = Indicator.objects.filter(project=project, is_active=True)
+
     months = list(range(1, 13))
     year = int(request.GET.get("year", request.POST.get("year", datetime.datetime.now().year)))
 
@@ -285,30 +506,30 @@ def project_kpis(request, pk):
                     raw_val = request.POST.get(field_name, "").strip()
                     if raw_val == "":
                         continue
-                    try:
-                        val = safe_int(raw_val)
-                        MonthlyEntry.objects.update_or_create(
-                            indicator=ind,
-                            year=year,
-                            month=month,
-                            defaults={"value": val, "created_by": request.user},
-                        )
-                    except ValueError:
+                    if not raw_val.isdigit():
                         errors[ind.id][month] = "Only whole numbers allowed"
+                        continue
+                    val = int(raw_val)
+                    MonthlyEntry.objects.update_or_create(
+                        indicator=ind,
+                        year=year,
+                        month=month,
+                        defaults={"value": val, "created_by": request.user},
+                    )
 
                 # --- Update annual target if provided ---
                 target_field = f"target_{ind.id}"
                 raw_target = request.POST.get(target_field, "").strip()
                 if raw_target != "":
-                    try:
-                        target_val = safe_int(raw_target)
-                        IndicatorTarget.objects.update_or_create(
-                            indicator=ind,
-                            year=year,
-                            defaults={"value": target_val},
-                        )
-                    except ValueError:
+                    if not raw_target.isdigit():
                         errors[ind.id]["target"] = "Only whole numbers allowed"
+                        continue
+                    target_val = int(raw_target)
+                    IndicatorTarget.objects.update_or_create(
+                        indicator=ind,
+                        year=year,
+                        defaults={"value": target_val},
+                    )
 
                 # --- Update indicator progress ---
                 total_val = MonthlyEntry.objects.filter(indicator=ind, year=year).aggregate(
@@ -317,8 +538,11 @@ def project_kpis(request, pk):
                 ind.current_value = total_val
                 ind.update_progress()
 
+        # -------------------------
+        # Handle messages and redirect
+        # -------------------------
         if any(errors[ind.id] for ind in indicators):
-            messages.warning(request, "Some cells contained invalid values. Please correct them.")
+            messages.warning(request, "Some cells contained invalid values. Only whole numbers are allowed. Please correct them.")
         else:
             messages.success(request, "KPI data and targets saved successfully!")
             return redirect("project_kpis", pk=project.id)
@@ -378,35 +602,132 @@ def project_kpis(request, pk):
 
 
 
+# -------------------------
+# ADD PROJECT (Multiple Donors + Coordinator)
+# -------------------------
+from django.contrib.auth import get_user_model
 
-# -------------------------
-# ADD / EDIT / DELETE PROJECT
-# -------------------------
+User = get_user_model()
+
 @login_required
 def project_add(request):
+    all_donors = Donor.objects.all().order_by('name')
+    all_facilities = Facility.objects.all().order_by('name')
+    all_users = User.objects.filter(is_active=True).order_by('username')  # For coordinator dropdown
+
     if request.method == "POST":
         form = ProjectForm(request.POST)
         if form.is_valid():
-            form.save()
+            project = form.save(commit=False)
+
+            # Assign Project Coordinator if provided
+            coordinator_id = request.POST.get('coordinator')
+            if coordinator_id:
+                try:
+                    coordinator = User.objects.get(id=coordinator_id)
+                    project.coordinator = coordinator
+                except User.DoesNotExist:
+                    project.coordinator = None
+            else:
+                project.coordinator = None
+
+            project.save()
+
+            # Update multiple donors
+            donors_ids = request.POST.getlist('donors')
+            if donors_ids:
+                project.donors.set(donors_ids)
+            else:
+                project.donors.clear()
+
+            # Update facilities M2M field
+            facilities_ids = request.POST.getlist('facilities')
+            if facilities_ids:
+                project.facilities.set(facilities_ids)
+            else:
+                project.facilities.clear()
+
             messages.success(request, "Project added successfully!")
             return redirect("projects")
     else:
         form = ProjectForm()
-    return render(request, "core/project_form.html", {"form": form, "title": "Add Project"})
 
+    context = {
+        "form": form,
+        "title": "Add Project",
+        "all_donors": all_donors,
+        "all_facilities": all_facilities,
+        "all_users": all_users,  # Needed for coordinator dropdown
+        "project": None,  # Needed for template logic
+    }
+    return render(request, "core/project_form.html", context)
+
+
+
+
+# -------------------------
+# EDIT PROJECT (Multiple Donors + Coordinator)
+# -------------------------
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 @login_required
 def project_edit(request, pk):
     project = get_object_or_404(Project, pk=pk)
+    all_donors = Donor.objects.all().order_by('name')
+    all_facilities = Facility.objects.all().order_by('name')
+    all_users = User.objects.filter(is_active=True).order_by('username')  # For coordinator dropdown
+
     if request.method == "POST":
         form = ProjectForm(request.POST, instance=project)
         if form.is_valid():
-            form.save()
+            project = form.save(commit=False)
+
+            # Assign Project Coordinator if provided
+            coordinator_id = request.POST.get('coordinator')
+            if coordinator_id:
+                try:
+                    coordinator = User.objects.get(id=coordinator_id)
+                    project.coordinator = coordinator
+                except User.DoesNotExist:
+                    project.coordinator = None
+            else:
+                project.coordinator = None
+
+            project.save()
+
+            # Update multiple donors
+            donors_ids = request.POST.getlist('donors')
+            if donors_ids:
+                project.donors.set(donors_ids)
+            else:
+                project.donors.clear()  # Clear all if none selected
+
+            # Update facilities M2M field
+            facilities_ids = request.POST.getlist('facilities')
+            if facilities_ids:
+                project.facilities.set(facilities_ids)
+            else:
+                project.facilities.clear()  # Clear all if none selected
+
             messages.success(request, "Project updated successfully!")
             return redirect("projects")
     else:
         form = ProjectForm(instance=project)
-    return render(request, "core/project_form.html", {"form": form, "title": "Edit Project"})
+
+    context = {
+        "form": form,
+        "title": "Edit Project",
+        "all_donors": all_donors,
+        "all_facilities": all_facilities,
+        "all_users": all_users,  # Needed for coordinator dropdown
+        "project": project,      # Needed for template logic
+    }
+    return render(request, "core/project_form.html", context)
+
+
+
 
 
 @login_required
@@ -597,68 +918,161 @@ def indicator_delete(request, project_pk, pk):
                   {"project": project, "indicator": indicator})
 
 
+# views.py
+from .models import Project
+
 # -------------------------
 # USER PROFILE
 # -------------------------
 @login_required
 def profile(request):
-    return render(request, "core/profile.html")
+    user = request.user
+
+    # -------------------------
+    # Fetch projects coordinated by this user
+    # -------------------------
+    # Option 1 (Preferred): Match by user FK directly
+    projects_coordinated = (
+        Project.objects.filter(coordinator=user)
+        .select_related('main_donor')      # reduce DB queries for main_donor
+        .prefetch_related('facilities')    # reduce DB queries for facilities
+        .order_by('name')                  # sort alphabetically
+    )
+
+    # Option 2: Match by full name (first + last name)
+    if not projects_coordinated.exists():
+        projects_coordinated = (
+            Project.objects.filter(
+                coordinator__first_name=user.first_name,
+                coordinator__last_name=user.last_name
+            )
+            .select_related('main_donor')
+            .prefetch_related('facilities')
+            .order_by('name')
+        )
+
+    # Count to simplify template conditional checks
+    projects_count = projects_coordinated.count()
+
+    context = {
+        'user': user,
+        'projects_coordinated': projects_coordinated,
+        'projects_count': projects_count,
+    }
+
+    return render(request, "core/profile.html", context)
+
+
 
 
 # -------------------------
-# LIST PROJECTS WITH FACILITIES (AJAX-enabled)
+# LIST PROJECTS WITH FACILITIES & MULTIPLE DONORS
 # -------------------------
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-import json
 
 @login_required
 def projects(request):
-    # Fetch all projects
-    projects = Project.objects.all().order_by('name')
+    """
+    List all projects with their facilities, donor info, and coordinator.
+    Includes status messages: Active, Ending Soon, Completed, Overdue.
+    Handles AJAX or standard POST for facility updates.
+    Supports multi-donor display (main + other donors).
+    """
+    # Fetch all projects ordered by name
+    projects_qs = Project.objects.all().order_by('name')
 
-    # Fetch all facilities for selection
+    # All facilities and donors for template selection
     all_facilities = Facility.objects.all().order_by('name')
+    all_donors = Donor.objects.all().order_by('name')
 
-    # Handle POST for facility updates
+    # Handle POST for updating facilities (AJAX JSON or traditional)
     if request.method == "POST":
-        # Check if this is an AJAX JSON request
-        try:
-            data = json.loads(request.body)
-            project_id = data.get("project_id")
-            facilities = data.get("facilities", [])
-            project = get_object_or_404(Project, pk=project_id)
-            project.facilities.set(facilities)
-            project.save()
-            return JsonResponse({"status": "success"})
-        except (json.JSONDecodeError, KeyError):
-            # Fallback for traditional POST (non-AJAX) submission
-            if "facilities_submit" in request.POST:
-                project_id = request.POST.get("project_id")
-                project = get_object_or_404(Project, pk=project_id)
-                selected_facilities = request.POST.getlist("facilities")
-                project.facilities.set(selected_facilities)
-                project.save()
-                messages.success(request, f"Facilities updated for project '{project.name}'.")
-                return redirect('projects')
-            # If nothing matches, return error
-            return JsonResponse({"status": "error", "message": "Invalid request"}, status=400)
+        # AJAX JSON POST
+        if request.content_type == "application/json":
+            try:
+                data = json.loads(request.body)
+                project_id = data.get("project_id")
+                facilities_ids = data.get("facilities", [])
 
-    # Render template
-    return render(request, "core/projects.html", {
-        "projects": projects,
+                project = get_object_or_404(Project, pk=project_id)
+                project.facilities.set(facilities_ids)
+                project.save()
+
+                return JsonResponse({"status": "success"})
+            except (json.JSONDecodeError, KeyError):
+                return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
+
+        # Traditional form POST fallback
+        if "facilities_submit" in request.POST:
+            project_id = request.POST.get("project_id")
+            project = get_object_or_404(Project, pk=project_id)
+            selected_facilities = request.POST.getlist("facilities")
+            project.facilities.set(selected_facilities)
+            project.save()
+            messages.success(request, f"Facilities updated for project '{project.name}'.")
+            return redirect('projects')
+
+    # Prepare project statuses for display
+    today = date.today()
+    projects_with_status = []
+    for proj in projects_qs:
+        status_text = "Active"
+
+        if proj.end_date:
+            if proj.end_date < today:
+                status_text = "Completed"
+            elif (proj.end_date - today).days <= 30:
+                status_text = "Ending Soon"
+
+        # Overdue if end_date passed and project is inactive
+        if proj.end_date and proj.end_date < today and not proj.is_active:
+            status_text = "Overdue"
+
+        # Add coordinator explicitly for template
+        coordinator_info = None
+        if hasattr(proj, 'coordinator') and proj.coordinator:
+            coordinator_info = {
+                "first_name": proj.coordinator.first_name,
+                "last_name": proj.coordinator.last_name,
+                "is_active": proj.coordinator.is_active,
+            }
+
+        projects_with_status.append({
+            "project": proj,
+            "status_text": status_text,
+            "donors": proj.donors.all(),        # Multi-donor list
+            "coordinator": coordinator_info,    # Coordinator info for template
+        })
+
+    context = {
+        "projects_with_status": projects_with_status,
         "all_facilities": all_facilities,
-    })
+        "all_donors": all_donors,
+    }
+
+    return render(request, "core/projects.html", context)
+
+
+
 
 
 
 # -----------------------------
 # Bulk Save Entries View
 # -----------------------------
+
 @login_required
 def bulk_save_entries(request, pk):
-    project = get_object_or_404(Project, pk=pk)
-    indicators = Indicator.objects.filter(project=project)
+    """
+    Allows bulk saving of monthly KPI entries for a project.
+    Only active projects and active indicators are included.
+    Rejects any non-numeric input (commas, dots, letters, symbols).
+    """
+    # Ensure project is active
+    project = get_object_or_404(Project.objects.filter(is_active=True), pk=pk)
+
+    # Only active indicators for the project
+    indicators = Indicator.objects.filter(project=project, is_active=True)
+
     now = timezone.now()
     current_year = now.year
     current_month = now.month
@@ -672,21 +1086,26 @@ def bulk_save_entries(request, pk):
             for indicator in indicators:
                 raw_value = request.POST.get(f"indicator_{indicator.id}")
                 if raw_value not in [None, ""]:
-                    try:
-                        numeric_value = safe_int(raw_value)
-                        MonthlyEntry.objects.update_or_create(
-                            indicator=indicator,
-                            year=year,
-                            month=month,
-                            defaults={"value": numeric_value, "created_by": request.user},
-                        )
-                    except ValueError:
+                    raw_value = raw_value.strip()
+                    # Reject if not a whole number
+                    if not raw_value.isdigit():
                         invalid_entries.append(indicator.name)
+                        continue
+
+                    numeric_value = int(raw_value)
+                    MonthlyEntry.objects.update_or_create(
+                        indicator=indicator,
+                        year=year,
+                        month=month,
+                        defaults={"value": numeric_value, "created_by": request.user},
+                    )
+                    # Update indicator progress after entry
+                    indicator.update_progress()
 
         if invalid_entries:
             messages.warning(
                 request,
-                f"Some entries were not saved because they were not whole numbers: {', '.join(invalid_entries)}"
+                f"Some entries were not saved because they were not valid whole numbers: {', '.join(invalid_entries)}"
             )
         else:
             messages.success(request, f"Entries for {month}/{year} saved successfully!")
@@ -699,6 +1118,7 @@ def bulk_save_entries(request, pk):
         "year": current_year,
         "month": current_month,
     })
+
 
 
 # -------------------------
@@ -867,27 +1287,41 @@ def reports(request):
 
 
 
+# -----------------------------
+# EXPORT PROJECT KPIs TO CSV
+# -----------------------------
+@login_required
 def export_project_kpis(request, pk):
-    project = Project.objects.get(pk=pk)
-    year = int(request.GET.get("year", 2025))  # fallback year
+    """
+    Export KPI monthly data for a given project to CSV.
+    Only active indicators and active project are considered.
+    """
+    # Get project and ensure it is active
+    project = Project.objects.filter(pk=pk, is_active=True).first()
+    if not project:
+        return HttpResponse("Project not found or inactive.", status=404)
 
-    # Prepare HTTP response
+    year = int(request.GET.get("year", datetime.date.today().year))  # fallback to current year
+
+    # Prepare HTTP response for CSV
     response = HttpResponse(content_type="text/csv")
     response["Content-Disposition"] = f'attachment; filename="{project.name}_kpis_{year}.csv"'
 
     writer = csv.writer(response)
-    # Header row
     months = range(1, 13)
     header = ["Indicator", "Unit"] + [f"{m:02d}" for m in months] + ["Total"]
     writer.writerow(header)
 
-    # Data rows
-    indicators = project.indicators.all()
+    # Only active indicators
+    indicators = project.indicators.filter(is_active=True)
     for ind in indicators:
         row = [ind.name, ind.unit]
         total = 0
         for m in months:
-            entry = MonthlyEntry.objects.filter(indicator=ind, year=year, month=m).first()
+            entry = MonthlyEntry.objects.filter(
+                indicator=ind,
+                year=year
+            ).filter(indicator__is_active=True, indicator__project__is_active=True).first()
             val = entry.value if entry else 0
             row.append(val)
             total += val
@@ -897,20 +1331,37 @@ def export_project_kpis(request, pk):
     return response
 
 
+
+# -----------------------------
+# EXPORT PROJECT KPIs TO EXCEL (ACTIVE ONLY)
+# -----------------------------
+
 @login_required
 def export_project_kpis_excel(request, pk):
-    project = Project.objects.get(pk=pk)
-    year = int(request.GET.get("year", datetime.date.today().year))
+    """
+    Export KPI monthly data for a given project to Excel.
+    Only active project and active indicators are included.
+    """
 
+    # Ensure project is active
+    project = Project.objects.filter(pk=pk, is_active=True).first()
+    if not project:
+        return HttpResponse("Project not found or inactive.", status=404)
+
+    year = int(request.GET.get("year", datetime.date.today().year))
     months = list(range(1, 13))
     month_headers = [calendar.month_abbr[m] for m in months]
 
-    # --- Build target_dict exactly like in template view ---
-    indicators = project.indicators.all()
-    target_dict = {ind.id: ind.targets.filter(year=year).first().value if ind.targets.filter(year=year).exists() else 0
-                   for ind in indicators}
+    # Only active indicators
+    indicators = project.indicators.filter(is_active=True)
 
-    # --- Create Excel Workbook ---
+    # Prepare target dictionary for active indicators
+    target_dict = {
+        ind.id: ind.targets.filter(year=year).first().value if ind.targets.filter(year=year).exists() else 0
+        for ind in indicators
+    }
+
+    # Create Excel Workbook
     wb = Workbook()
     ws = wb.active
     ws.title = f"{project.name} KPIs"
@@ -934,11 +1385,16 @@ def export_project_kpis_excel(request, pk):
 
     # --- Data rows ---
     for ind in indicators:
-        target = target_dict.get(ind.id, 0)  # ← get annual target from target_dict
+        target = target_dict.get(ind.id, 0)
         row_values = []
         total = 0
         for m in months:
-            entry = MonthlyEntry.objects.filter(indicator=ind, year=year, month=m).first()
+            # Filter by indicator, year, and month
+            entry = MonthlyEntry.objects.filter(
+                indicator=ind,
+                year=year,
+                month=m
+            ).first()
             val = entry.value if entry else 0
             row_values.append(val)
             total += val
@@ -947,10 +1403,16 @@ def export_project_kpis_excel(request, pk):
         ws.append(excel_row)
 
     # --- Totals row ---
-    monthly_totals = [
-        sum(MonthlyEntry.objects.filter(indicator__in=indicators, year=year, month=m).values_list('value', flat=True) or [0])
-        for m in months
-    ]
+    monthly_totals = []
+    for m in months:
+        month_sum = sum(
+            MonthlyEntry.objects.filter(
+                indicator__in=indicators,
+                year=year,
+                month=m
+            ).values_list('value', flat=True) or [0]
+        )
+        monthly_totals.append(month_sum)
     grand_total = sum(monthly_totals)
     totals_row = ["", "Total", ""] + monthly_totals + [grand_total]
     ws.append(totals_row)
@@ -978,6 +1440,7 @@ def export_project_kpis_excel(request, pk):
         max_length = max(len(str(cell.value)) if cell.value else 0 for cell in col)
         ws.column_dimensions[get_column_letter(col[0].column)].width = max_length + 3
 
+    # --- Serve Excel file ---
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
@@ -991,11 +1454,13 @@ from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 import datetime
+from .models import Indicator, MonthlyEntry, Project
 
 @login_required
 def monthly_trend_report(request):
     """
     AJAX view to return Monthly Trend data as JSON for chart rendering.
+    Only includes active projects and active indicators.
     """
     current_year = datetime.date.today().year
 
@@ -1011,8 +1476,8 @@ def monthly_trend_report(request):
     selected_indicator = request.GET.get("indicator")
     selected_indicator = int(selected_indicator) if selected_indicator and selected_indicator.isdigit() else None
 
-    # --- Filter indicators ---
-    indicators = Indicator.objects.all()
+    # --- Filter indicators (only active) ---
+    indicators = Indicator.objects.filter(is_active=True, project__is_active=True)
     if selected_unit:
         indicators = indicators.filter(unit=selected_unit)
     if selected_project:
@@ -1026,14 +1491,20 @@ def monthly_trend_report(request):
     # --- Prepare Monthly Trend data ---
     monthly_trends_data = []
     for ind in indicators:
-        values = [int(MonthlyEntry.objects.filter(
-            year=selected_year,
-            month=m,
-            indicator=ind
-        ).aggregate(total=Sum("value"))["total"] or 0) for m in months]
+        values = [
+            int(
+                MonthlyEntry.objects.filter(
+                    year=selected_year,
+                    month=m,
+                    indicator=ind
+                ).aggregate(total=Sum("value"))["total"] or 0
+            )
+            for m in months
+        ]
         if any(values):
             monthly_trends_data.append({
                 "indicator": ind.name,
+                "project": ind.project.name,
                 "values": values
             })
 
@@ -1043,15 +1514,14 @@ def monthly_trend_report(request):
     })
 
 
-
 # -----------------------------
 # More Reports View
-# -----------------------------
 # -----------------------------
 @login_required
 def more_reports(request):
     """
     Full HTML view that renders More Reports page with pivot table and charts.
+    Only includes active projects and active indicators.
     """
     current_year = datetime.date.today().year
 
@@ -1070,20 +1540,20 @@ def more_reports(request):
     selected_indicator = int(selected_indicator) if selected_indicator and selected_indicator.isdigit() else None
 
     # --- Objects for selected project/indicator ---
-    selected_project_obj = Project.objects.filter(id=selected_project).first() if selected_project else None
-    selected_indicator_obj = Indicator.objects.filter(id=selected_indicator).first() if selected_indicator else None
+    selected_project_obj = Project.objects.filter(id=selected_project, is_active=True).first() if selected_project else None
+    selected_indicator_obj = Indicator.objects.filter(id=selected_indicator, is_active=True, project__is_active=True).first() if selected_indicator else None
 
-    # --- Available filter lists ---
+    # --- Available filter lists (only active) ---
+    projects = Project.objects.filter(is_active=True).order_by("name")
+    indicators = Indicator.objects.filter(is_active=True, project__is_active=True).order_by("name")
     years = list(MonthlyEntry.objects.values_list("year", flat=True).distinct().order_by("year"))
     units = list(Indicator.objects.values_list("unit", flat=True).distinct())
-    projects = Project.objects.all()
-    indicators = Indicator.objects.all()
 
     # --- IDs to check if selected_obj is already in the list ---
     project_ids = [p.id for p in projects]
     indicator_ids = [i.id for i in indicators]
 
-    # --- Chart / pivot data ---
+    # --- Chart / pivot data (pass only active) ---
     context = _get_report_data(
         selected_year=selected_year,
         selected_unit=selected_unit,
@@ -1111,13 +1581,17 @@ def more_reports(request):
 
 
 # -----------------------------
+# Pivot Filter Data JSON (AJAX)
+# -----------------------------
 @login_required
 def pivot_filter_data_json(request):
     """
     AJAX endpoint: returns filtered chart & heatmap data as JSON.
+    Only includes active projects and active indicators.
     """
     current_year = datetime.date.today().year
 
+    # --- Selected filters ---
     selected_year = request.GET.get("year")
     try:
         selected_year = int(selected_year)
@@ -1125,19 +1599,29 @@ def pivot_filter_data_json(request):
         selected_year = current_year
 
     selected_unit = request.GET.get("unit") or None
+
     selected_project = request.GET.get("project")
     selected_project = int(selected_project) if selected_project and selected_project.isdigit() else None
     selected_indicator = request.GET.get("indicator")
     selected_indicator = int(selected_indicator) if selected_indicator and selected_indicator.isdigit() else None
 
+    # --- Ensure selected objects are active ---
+    selected_project_obj = Project.objects.filter(id=selected_project, is_active=True).first() if selected_project else None
+    selected_indicator_obj = Indicator.objects.filter(
+        id=selected_indicator,
+        is_active=True,
+        project__is_active=True
+    ).first() if selected_indicator else None
+
+    # --- Generate report data (active filtered) ---
     context = _get_report_data(
         selected_year=selected_year,
         selected_unit=selected_unit,
-        selected_project=selected_project,
-        selected_indicator=selected_indicator
+        selected_project=selected_project_obj.id if selected_project_obj else None,
+        selected_indicator=selected_indicator_obj.id if selected_indicator_obj else None
     )
 
-    # Return only chart/heatmap JSON (no HTML)
+    # --- Prepare JSON response ---
     data = {
         "indicator_distribution_labels": json.loads(context["indicator_distribution_labels"]),
         "indicator_distribution_data": json.loads(context["indicator_distribution_data"]),
@@ -1152,15 +1636,23 @@ def pivot_filter_data_json(request):
         "yoy_data_values": json.loads(context["yoy_data_values"]),
         "month_headers": context["month_headers"],
     }
-    return JsonResponse(data)
 
+    return JsonResponse(data)
 
 # -----------------------------
 def _get_report_data(selected_year, selected_unit=None, selected_project=None, selected_indicator=None):
     """
     Helper function: computes all data for charts, heatmap, pivot table.
+    Only active projects and active indicators are included.
     """
-    base_qs = MonthlyEntry.objects.filter(year=selected_year)
+
+    # --- Base queryset filtered by year and active status ---
+    base_qs = MonthlyEntry.objects.filter(
+        year=selected_year,
+        indicator__is_active=True,
+        indicator__project__is_active=True
+    )
+
     if selected_unit:
         base_qs = base_qs.filter(indicator__unit=selected_unit)
     if selected_project:
@@ -1168,8 +1660,11 @@ def _get_report_data(selected_year, selected_unit=None, selected_project=None, s
     if selected_indicator:
         base_qs = base_qs.filter(indicator_id=selected_indicator)
 
-    # --- Indicators ---
-    indicators = Indicator.objects.all()
+    # --- Indicators filtered by active projects/indicators ---
+    indicators = Indicator.objects.filter(
+        is_active=True,
+        project__is_active=True
+    )
     if selected_unit:
         indicators = indicators.filter(unit=selected_unit)
     if selected_project:
@@ -1244,11 +1739,11 @@ def _get_report_data(selected_year, selected_unit=None, selected_project=None, s
     top_indicators_labels = [i["indicator__name"] for i in top_indicators]
     top_indicators_data = [int(i["total"]) for i in top_indicators]
 
-    # --- Heatmap ---
+    # --- Heatmap (only facilities linked to active projects) ---
     facilities_data = []
     facilities = Facility.objects.prefetch_related("projects")
     for fac in facilities:
-        projects_qs = fac.projects.all()
+        projects_qs = fac.projects.filter(is_active=True)
         if selected_project:
             projects_qs = projects_qs.filter(id=selected_project)
         if not projects_qs.exists():
@@ -1289,7 +1784,7 @@ def _get_report_data(selected_year, selected_unit=None, selected_project=None, s
     yoy_data_values = []
     yoy_labels = []
     for y in available_years:
-        qs = MonthlyEntry.objects.filter(year=y)
+        qs = MonthlyEntry.objects.filter(year=y, indicator__is_active=True, indicator__project__is_active=True)
         if selected_unit:
             qs = qs.filter(indicator__unit=selected_unit)
         if selected_project:
@@ -1319,9 +1814,6 @@ def _get_report_data(selected_year, selected_unit=None, selected_project=None, s
     }
 
 
-
-
-
 # ------------------------
 # Helper: get short month name
 # ------------------------
@@ -1331,6 +1823,11 @@ def get_month_name(month_number):
 # ------------------------
 # CSV export view
 # ------------------------
+
+def get_month_name(m):
+    import calendar
+    return calendar.month_abbr[m]
+
 @login_required
 def more_reports_export_csv(request):
     # ------------------------
@@ -1361,9 +1858,13 @@ def more_reports_export_csv(request):
         selected_unit = selected_unit.strip()
 
     # ------------------------
-    # Queryset of indicators filtered by project, unit, indicator
+    # Queryset of active indicators
     # ------------------------
-    indicators = Indicator.objects.all()
+    indicators = Indicator.objects.filter(
+        is_active=True,
+        project__is_active=True
+    )
+
     if selected_project:
         indicators = indicators.filter(project_id=selected_project)
     if selected_unit:
@@ -1386,7 +1887,7 @@ def more_reports_export_csv(request):
     if selected_year:
         filename_parts.append(str(selected_year))
     if selected_project:
-        project_obj = Project.objects.filter(id=selected_project).first()
+        project_obj = Project.objects.filter(id=selected_project, is_active=True).first()
         if project_obj:
             filename_parts.append(project_obj.name.replace(" ", "_"))
     if selected_unit:
@@ -1417,13 +1918,19 @@ def more_reports_export_csv(request):
         row_total = 0
 
         for m in months:
-            qs = MonthlyEntry.objects.filter(indicator=ind, month=m)
+            qs = MonthlyEntry.objects.filter(
+                indicator=ind,
+                month=m,
+                indicator__is_active=True,
+                indicator__project__is_active=True
+            )
             if selected_year:
                 qs = qs.filter(year=selected_year)
             total_val = qs.aggregate(total=Sum("value"))["total"] or 0
-            row_values.append(int(total_val))
-            row_total += int(total_val)
-            column_totals[m] += int(total_val)
+            total_val = int(total_val)
+            row_values.append(total_val)
+            row_total += total_val
+            column_totals[m] += total_val
 
         grand_total += row_total
 
@@ -1450,6 +1957,7 @@ def more_reports_export_csv(request):
     writer.writerow(totals_row)
 
     return response
+
 
 
 
@@ -1537,137 +2045,225 @@ def edit_indicator_targets(request, indicator_id):
 
 @login_required
 def data_story(request):
-    """
-    Dynamic Data Story dashboard with optional year filter.
-    Shows top 10 indicators with most recent/significant changes.
-    Tags indicators as Improving, Declining, Stable, or New.
-    Targets are always for the current year only.
-    Supports AJAX requests for dynamic year filtering.
-    """
-
-    current_year = date.today().year
+    today = date.today()
+    current_year = today.year
 
     # -------------------------
-    # Get all years with data for dropdown
+    # Year Filter: last 5 years, default to current year
     # -------------------------
-    years = MonthlyEntry.objects.dates("created_at", "year", order="DESC")
-    year_list = [y.year for y in years]
-
-    # -------------------------
-    # Get selected year from query param ?year=YYYY
-    # Default to latest year
-    # -------------------------
-    selected_year = request.GET.get("year")
-    if selected_year:
-        try:
-            selected_year = int(selected_year)
-        except ValueError:
-            selected_year = year_list[0] if year_list else current_year
-    else:
-        selected_year = year_list[0] if year_list else current_year
+    all_years = MonthlyEntry.objects.dates("created_at", "year", order="DESC")
+    available_years = sorted({y.year for y in all_years}, reverse=True)  # unique years in data
+    year_list = list(range(current_year, current_year - 5, -1))  # last 5 years
+    # Include any older years from data if not in last 5
+    for y in available_years:
+        if y not in year_list:
+            year_list.append(y)
+    try:
+        selected_year = int(request.GET.get("year")) if request.GET.get("year") else current_year
+    except (ValueError, TypeError):
+        selected_year = current_year
 
     # -------------------------
-    # Get all entries for the selected year, latest first per indicator
+    # Last completed month
     # -------------------------
-    entries = MonthlyEntry.objects.filter(year=selected_year).order_by("indicator_id", "-created_at")
+    latest_month = today.month - 1 if today.month > 1 else 12
+    latest_month_year = selected_year if today.month > 1 else selected_year - 1
 
-    top_insights = []
-    seen = set()
+    # -------------------------
+    # Select active projects
+    # -------------------------
+    all_projects = Project.objects.filter(is_active=True).order_by("name")
+    selected_projects = all_projects
 
-    for entry in entries:
-        if entry.indicator_id in seen:
-            continue
-        seen.add(entry.indicator_id)
+    # -------------------------
+    # Summary Counters
+    # -------------------------
+    total_kpis = 0
+    improving_count = declining_count = stable_count = new_count = 0
+    performance_score_sum = 0
+    performance_score_items = 0
+    project_insights = []
+    missing_kpis = []
 
-        # Previous entry for comparison (any year)
-        prev_entry = (
-            MonthlyEntry.objects.filter(indicator=entry.indicator, created_at__lt=entry.created_at)
-            .order_by("-created_at")
-            .first()
-        )
+    # -------------------------
+    # Iterate Projects + Indicators
+    # -------------------------
+    for project in selected_projects:
+        indicators = Indicator.objects.filter(is_active=True, project=project).order_by("name")
+        insights = []
 
-        if prev_entry:
+        for indicator in indicators:
+            entries = list(MonthlyEntry.objects.filter(indicator=indicator, year=selected_year).order_by("month"))
+
+            month_labels = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+            monthly_actuals = [0.0] * 12
+            for e in entries:
+                monthly_actuals[e.month - 1] = float(e.value or 0)
+
+            # -------------------------
+            # Target
+            # -------------------------
+            target_obj = IndicatorTarget.objects.filter(indicator=indicator, year=selected_year).first()
             try:
-                change = ((entry.value - prev_entry.value) / prev_entry.value * 100) if prev_entry.value != 0 else 0
-            except (ZeroDivisionError, InvalidOperation):
-                change = 0
-            change_available = True
-        else:
-            change = 0
-            change_available = False
+                annual_target = float(target_obj.value) if target_obj else 0.0
+            except (InvalidOperation, ValueError, TypeError):
+                annual_target = 0.0
+            monthly_target_value = round(annual_target / 12, 2) if annual_target else 0
+            monthly_targets = [monthly_target_value] * 12
 
-        # -------------------------
-        # Progress vs target
-        # Targets are always for current year
-        # -------------------------
-        target_obj = IndicatorTarget.objects.filter(indicator=entry.indicator, year=current_year).first()
-        target_value = float(target_obj.value) if target_obj else 0.0
-        actual = float(entry.value)
-        try:
-            progress_percent = (actual / target_value * 100) if target_value > 0 else 0.0
-        except (ZeroDivisionError, InvalidOperation):
-            progress_percent = 0.0
+            # -------------------------
+            # Latest entry = last completed month
+            # -------------------------
+            latest_entry = MonthlyEntry.objects.filter(
+                indicator=indicator,
+                year=selected_year,
+                month=latest_month
+            ).first()
 
-        # Historical chart data (last 6 entries)
-        last_6 = MonthlyEntry.objects.filter(indicator=entry.indicator).order_by("-created_at")[:6]
-        chart_labels = [date(x.year, x.month, 1).strftime("%b %Y") for x in reversed(last_6)]
-        chart_values = [float(x.value) for x in reversed(last_6)]
+            # Previous entry before latest month
+            prev_entry = MonthlyEntry.objects.filter(
+                indicator=indicator,
+                created_at__lt=latest_entry.created_at if latest_entry else None
+            ).order_by("-created_at").first() if latest_entry else None
 
-        # Determine tag + story
-        if not change_available:
-            tag = "New"
-            story = f"{entry.indicator.name} has a new entry of {actual}, achieving {progress_percent:.1f}% of the target."
-        elif change > 0:
-            tag = "Improving"
-            story = f"{entry.indicator.name} is currently at {actual}, showing an improvement of {change:.1f}% and achieving {progress_percent:.1f}% of the target."
-        elif change < 0:
-            tag = "Declining"
-            story = f"{entry.indicator.name} is currently at {actual}, showing a decline of {abs(change):.1f}% and achieving {progress_percent:.1f}% of the target."
-        else:
-            tag = "Stable"
-            story = f"{entry.indicator.name} is currently at {actual}, with no significant change and achieving {progress_percent:.1f}% of the target."
+            current_month_actual = float(latest_entry.value) if latest_entry else 0.0
+            cumulative_actual = sum([float(e.value or 0) for e in entries])
+            cumulative_target = monthly_target_value * (latest_entry.month if latest_entry else 12)
+            cumulative_pct = (cumulative_actual / cumulative_target * 100) if cumulative_target else 0
+            cumulative_pct = min(cumulative_pct, 100)
 
-        top_insights.append({
-            "title": entry.indicator.name,
-            "chart_data": json.dumps({"labels": chart_labels, "values": chart_values}),
-            "story": story,
-            "tag": tag,
-            "change": change if change_available else None,
-            "last_updated": entry.created_at,
-            "actual": actual,
-            "target": target_value,
-            "progress_percent": progress_percent,
-        })
+            # Trend calculation
+            change = ((current_month_actual - float(prev_entry.value)) / float(prev_entry.value) * 100
+                      if prev_entry and prev_entry.value != 0 else 0.0)
+
+            last_3_entries = entries[-3:] if len(entries) >= 3 else entries
+            trend_vals = []
+            for i in range(1, len(last_3_entries)):
+                prev_val = float(last_3_entries[i-1].value or 0)
+                curr_val = float(last_3_entries[i].value or 0)
+                if curr_val > prev_val: trend_vals.append("up")
+                elif curr_val < prev_val: trend_vals.append("down")
+                else: trend_vals.append("stable")
+            trend_summary = "stable"
+            if all(t == "up" for t in trend_vals) and trend_vals: trend_summary = "upward"
+            elif all(t == "down" for t in trend_vals) and trend_vals: trend_summary = "downward"
+
+            if annual_target:
+                if cumulative_actual < 0.8 * cumulative_target:
+                    target_note = "significantly below target"
+                elif cumulative_actual > 1.05 * cumulative_target:
+                    target_note = "above target"
+                else:
+                    target_note = "close to target"
+            else:
+                target_note = "target unavailable"
+
+            # -------------------------
+            # Insight story
+            # -------------------------
+            if not entries:
+                story = (f"No data recorded yet for this year. "
+                         f"Cumulative target is {annual_target:.1f}, monthly target {monthly_target_value:.1f}. "
+                         f"Trend cannot be determined yet.")
+                tag = "New"
+                new_count += 1
+                missing_kpis.append(indicator.name)
+            elif current_month_actual > 0 and not prev_entry:
+                story = (f"Current month actual is {current_month_actual:.1f}, cumulative actual {cumulative_actual:.1f} "
+                         f"({cumulative_pct:.0f}% of {annual_target:.1f} target). New data recorded this month.")
+                tag = "New"
+                new_count += 1
+            else:
+                if change > 0:
+                    tag = "Improving"; improving_count += 1
+                    story = (f"Current month actual {current_month_actual:.1f}, cumulative {cumulative_actual:.1f} "
+                             f"({cumulative_pct:.0f}% of {annual_target:.1f}). Up {change:.1f}% vs last month, "
+                             f"{trend_summary} trend, {target_note}.")
+                elif change < 0:
+                    tag = "Declining"; declining_count += 1
+                    story = (f"Current month actual {current_month_actual:.1f}, cumulative {cumulative_actual:.1f} "
+                             f"({cumulative_pct:.0f}% of {annual_target:.1f}). Down {abs(change):.1f}% vs last month, "
+                             f"{trend_summary} trend, {target_note}.")
+                else:
+                    tag = "Stable"; stable_count += 1
+                    story = (f"Actual {current_month_actual:.1f}, cumulative {cumulative_actual:.1f} "
+                             f"({cumulative_pct:.0f}% of {annual_target:.1f}). Stable performance, {target_note}.")
+
+            # Chart
+            chart_data = json.dumps({
+                "labels": month_labels,
+                "actual": monthly_actuals,
+                "target": monthly_targets,
+            })
+
+            # Performance aggregation
+            if cumulative_target > 0:
+                progress_percent = (cumulative_actual / cumulative_target * 100)
+                performance_score_sum += min(progress_percent, 100)
+                performance_score_items += 1
+
+            total_kpis += 1
+
+            insights.append({
+                "indicator_id": indicator.id,
+                "title": indicator.name,
+                "chart_data": chart_data,
+                "story": story,
+                "tag": tag,
+                "change": change,
+                "actual": current_month_actual,
+                "target": annual_target,
+            })
+
+        if insights:
+            sorted_insights = sorted(insights, key=lambda x: x.get("change", 0), reverse=True)
+            project_insights.append({
+                "project": project,
+                "best": sorted_insights[:2],
+                "others": sorted_insights[2:-2] if len(sorted_insights) > 4 else sorted_insights[2:-2],
+                "worst": sorted_insights[-2:] if len(sorted_insights) >= 2 else insights,
+            })
 
     # -------------------------
-    # Sort by significance or recency and pick top 10
+    # Summary Percentages
     # -------------------------
-    ranked = sorted(
-        top_insights,
-        key=lambda x: (x["change"] if x["change"] is not None else -1, x["last_updated"]),
-        reverse=True
-    )[:10]
+    improving_pct = (improving_count / total_kpis * 100) if total_kpis else 0
+    declining_pct = (declining_count / total_kpis * 100) if total_kpis else 0
+    performance_score = (performance_score_sum / performance_score_items) if performance_score_items else 0
 
+    # -------------------------
+    # Dynamic overall narrative
+    # -------------------------
+    no_data_count = len(missing_kpis)
+    perf = performance_score
+    overall_story = (
+        f"The organization is currently tracking {total_kpis} key performance indicators across active projects. "
+        f"Overall performance stands at {perf:.1f}%, indicating a {'strong' if perf > 80 else 'moderate' if perf > 50 else 'weak'} achievement rate. "
+        f"A total of {improving_pct:.1f}% of indicators are improving, while {declining_pct:.1f}% are declining, "
+        f"showing that performance momentum is {'positive' if improving_pct > declining_pct else 'mixed' if abs(improving_pct - declining_pct) < 10 else 'concerning'}. "
+        f"Indicators without recent data ({no_data_count}) such as {', '.join(missing_kpis[:5]) if missing_kpis else 'none'} "
+        f"limit accurate tracking and may underestimate the true performance picture. "
+        f"To strengthen outcomes, focus should be placed on data completeness and addressing underperforming indicators. "
+        f"The current trend shows {'steady progress' if improving_pct > 50 else 'areas requiring renewed focus'}, "
+        f"with targets {'mostly met' if perf > 80 else 'partially achieved' if perf > 50 else 'largely unmet'}. "
+        f"Regular data entry and review will ensure a more accurate reflection of progress moving forward."
+    )
+
+    # -------------------------
+    # Context
+    # -------------------------
     context = {
-        "insights": ranked,
+        "project_insights": project_insights,
         "selected_year": selected_year,
-        "year_list": year_list
+        "year_list": year_list,
+        "total_kpis": total_kpis,
+        "percent_improving": f"{improving_pct:.1f}%",
+        "percent_declining": f"{declining_pct:.1f}%",
+        "performance_score": f"{performance_score:.1f}%",
+        "overall_story": overall_story,
     }
 
-    # -------------------------
-    # AJAX request: return only KPI cards partial
-    # -------------------------
-    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        html = render_to_string("core/partials/_data_story_cards.html", context, request=request)
-        return HttpResponse(html)
-
-    # -------------------------
-    # Normal full-page render
-    # -------------------------
     return render(request, "core/data_story.html", context)
-
-
-
 
 # -------------------------
 # EXPORT CSV - Dynamic with Numeric Totals
@@ -1746,8 +2342,8 @@ def more_reports_export_excel(request):
     if selected_indicator:
         base_qs = base_qs.filter(indicator_id=selected_indicator)
 
-    # --- Indicators ---
-    indicators = Indicator.objects.all()
+    # --- Indicators (active only) ---
+    indicators = Indicator.objects.filter(is_active=True)
     if selected_unit:
         indicators = indicators.filter(unit=selected_unit)
     if selected_project:
@@ -1801,20 +2397,19 @@ def more_reports_export_excel(request):
     ws["A1"].font = Font(bold=True, size=14)
     ws["A1"].alignment = Alignment(horizontal="center")
 
-    # Headers (black & white for printing)
+    # Headers
     headers = ["Year", "Project", "Indicator", "Unit"] + month_headers + ["Total", "Target", "Progress (%)"]
     ws.append(headers)
     header_row = ws[ws.max_row]
 
-    # Define top and bottom border for headers
+    # Header borders
     thick_border = Side(border_style="medium", color="000000")
     for cell in header_row:
         cell.font = Font(bold=True)
         cell.alignment = Alignment(horizontal="center")
-        # Apply top and bottom borders to make headers stand out
         cell.border = Border(top=thick_border, bottom=thick_border)
 
-    # Data rows with subtle visual cues
+    # Data rows
     for row in pivot_data:
         excel_row = [
             row["year"], row["project"], row["indicator"], row["unit"],
@@ -1822,19 +2417,17 @@ def more_reports_export_excel(request):
         ]
         ws.append(excel_row)
 
-        # Format progress column
+        # Format progress
         progress_cell = ws.cell(row=ws.max_row, column=len(excel_row))
-        progress_cell.number_format = "0%"  # display as percent
+        progress_cell.number_format = "0%"
         progress_val = row["progress"] * 100
 
-        # Conditional coloring using subtle dark shades
         if progress_val >= 75:
             progress_cell.font = Font(bold=True, color="006100")  # dark green
         elif progress_val >= 50:
             progress_cell.font = Font(bold=True, color="9C6500")  # dark amber
         else:
             progress_cell.font = Font(bold=True, color="9C0006")  # dark red
-
         progress_cell.alignment = Alignment(horizontal="center")
 
     # Totals row
@@ -1849,11 +2442,10 @@ def more_reports_export_excel(request):
     ws.cell(row=ws.max_row, column=1).alignment = Alignment(horizontal="center")
     ws.cell(row=ws.max_row, column=1).font = Font(italic=True, size=10)
 
-    # Apply subtle borders to data rows
+    # Apply subtle borders
     thin = Side(border_style="thin", color="000000")
     for row in ws.iter_rows(min_row=2, max_row=ws.max_row):
         for cell in row:
-            # Skip overwriting header top/bottom borders
             if cell.row == 2:
                 continue
             cell.border = Border(top=thin, left=thin, right=thin, bottom=thin)
@@ -1874,9 +2466,6 @@ def more_reports_export_excel(request):
 
 @login_required
 def monthly_performance_report(request):
-    import datetime, calendar
-    from django.db.models import Sum
-
     # --- Year filter ---
     current_year = datetime.date.today().year
     selected_year = request.GET.get("year")
@@ -1921,7 +2510,7 @@ def monthly_performance_report(request):
     month_headers = [calendar.month_abbr[m] for m in months]
 
     # --- Projects (only active) ---
-    projects = Project.objects.filter(active=True).order_by("name")
+    projects = Project.objects.filter(is_active=True).order_by("name")
 
     # --- Monthly trends per project ---
     monthly_trends = []
@@ -1932,7 +2521,7 @@ def monthly_performance_report(request):
             for m in months
         ]
 
-        # ✅ Keep project even if all values = 0 (so they appear in list)
+        # Keep project even if all values = 0
         indicators_list = sorted(proj_qs.values_list("indicator__name", flat=True).distinct())
         monthly_trends.append({
             "project_id": proj.id,
@@ -1973,11 +2562,9 @@ def monthly_performance_report(request):
 
 
 
-from django.http import JsonResponse
+
 from django import forms
 from .models import Facility, Project
-import json
-
 # -----------------------------
 # Facility Form
 # -----------------------------
@@ -1994,14 +2581,27 @@ class FacilityForm(forms.ModelForm):
 # -----------------------------
 # Facilities Map View
 # -----------------------------
+from datetime import date
+import json
+
+from django.shortcuts import render, get_object_or_404
+from django.http import JsonResponse
+from django.db import models
+
+from .models import Facility, Project
+from .forms import FacilityForm
+
+# -----------------------------
+# Facilities Map View
+# -----------------------------
 def facilities_map(request):
-    active_projects = Project.objects.filter(active=True)
+    active_projects = Project.objects.filter(is_active=True)
 
     # Selected year from GET, default to current year
     current_year = date.today().year
     year = int(request.GET.get("year", current_year))
 
-    # Year options for filter
+    # Year options for filter (current_year ±5)
     year_options = list(range(current_year - 5, current_year + 6))
 
     # Handle Add/Edit via AJAX POST
@@ -2017,6 +2617,7 @@ def facilities_map(request):
 
         if form.is_valid():
             facility = form.save()
+
             # Update ManyToMany relation
             if project_ids:
                 facility_projects = Project.objects.filter(id__in=project_ids)
@@ -2024,6 +2625,7 @@ def facilities_map(request):
             else:
                 facility.projects.clear()
 
+            # Return updated facilities
             facilities_qs = Facility.objects.filter(projects__in=active_projects).distinct().prefetch_related('projects')
             facilities_list = [
                 {
@@ -2035,7 +2637,6 @@ def facilities_map(request):
                         {
                             "id": p.id,
                             "name": p.name,
-                            # Only sum indicators where unit is "people reached"
                             "people_reached": sum(
                                 ind.entries.filter(year=year).aggregate(total=models.Sum('value'))['total'] or 0
                                 for ind in p.indicators.filter(unit__iexact='people reached')
@@ -2043,6 +2644,8 @@ def facilities_map(request):
                         }
                         for p in f.projects.all()
                     ],
+                    # Marker type for triangle shape
+                    "marker_type": "triangle",
                 }
                 for f in facilities_qs
             ]
@@ -2069,6 +2672,8 @@ def facilities_map(request):
                 }
                 for p in f.projects.all()
             ],
+            # Default marker type for triangles
+            "marker_type": "triangle",
         }
         for f in facilities_qs
     ]
@@ -2081,6 +2686,7 @@ def facilities_map(request):
         "selected_year": year,
     })
 
+
 # -----------------------------
 # Delete Facility
 # -----------------------------
@@ -2088,6 +2694,9 @@ def facility_delete(request, pk):
     facility = get_object_or_404(Facility, pk=pk)
     facility.delete()
     return JsonResponse({"success": True})
+
+
+
 
 
 
@@ -2110,6 +2719,9 @@ def more_reports_pdf(request):
     selected_indicator = request.GET.get("indicator")
     selected_indicator = int(selected_indicator) if selected_indicator and selected_indicator.isdigit() else None
 
+    # ✅ New: Active/Inactive filter
+    selected_status = request.GET.get("status")  # expected values: "active", "inactive", or None
+
     # --- Base queryset ---
     base_qs = MonthlyEntry.objects.filter(year=selected_year)
     if selected_unit:
@@ -2118,6 +2730,10 @@ def more_reports_pdf(request):
         base_qs = base_qs.filter(indicator__project_id=selected_project)
     if selected_indicator:
         base_qs = base_qs.filter(indicator_id=selected_indicator)
+    if selected_status == "active":
+        base_qs = base_qs.filter(indicator__is_active=True)
+    elif selected_status == "inactive":
+        base_qs = base_qs.filter(indicator__is_active=False)
 
     # --- Indicators ---
     indicators = Indicator.objects.all()
@@ -2127,6 +2743,10 @@ def more_reports_pdf(request):
         indicators = indicators.filter(project_id=selected_project)
     if selected_indicator:
         indicators = indicators.filter(id=selected_indicator)
+    if selected_status == "active":
+        indicators = indicators.filter(is_active=True)
+    elif selected_status == "inactive":
+        indicators = indicators.filter(is_active=False)
 
     # Sort indicators by project and name
     indicators = indicators.order_by('project__name', 'name')
@@ -2165,6 +2785,7 @@ def more_reports_pdf(request):
             "project": ind.project.name if ind.project else "-",
             "indicator": ind.name,
             "unit": ind.unit,
+            "status": "Active" if getattr(ind, "is_active", True) else "Inactive",  # ✅ Added status field
             "values": row_values,
             "total": row_total,
             "target": target_value,
@@ -2179,6 +2800,7 @@ def more_reports_pdf(request):
         "column_totals": column_totals,
         "grand_total": grand_total,
         "now": datetime.date.today(),
+        "selected_status": selected_status,  # ✅ Pass to template if needed
     })
 
     # --- Generate PDF ---
@@ -2191,3 +2813,559 @@ def more_reports_pdf(request):
 
 
 
+from io import BytesIO
+from weasyprint import HTML
+from openpyxl.styles import Font, Alignment, Border, Side
+from .models import MonthlyEntry, Project, Indicator
+
+
+def actual_vs_variance_report(request):
+    today = datetime.date.today()
+    current_year = today.year
+
+    # --- Filters ---
+    year = int(request.GET.get('year', current_year))
+    month_from = int(request.GET.get('month_from', 1))
+    month_to = int(request.GET.get('month_to', 12))
+    indicator_id = request.GET.get('indicator')
+    unit = request.GET.get('unit')
+    project_id = request.GET.get('project')
+    status = request.GET.get('status')  # active / inactive / None
+
+    # --- Month choices ---
+    month_choices = [(i, calendar.month_abbr[i]) for i in range(1, 13)]
+
+    # --- Determine default active filtering ---
+    if status not in ("active", "inactive"):
+        status = "active"
+
+    # --- Projects queryset ---
+    projects_qs = Project.objects.all()
+    if status == "active":
+        projects_qs = projects_qs.filter(is_active=True)
+    elif status == "inactive":
+        projects_qs = projects_qs.filter(is_active=False)
+
+    # --- Indicators queryset ---
+    indicators_qs = Indicator.objects.all()
+    if status == "active":
+        indicators_qs = indicators_qs.filter(is_active=True, project__is_active=True)
+    elif status == "inactive":
+        indicators_qs = indicators_qs.filter(is_active=False, project__is_active=False)
+
+    if indicator_id:
+        indicators_qs = indicators_qs.filter(id=indicator_id)
+    if project_id:
+        indicators_qs = indicators_qs.filter(project_id=project_id)
+    if unit:
+        indicators_qs = indicators_qs.filter(unit=unit)
+
+    # --- Entries queryset ---
+    entries = MonthlyEntry.objects.filter(year=year, month__gte=month_from, month__lte=month_to)
+    entries = entries.filter(indicator__in=indicators_qs)
+
+    # --- Build table rows ---
+    table_rows = []
+    for indicator in indicators_qs:
+        target_obj = indicator.targets.filter(year=year).first()
+        annual_target = target_obj.value if target_obj else 0
+        monthly_target = round(annual_target / 12, 2) if annual_target else 0
+
+        indicator_entries = entries.filter(indicator=indicator)
+        actuals_list = [0] * 12
+        for entry in indicator_entries:
+            actuals_list[entry.month - 1] = entry.value or 0
+
+        cumulative_actuals = sum(actuals_list[month_from - 1:month_to])
+        current_actual = actuals_list[month_to - 1] if month_to <= 12 else 0
+        total_actual = cumulative_actuals
+        progress = (total_actual / annual_target * 100) if annual_target > 0 else 0
+        variance = total_actual - annual_target
+
+        table_rows.append({
+            'year': year,
+            'project': indicator.project.name if indicator.project else "-",
+            'indicator': indicator.name,
+            'unit': indicator.unit,
+            'status': "Active" if indicator.is_active else "Inactive",
+            'cumulative': cumulative_actuals,
+            'actual': current_actual,
+            'total_actual': total_actual,
+            'target': annual_target,
+            'progress': progress,
+            'variance': variance,
+        })
+
+    table_rows = sorted(table_rows, key=lambda x: (x['project'], x['indicator']))
+
+    # --- Export Excel ---
+    if request.GET.get('export') == 'excel':
+        wb = Workbook()
+        ws = wb.active
+        ws.title = f"Actual vs Variance {year}"
+
+        headers = ['Year', 'Project', 'Indicator', 'Unit', 'Status', 'Cumulative Actual',
+                   'Current Month Actual', 'Total Actual', 'Target (Annual)', 'Variance', 'Progress (%)']
+        ws.append(headers)
+
+        header_font = Font(bold=True)
+        border_style = Border(left=Side(style='thin'), right=Side(style='thin'),
+                              top=Side(style='thin'), bottom=Side(style='thin'))
+
+        for col in ws.iter_cols(min_row=1, max_row=1, min_col=1, max_col=len(headers)):
+            cell = col[0]
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="left", vertical="center")
+            cell.border = border_style
+            ws.column_dimensions[cell.column_letter].width = 20
+
+        for row in table_rows:
+            variance_val = f"✅ {row['variance']}" if row['variance'] >= 0 else f"❌ {row['variance']}"
+            progress_val = f"{round(row['progress'],1)}%"
+            row_data = [
+                row['year'], row['project'], row['indicator'], row['unit'], row['status'],
+                row['cumulative'], row['actual'], row['total_actual'],
+                row['target'], variance_val, progress_val
+            ]
+            ws.append(row_data)
+
+        for r_idx, row_cells in enumerate(ws.iter_rows(min_row=2, max_row=ws.max_row), start=2):
+            for c_idx, cell in enumerate(row_cells, start=1):
+                cell.alignment = Alignment(horizontal="left")
+                cell.border = border_style
+                if c_idx == 10:
+                    cell.font = Font(color="008000" if table_rows[r_idx - 2]['variance'] >= 0 else "FF0000")
+
+        footer_row = ws.max_row + 2
+        ws.merge_cells(start_row=footer_row, start_column=1, end_row=footer_row, end_column=11)
+        footer_cell = ws.cell(row=footer_row, column=1)
+        footer_cell.value = f"Actual vs Variance Report generated for year {year}"
+        footer_cell.alignment = Alignment(horizontal="center")
+        footer_cell.font = Font(italic=True, color="555555")
+
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = f'attachment; filename=Actual_vs_Variance_{year}.xlsx'
+        wb.save(response)
+        return response
+
+    # --- Export PDF ---
+    if request.GET.get('export') == 'pdf':
+        context = {'table_rows': table_rows, 'page_title': f"Actual vs Variance Report {year}"}
+        html_string = render(request, 'core/actual_vs_variance_pdf.html', context).content.decode('utf-8')
+        pdf_file = BytesIO()
+        HTML(string=html_string).write_pdf(pdf_file)
+        response = HttpResponse(pdf_file.getvalue(), content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename=Actual_vs_Variance_{year}.pdf'
+        return response
+
+    # --- Chart data ---
+    grouped_data = {}
+    for indicator in indicators_qs:
+        key = (indicator.project.name if indicator.project else "-", indicator.unit)
+        target_obj = indicator.targets.filter(year=year).first()
+        annual_target = target_obj.value if target_obj else 0
+        monthly_target = round(annual_target / 12, 2) if annual_target else 0
+
+        if key not in grouped_data:
+            grouped_data[key] = {'project': key[0], 'unit': key[1], 'actuals': [0]*12, 'chart_targets': [0]*12}
+
+        ind_entries = entries.filter(indicator=indicator)
+        for entry in ind_entries:
+            grouped_data[key]['actuals'][entry.month-1] += entry.value or 0
+            grouped_data[key]['chart_targets'][entry.month-1] += monthly_target
+
+    month_labels = [calendar.month_abbr[m] for m in range(month_from, month_to+1)]
+    chart_data = []
+    for data in grouped_data.values():
+        actuals_slice = data['actuals'][month_from-1:month_to]
+        targets_slice = data['chart_targets'][month_from-1:month_to]
+
+        chart_data.append({
+            'label': f"{data['project']} ({data['unit']}) - Actual",
+            'data': actuals_slice,
+            'type': 'bar',
+            'backgroundColor': 'rgba(54, 162, 235, 0.7)',
+        })
+        chart_data.append({
+            'label': f"{data['project']} ({data['unit']}) - Target",
+            'data': targets_slice,
+            'type': 'line',
+            'borderColor': 'rgba(255, 99, 132, 1)',
+            'borderWidth': 2,
+            'fill': False,
+        })
+
+    context = {
+        'year': year,
+        'month_from': month_from,
+        'month_to': month_to,
+        'month_choices': month_choices,
+        'indicators': indicators_qs,
+        'projects': projects_qs,
+        'units': list(entries.values_list('indicator__unit', flat=True).distinct()),
+        'selected_indicator': int(indicator_id) if indicator_id else None,
+        'selected_unit': unit if unit else None,
+        'selected_project': int(project_id) if project_id else None,
+        'selected_status': status,
+        'categories': json.dumps(month_labels),
+        'chart_data': json.dumps(chart_data),
+        'table_rows': table_rows,
+        'page_title': "📊 Actual vs Variance Report",
+    }
+
+    return render(request, 'core/actual_vs_variance.html', context)
+
+
+from .models import Donor, Project, Facility, Indicator, MonthlyEntry
+from django.db.models import Q
+# -------------------------
+# Donor Detail View
+# -------------------------
+def donor_detail(request, donor_id):
+    donor = get_object_or_404(Donor, id=donor_id)
+
+    # Fetch all projects linked to this donor (main or additional)
+    projects = Project.objects.filter(
+        Q(main_donor=donor) | Q(donors=donor)
+    ).distinct().order_by('start_date')
+
+    # Determine overall start and end dates from linked projects
+    if projects.exists():
+        start_date = projects.first().start_date
+        end_date = projects.last().end_date
+    else:
+        start_date = None
+        end_date = None
+
+    # Initialize donor-level summary counters
+    donor_total_kpis = 0
+    donor_active_kpis = 0
+
+    # Calculate status and KPI details for each project
+    today = date.today()
+    projects_with_status = []
+    for proj in projects:
+        # Determine project status
+        if proj.end_date:
+            if proj.end_date < today:
+                status_text = "Completed"
+            elif (proj.end_date - today).days <= 30:
+                status_text = "Ending Soon"
+            else:
+                status_text = "Active"
+        else:
+            status_text = "Active"
+
+        if proj.end_date and proj.end_date < today and not proj.is_active:
+            status_text = "Overdue"
+
+        # Include project facilities for display
+        project_facilities = proj.facilities.all()
+
+        # Calculate KPIs
+        indicators = Indicator.objects.filter(project=proj)
+        total_kpis = indicators.count()
+
+        # Determine active KPIs based on project status and individual KPI status
+        if not proj.is_active or status_text in ["Completed", "Overdue"]:
+            active_indicators = indicators.none()  # all KPIs inactive
+        else:
+            active_indicators = indicators.filter(is_active=True)
+
+        active_count = active_indicators.count()
+        kpi_url = f"/projects/{proj.id}/kpis/" if total_kpis > 0 else "#"
+
+        # Update donor-level summary
+        donor_total_kpis += total_kpis
+        donor_active_kpis += active_count
+
+        projects_with_status.append({
+            "project": proj,
+            "status_text": status_text,
+            "facilities": project_facilities,
+            "total_kpis": total_kpis,
+            "active_count": active_count,
+            "kpi_url": kpi_url,
+        })
+
+    # Calculate inactive KPIs at donor level
+    donor_inactive_kpis = donor_total_kpis - donor_active_kpis
+
+    # Fetch donor's directly linked facilities
+    donor_facilities = donor.facilities.all()
+
+    # Include all facilities for map, cast Decimal to float
+    all_facilities = Facility.objects.all()
+    facilities_json = json.dumps([
+        {
+            "name": f.name,
+            "lat": float(f.latitude),
+            "lng": float(f.longitude),
+        } for f in all_facilities
+    ])
+
+    # -------------------------
+    # KPI Trend Data (last 10 months)
+    # -------------------------
+    trend_labels = []
+    trend_total = []
+    trend_active = []
+    trend_inactive = []
+
+    for i in range(9, -1, -1):
+        # Calculate target month and year
+        target_month = (today.month - i - 1) % 12 + 1
+        target_year = today.year - ((today.month - i - 1) // 12)
+
+        # Get all MonthlyEntry objects for linked projects for this month
+        month_entries = MonthlyEntry.objects.filter(
+            indicator__project__in=projects,
+            year=target_year,
+            month=target_month
+        )
+
+        month_active = month_entries.filter(indicator__is_active=True)
+        month_inactive = month_entries.filter(indicator__is_active=False)
+
+        trend_labels.append(datetime.date(target_year, target_month, 1).strftime("%b"))
+        trend_total.append(month_entries.count())
+        trend_active.append(month_active.count())
+        trend_inactive.append(month_inactive.count())
+
+    # -------------------------
+    # Context
+    # -------------------------
+    context = {
+        "donor": donor,
+        "projects_with_status": projects_with_status,
+        "start_date": start_date,
+        "end_date": end_date,
+        "today": today,
+        "donor_facilities": donor_facilities,
+        "facilities_json": facilities_json,
+        "donor_total_kpis": donor_total_kpis,
+        "donor_active_kpis": donor_active_kpis,
+        "donor_inactive_kpis": donor_inactive_kpis,
+        "kpi_trend_labels": trend_labels,
+        "kpi_trend_total": trend_total,
+        "kpi_trend_active": trend_active,
+        "kpi_trend_inactive": trend_inactive,
+    }
+
+    return render(request, "core/donor_detail.html", context)
+
+
+
+
+
+
+# -------------------------
+# Donors List View
+# -------------------------
+from .models import Donor, Project
+
+def donors_list(request):
+    """
+    Display all donors, including those with no projects.
+    Each donor includes their linked projects and project status.
+    """
+    today = date.today()
+    donors = Donor.objects.all().order_by('name')
+
+    donors_data = []
+
+    for donor in donors:
+        # Get all projects linked to this donor (may be empty)
+        projects = donor.projects.all().order_by('start_date')
+
+        projects_with_status = []
+        for proj in projects:
+            if proj.end_date:
+                if proj.end_date < today:
+                    status = "Completed"
+                elif (proj.end_date - today).days <= 30:
+                    status = "Ending Soon"
+                else:
+                    status = "Active"
+            else:
+                status = "Active"
+
+            if proj.end_date and proj.end_date < today and not proj.is_active:
+                status = "Overdue"
+
+            projects_with_status.append({
+                "project": proj,
+                "status": status
+            })
+
+        donors_data.append({
+            "donor": donor,
+            "projects_with_status": projects_with_status  # can be empty
+        })
+
+    context = {
+        "donors_data": donors_data,
+        "today": today,
+    }
+
+    return render(request, "core/donors_list.html", context)
+
+
+from .models import Donor, Project
+from .forms import DonorForm
+
+# -------------------------
+# Donor Edit View
+# -------------------------
+def donor_edit(request, donor_id):
+    donor = get_object_or_404(Donor, id=donor_id)
+
+    if request.method == "POST":
+        form = DonorForm(request.POST, instance=donor)
+        if form.is_valid():
+            donor = form.save()
+
+            # Update linked projects via the M2M field
+            projects_selected = form.cleaned_data.get('projects_from_form')
+            if projects_selected is not None:
+                donor.projects_from_form.set(projects_selected)
+
+            # Update linked facilities via the new M2M field
+            facilities_selected = form.cleaned_data.get('facilities')
+            if facilities_selected is not None:
+                donor.facilities.set(facilities_selected)
+
+            messages.success(request, f"Donor '{donor.name}' has been updated successfully.")
+            return redirect("donor_detail", donor_id=donor.id)
+        else:
+            messages.error(request, "Please correct the errors below.")
+    else:
+        form = DonorForm(instance=donor)
+
+    all_projects = Project.objects.all().order_by('name')
+    all_facilities = donor.facilities.all()  # for reference if needed in template
+
+    context = {
+        "form": form,
+        "donor": donor,
+        "all_projects": all_projects,
+        "all_facilities": all_facilities,
+        "title": "Edit",
+    }
+    return render(request, "core/donor_form.html", context)
+
+
+from .models import Donor, Project
+from .forms import DonorForm
+
+# -------------------------
+# Donor Add View
+# -------------------------
+def donor_add(request):
+    """
+    Display a form to create a new donor.
+    On POST, validates and saves the donor with optional linked projects and facilities.
+    """
+    if request.method == "POST":
+        form = DonorForm(request.POST)
+        if form.is_valid():
+            donor = form.save()
+
+            # Link selected projects via the M2M field
+            projects_selected = form.cleaned_data.get('projects_from_form')
+            if projects_selected is not None:
+                donor.projects_from_form.set(projects_selected)
+
+            # Link selected facilities via the new M2M field
+            facilities_selected = form.cleaned_data.get('facilities')
+            if facilities_selected is not None:
+                donor.facilities.set(facilities_selected)
+
+            messages.success(request, f"Donor '{donor.name}' was added successfully!")
+            return redirect('donor_detail', donor_id=donor.id)
+        else:
+            messages.error(request, "Please fix the errors below.")
+    else:
+        form = DonorForm()
+
+    all_projects = Project.objects.all().order_by('name')
+    all_facilities = donor.facilities.all() if 'donor' in locals() and donor else []
+
+    context = {
+        "form": form,
+        "all_projects": all_projects,
+        "all_facilities": all_facilities,
+        "donor": None,
+        "title": "Add",
+    }
+    return render(request, "core/donor_form.html", context)
+
+
+
+
+
+
+# -------------------------
+# Donor Delete View
+# -------------------------
+def donor_delete(request, donor_id):
+    """
+    Safely delete a donor after confirmation.
+    """
+    donor = get_object_or_404(Donor, id=donor_id)
+
+    if request.method == "POST":
+        donor_name = donor.name
+        donor.delete()
+        messages.success(request, f"Donor '{donor_name}' has been deleted successfully.")
+        return redirect('donors_list')
+
+    # Render a confirmation page
+    return render(request, "core/donor_confirm_delete.html", {"donor": donor})
+
+
+
+
+# Bulk actions in KPIs delete
+
+def project_bulk_action(request, project_id):
+    """
+    Handles bulk actions on project KPIs: approve, delete, submit.
+    Expects POST request with 'action' and 'ids' (list of indicator IDs).
+    """
+    if request.method != "POST":
+        messages.error(request, "Invalid request method.")
+        return redirect("project_kpis", pk=project_id)
+
+    project = get_object_or_404(Project, id=project_id)
+    action = request.POST.get("action")
+    ids = request.POST.getlist("ids")
+
+    if not action or not ids:
+        messages.error(request, "No bulk action or rows selected.")
+        return redirect("project_kpis", pk=project_id)
+
+    # Fetch only indicators belonging to this project
+    indicators = Indicator.objects.filter(id__in=ids, project=project)
+    if not indicators.exists():
+        messages.error(request, "Selected KPIs do not exist or do not belong to this project.")
+        return redirect("project_kpis", pk=project_id)
+
+    try:
+        with transaction.atomic():
+            if action == "approve":
+                updated_count = indicators.update(is_approved=True)
+                messages.success(request, f"{updated_count} KPI(s) approved successfully.")
+            elif action == "delete":
+                deleted_count = indicators.count()
+                indicators.delete()
+                messages.success(request, f"{deleted_count} KPI(s) deleted successfully.")
+            elif action == "submit":
+                updated_count = indicators.update(is_submitted=True)
+                messages.success(request, f"{updated_count} KPI(s) submitted successfully.")
+            else:
+                messages.error(request, "Invalid bulk action selected.")
+    except Exception as e:
+        messages.error(request, f"An error occurred during bulk action: {str(e)}")
+
+    return redirect("project_kpis", pk=project_id)

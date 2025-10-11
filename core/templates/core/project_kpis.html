@@ -11,11 +11,11 @@
   <!-- Project Header -->
   <div class="d-flex justify-content-between align-items-center mb-3">
     <div class="text-start">
-      <h2 class="fw-bold text-primary mb-1">{{ project.name }}</h2>
-      <p class="text-muted mb-3">{{ project.description|default:"No description provided." }}</p>
+      <h2 class="fw-bold text-primary mb-1" style="font-size: 1.5rem;">{{ project.name }}</h2>
+      <p class="text-muted mb-3" style="font-size: 0.85rem;">{{ project.description|default:"No description provided." }}</p>
     </div>
     <div class="text-end">
-      <a href="{% url 'project_detail' project.id %}" class="btn btn-dark btn-sm shadow-sm px-3 py-2" style="font-size: 0.9rem;">
+      <a href="{% url 'project_detail' project.id %}" class="btn btn-dark btn-sm shadow-sm px-3 py-2" style="font-size: 0.85rem;">
         <i class="fas fa-arrow-left me-1"></i> Back
       </a>
     </div>
@@ -23,32 +23,43 @@
 
   <!-- Action Buttons -->
   <div class="d-flex justify-content-center gap-2 mb-3 flex-nowrap" style="flex-wrap: nowrap; overflow-x: auto;">
-    <a href="{% url 'project_kpis' project.id %}" class="btn btn-info btn-sm shadow-sm">
+    <a href="{% url 'project_kpis' project.id %}" class="btn btn-info btn-sm shadow-sm" style="font-size: 0.82rem;">
       <i class="fas fa-chart-line me-1"></i> View KPIs
     </a>
-    <a href="{% url 'indicator_add' project.id %}" class="btn btn-success btn-sm shadow-sm">
+    <a href="{% url 'indicator_add' project.id %}" class="btn btn-success btn-sm shadow-sm" style="font-size: 0.82rem;">
       <i class="fas fa-plus me-1"></i> Add KPI
     </a>
-    <a href="{% url 'bulk_save_entries' project.id %}?year={{ year }}" class="btn btn-primary btn-sm shadow-sm">
+    <a href="{% url 'bulk_save_entries' project.id %}?year={{ year }}" class="btn btn-primary btn-sm shadow-sm" style="font-size: 0.82rem;">
       <i class="fas fa-file-alt me-1"></i> Bulk Save Entries
     </a>
-    <a href="{% url 'export_project_kpis' project.id %}?year={{ year }}" class="btn btn-outline-success btn-sm shadow-sm">
+    <a href="{% url 'export_project_kpis' project.id %}?year={{ year }}" class="btn btn-outline-success btn-sm shadow-sm" style="font-size: 0.82rem;">
       <i class="fas fa-file-csv me-1"></i> Export CSV
     </a>
-    <a href="{% url 'export_project_kpis_excel' project.id %}?year={{ year }}" class="btn btn-outline-success btn-sm shadow-sm">
+    <a href="{% url 'export_project_kpis_excel' project.id %}?year={{ year }}" class="btn btn-outline-success btn-sm shadow-sm" style="font-size: 0.82rem;">
       <i class="fas fa-file-excel me-1"></i> Export Excel
     </a>
   </div>
 
   <!-- Year Selector -->
-  <form method="get" class="d-flex justify-content-center align-items-center gap-2 mb-3">
-    <label class="fw-semibold mb-0">Select Year:</label>
+  <form method="get" class="d-flex justify-content-center align-items-center gap-2 mb-3 year-form">
+    <label class="fw-semibold mb-0" style="font-size: 0.85rem; white-space: nowrap;">Select Year:</label>
     <input type="number" name="year" value="{{ year }}" min="2000" max="2100"
-           class="form-control w-auto shadow-sm">
-    <button class="btn btn-primary btn-sm shadow-sm" type="submit">
+           class="form-control shadow-sm text-center" style="max-width: 90px; font-size: 0.85rem;">
+    <button class="btn btn-primary shadow-sm" type="submit" style="font-size: 0.85rem; white-space: nowrap;">
       <i class="fas fa-calendar-alt me-1"></i> Go
     </button>
   </form>
+
+  <!-- Bulk Actions -->
+  <div class="d-flex justify-content-end gap-2 mb-2">
+    <select id="bulkAction" class="form-select form-select-sm w-auto">
+      <option value="">Bulk Actions</option>
+      <option value="approve">Approve Selected</option>
+      <option value="delete">Delete Selected</option>
+      <option value="submit">Submit Selected</option>
+    </select>
+    <button type="button" id="applyBulk" class="btn btn-sm btn-secondary">Apply</button>
+  </div>
 
   <!-- KPI Entry Form -->
   <form id="kpiForm" method="post" action="{% url 'project_kpis' project.id %}">
@@ -59,48 +70,45 @@
 
       <!-- Table Title -->
       <div class="d-flex justify-content-start align-items-center p-2 border-bottom">
-        <h5 class="fw-bold mb-0">📊 Monthly KPI Entry Grid ({{ year }})</h5>
+        <h5 class="fw-bold mb-0" style="font-size: 0.95rem;">📊 Monthly KPI Entry Grid ({{ year }})</h5>
       </div>
 
-      <div class="card-body" style="font-size: 0.78rem; max-height: 550px;">  
-        <!-- Search Bar -->
-        <div class="input-group mb-3 shadow-sm">
-          <span class="input-group-text bg-light">
-            <i class="fas fa-search text-secondary"></i>
-          </span>
-          <input type="text" id="searchInput" class="form-control" placeholder="Search indicators..." onkeyup="filterTable()">
-        </div>
+      <div class="card-body" style="font-size: 0.72rem; max-height: 550px;">  
 
         <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-          <table class="table table-sm align-middle w-100 table-hover" id="kpiTable">
+          <table class="table table-sm align-middle w-100 table-hover" id="kpiTable" style="font-size: 0.75rem;">
             <thead class="table-primary sticky-top" style="top: 0; z-index: 10;">
               <tr style="border-top: 2px solid #000; border-bottom: 2px solid #000;">
-                <th style="min-width: 120px;">Annual Target</th>
-                <th class="text-start" style="width: 30%; min-width: 250px;">Indicator</th>
+                <th class="sticky-col bg-primary text-white text-center" style="min-width: 35px; left: 0; z-index: 12;">
+                  <input type="checkbox" id="selectAll">
+                </th>
+                <th class="sticky-col bg-primary text-white text-center" style="min-width: 90px; font-size: 0.75rem; left: 35px; z-index: 11;">Annual Target</th>
+                <th class="sticky-col bg-primary text-white text-center" style="width: 30%; min-width: 200px; font-size: 0.75rem; left: 125px; z-index: 11;">Indicator</th>
                 {% for m in months %}
-                  <th class="text-center">{{ m|get_month_name|slice:":3" }}</th>
+                  <th class="text-center" style="font-size: 0.75rem;">{{ m|get_month_name|slice:":3" }}</th>
                 {% endfor %}
-                <th class="bg-light text-center">Total</th>
-                <th>Actions</th>
+                <th class="bg-light text-center" style="font-size: 0.75rem;">Total</th>
+                <th class="text-center" style="font-size: 0.75rem;">Actions</th>
               </tr>
             </thead>
             <tbody>
             {% for ind in indicators %}
-              <tr class="{% cycle 'table-light' 'table-white' %} hover-shadow">
-                <td>
+              <tr class="{% cycle 'table-light' 'table-white' %} hover-shadow" data-id="{{ ind.id }}">
+                <td class="sticky-col bg-light sticky-hover text-center" style="left: 0;">
+                  <input type="checkbox" class="row-checkbox">
+                </td>
+                <td class="sticky-col bg-light sticky-hover text-end" style="left: 35px;">
                   <input type="number" step="1" min="0"
                          name="target_{{ ind.id }}"
                          value="{{ target_dict|get_item:ind.id|default:'' }}"
                          class="form-control form-control-sm text-end shadow-sm target-input"
                          data-indicator-id="{{ ind.id }}"
-                         style="max-width: 80px;">
+                         style="max-width: 80px; font-size: 0.72rem; padding: 0.2rem 0.3rem;">
                 </td>
-
-                <td class="text-start">
+                <td class="sticky-col bg-light sticky-hover" style="left: 125px;">
                   <strong class="text-dark">{{ ind.name }}</strong><br>
                   <small class="text-muted">Unit: {{ ind.unit }}</small>
                 </td>
-
                 {% for m in months %}
                   {% with val=grid|get_item:ind.id|get_item:m %}
                   <td class="text-end">
@@ -108,23 +116,21 @@
                            name="val_{{ ind.id }}_{{ m }}"
                            value="{{ val|default:'' }}"
                            class="form-control form-control-sm shadow-sm month-input {% if val %}bg-success-subtle{% endif %}"
-                           style="max-width: 70px;">
+                           style="max-width: 70px; font-size: 0.72rem; padding: 0.2rem 0.3rem; text-align: right;">
                   </td>
                   {% endwith %}
                 {% endfor %}
-
-                <td class="fw-bold text-dark bg-light text-end">{{ totals|get_item:ind.id|default:"0" }}</td>
-
-                <td class="text-nowrap">
+                <td class="fw-bold text-dark bg-light text-end kpi-total" style="font-size: 0.72rem;">{{ totals|get_item:ind.id|default:"0" }}</td>
+                <td class="text-center text-nowrap">
                   <div class="d-flex gap-1 justify-content-center">
                     <a href="{% url 'indicator_edit' project.id ind.id %}" 
                        class="btn btn-warning btn-sm d-flex align-items-center justify-content-center hover-scale"
-                       style="min-width: 60px;">
+                       style="min-width: 55px; font-size: 0.72rem; padding: 0.25rem 0.35rem;">
                       <i class="fas fa-edit me-1"></i> Edit
                     </a>
                     <a href="{% url 'indicator_delete' project.id ind.id %}" 
                        class="btn btn-danger btn-sm d-flex align-items-center justify-content-center hover-scale"
-                       style="min-width: 60px;"
+                       style="min-width: 55px; font-size: 0.72rem; padding: 0.25rem 0.35rem;"
                        onclick="return confirm('Are you sure you want to delete this indicator?');">
                       <i class="fas fa-trash-alt me-1"></i> Delete
                     </a>
@@ -133,33 +139,22 @@
               </tr>
             {% empty %}
               <tr>
-                <td colspan="{{ months|length|add:4 }}" class="text-center py-3 text-muted">
+                <td colspan="{{ months|length|add:5 }}" class="text-center py-2 text-muted" style="font-size: 0.72rem;">
                   <em>No KPIs available for this project.</em>
                 </td>
               </tr>
             {% endfor %}
-
-            {% if indicators %}
-            <tr class="table-secondary fw-bold sticky-bottom" style="bottom: 0; z-index: 10;">
-              <td colspan="2" class="text-start">Monthly Totals</td>
-              {% for m in months %}
-                <td class="text-end">{{ monthly_totals|get_item:m|default:"0" }}</td>
-              {% endfor %}
-              <td class="text-end">{{ grand_total }}</td>
-              <td>-</td>
-            </tr>
-            {% endif %}
             </tbody>
           </table>
         </div>
 
-        <div class="mt-4 d-flex justify-content-center">
-          <button id="saveBtn" class="btn btn-lg btn-success px-5 shadow-lg" type="submit">
+        <div class="mt-3 d-flex justify-content-center">
+          <button id="saveBtn" class="btn btn-lg btn-success px-5 shadow-lg" type="submit" style="font-size: 0.85rem;">
             <i class="fas fa-save me-2"></i> Save All Entries
           </button>
         </div>
 
-        <p class="text-muted small mt-3 text-center">
+        <p class="text-muted small mt-2 text-center" style="font-size: 0.72rem;">
           <strong>Tip:</strong> Leave a cell blank to keep it unchanged. Re-enter a value to update it.
         </p>
       </div>
@@ -175,32 +170,71 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 input[type=number] { -moz-appearance: textfield; }
 .hover-scale { transition: transform 0.15s ease-in-out; }
 .hover-scale:hover { transform: scale(1.05); }
+.sticky-col { position: sticky; z-index: 2; }
+.sticky-hover:hover { background-color: #e6f2ff !important; transition: background-color 0.2s ease-in-out; }
+
+/* Year selector adjustments */
+.year-form input,
+.year-form button { height: 32px; }
+.year-form label { margin-right: 0.3rem; }
+@media (max-width: 576px) { .year-form { flex-wrap: nowrap; } }
 </style>
 
 <script>
-function filterTable() {
-  let input = document.getElementById("searchInput").value.toLowerCase();
-  let table = document.getElementById("kpiTable");
-  let rows = table.getElementsByTagName("tr");
-  for (let i = 1; i < rows.length; i++) {
-    let firstCol = rows[i].getElementsByTagName("td")[1];
-    if (firstCol) {
-      let textValue = firstCol.textContent || firstCol.innerText;
-      rows[i].style.display = textValue.toLowerCase().includes(input) ? "" : "none";
-    }
-  }
-}
-
+// Validation & totals
 function validateWholeNumber(e) {
   const val = e.target.value.trim();
   if (val === "" || /^\d+$/.test(val)) { e.target.classList.remove("invalid"); e.target.classList.add("valid"); }
   else { e.target.classList.remove("valid"); e.target.classList.add("invalid"); }
 }
+document.querySelectorAll(".target-input, .month-input").forEach(input => input.addEventListener("input", validateWholeNumber));
 
-document.querySelectorAll(".target-input, .month-input").forEach(input => {
-  input.addEventListener("input", validateWholeNumber);
+function updateTotals() {
+  const rows = document.querySelectorAll("#kpiTable tbody tr");
+  rows.forEach(row => {
+    const monthInputs = row.querySelectorAll(".month-input");
+    if (monthInputs.length) {
+      let kpiTotal = 0;
+      monthInputs.forEach(input => {
+        const val = parseInt(input.value) || 0;
+        kpiTotal += val;
+      });
+      const totalCell = row.querySelector(".kpi-total");
+      if (totalCell) totalCell.textContent = kpiTotal;
+    }
+  });
+}
+document.querySelectorAll(".month-input").forEach(input => input.addEventListener("input", updateTotals));
+
+// Smart copy-paste for month/target inputs
+document.querySelectorAll('.month-input, .target-input').forEach(input => {
+  input.addEventListener('paste', function(e) {
+    e.preventDefault();
+    const clipboardData = e.clipboardData.getData('text');
+    const rows = clipboardData.split(/\r?\n/).filter(r => r.trim() !== '');
+    let startRow = input.closest('tr');
+    let startColIndex = Array.from(startRow.querySelectorAll('.month-input, .target-input')).indexOf(input);
+
+    rows.forEach((rowText, rowOffset) => {
+      const rowValues = rowText.split(/\t/);
+      const targetRow = startRow.parentElement.children[startRow.rowIndex - 1 + rowOffset];
+      if (!targetRow) return;
+      rowValues.forEach((cellVal, colOffset) => {
+        const cellIndex = startColIndex + colOffset;
+        const inputs = Array.from(targetRow.querySelectorAll('.month-input, .target-input'));
+        if (!inputs[cellIndex]) return;
+        const val = cellVal.trim();
+        if (val !== '' && /^\d+$/.test(val)) {
+          inputs[cellIndex].value = val;
+          inputs[cellIndex].classList.add('valid');
+        }
+      });
+    });
+    updateTotals();
+  });
 });
 
+// Form validation
 document.getElementById("kpiForm").addEventListener("submit", function(e) {
   let invalid = false;
   document.querySelectorAll(".target-input, .month-input").forEach(input => {
@@ -209,5 +243,89 @@ document.getElementById("kpiForm").addEventListener("submit", function(e) {
   });
   if (invalid) { e.preventDefault(); alert("Please correct non-whole-number values before saving."); }
 });
+
+// Arrow-key navigation
+const monthInputs = Array.from(document.querySelectorAll(".month-input"));
+const numCols = {{ months|length }};
+monthInputs.forEach((input, index) => {
+  input.addEventListener("keydown", function(e) {
+    const totalRows = Math.ceil(monthInputs.length / numCols);
+    let row = Math.floor(index / numCols);
+    let col = index % numCols;
+    if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
+      e.preventDefault();
+      if (e.key === "ArrowRight") col = Math.min(col + 1, numCols - 1);
+      if (e.key === "ArrowLeft") col = Math.max(col - 0, 0);
+      if (e.key === "ArrowUp") row = Math.max(row - 1, 0);
+      if (e.key === "ArrowDown") row = Math.min(row + 1, totalRows - 1);
+      const newIndex = row * numCols + col;
+      monthInputs[newIndex]?.focus();
+    }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      let nextIndex = index + 1;
+      if (nextIndex >= monthInputs.length) nextIndex = 0;
+      monthInputs[nextIndex]?.focus();
+    }
+  });
+});
+
+// Bulk actions
+const selectAll = document.getElementById("selectAll");
+const rowCheckboxes = document.querySelectorAll(".row-checkbox");
+selectAll.addEventListener("change", function() {
+  rowCheckboxes.forEach(cb => cb.checked = selectAll.checked);
+});
+
+document.getElementById("applyBulk").addEventListener("click", function() {
+  const action = document.getElementById("bulkAction").value;
+  if (!action) return alert("Please select a bulk action.");
+  const selectedIds = Array.from(rowCheckboxes)
+                           .filter(cb => cb.checked)
+                           .map(cb => cb.closest("tr").dataset.id);
+  if (!selectedIds.length) return alert("Please select at least one row.");
+
+  const form = document.createElement("form");
+  form.method = "post";
+  form.action = "{% url 'project_bulk_action' project.id %}";
+  form.style.display = "none";
+
+  const csrf = document.createElement("input");
+  csrf.type = "hidden"; csrf.name = "csrfmiddlewaretoken"; csrf.value = "{{ csrf_token }}";
+  form.appendChild(csrf);
+
+  const actionInput = document.createElement("input");
+  actionInput.type = "hidden"; actionInput.name = "action"; actionInput.value = action;
+  form.appendChild(actionInput);
+
+  selectedIds.forEach(id => {
+    const input = document.createElement("input");
+    input.type = "hidden"; input.name = "ids"; input.value = id;
+    form.appendChild(input);
+  });
+
+  document.body.appendChild(form);
+  form.submit();
+});
+
+// --- Restrict to only digits (no letters, commas, dots, etc.)
+document.querySelectorAll('.month-input, .target-input').forEach(input => {
+  // Prevent typing invalid characters
+  input.addEventListener('keypress', function(e) {
+    if (!/[0-9]/.test(e.key)) {
+      e.preventDefault();
+    }
+  });
+
+  // Prevent pasting invalid text
+  input.addEventListener('paste', function(e) {
+    e.preventDefault();
+    const pasted = (e.clipboardData || window.clipboardData).getData('text');
+    const digitsOnly = pasted.replace(/\D/g, ''); // remove non-digits
+    this.value = digitsOnly;
+    this.classList.add('valid');
+  });
+});
+
 </script>
 {% endblock %}

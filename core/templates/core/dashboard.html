@@ -13,16 +13,7 @@
     padding-top: 0 !important;
   }
 
-  .clock-widget {
-    background: linear-gradient(90deg, #ff512f, #dd2476);
-    color: white;
-    font-weight: 600;
-    font-size: 0.85rem;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    border-radius: 12px;
-    padding: 0.4rem 0.8rem;
-  }
-
+  /* ---------- STAT CARDS ---------- */
   .stat-card {
     border-radius: 15px;
     color: #fff;
@@ -42,6 +33,7 @@
 
   .logo-container { background: #fff; padding: 6px 10px; border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
 
+  /* ---------- INDICATOR CARDS ---------- */
   .indicator-card {
     color: #fff;
     padding: 1rem;
@@ -54,7 +46,7 @@
     transform: scale(0.98);
     transition: opacity 0.6s ease-in-out, transform 0.6s ease-in-out;
     cursor: pointer;
-    margin-bottom: 12px;  /* space between cards */
+    margin-bottom: 12px;
   }
   .indicator-card.show {
     opacity: 1;
@@ -64,11 +56,11 @@
     transform: translateY(-4px) scale(1.04);
     box-shadow: 0 8px 20px rgba(0,0,0,0.18), 0 0 6px rgba(255,255,255,0.15);
   }
-
   .indicator-card.green { background: linear-gradient(135deg, #11998e, #38ef7d); }
   .indicator-card.yellow { background: linear-gradient(135deg, #f7971e, #ffd200); }
   .indicator-card.red { background: linear-gradient(135deg, #ff416c, #ff4b2b); }
 
+  /* ---------- CHART CARDS ---------- */
   .chart-card {
     border-radius: 12px;
     padding: 0.75rem;
@@ -79,11 +71,12 @@
   }
   .chart-card:hover { transform: scale(1.015); box-shadow: 0 8px 16px rgba(0,0,0,0.15); }
 
+  /* ---------- QUICK ACTION BUTTONS ---------- */
   .quick-btn {
     border-radius: 10px;
     padding: 8px 14px;
     font-weight: 600;
-    color: #fff;  /* ensure text is readable */
+    color: #fff;
     text-shadow: 0 1px 2px rgba(0,0,0,0.3);
     transition: transform 0.2s, box-shadow 0.2s;
   }
@@ -119,27 +112,276 @@
   .legend-yellow { background: linear-gradient(135deg, #f7971e, #ffd200); }
   .legend-red { background: linear-gradient(135deg, #ff416c, #ff4b2b); }
 
-  .card:last-of-type { margin-bottom: 0 !important; }
+/* ---------- GAMIFICATION PROGRESS ---------- */
+.progress-card {
+    border-radius: 12px;
+    padding: 0.9rem 1rem;
+    margin-bottom: 10px;
+    background: #ffffff;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    transition: transform 0.3s, box-shadow 0.3s;
+    cursor: pointer;
+    font-family: "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #333;
+}
+
+.progress-card:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+}
+
+.progress-card h6 {
+    font-weight: 600;
+    font-size: 0.93rem;
+    margin-bottom: 0.35rem;
+    letter-spacing: 0.4px;
+}
+
+/* ---------- PROGRESS BAR ---------- */
+.progress-bar-container {
+    background: #f1f3f6;
+    border-radius: 12px;
+    overflow: hidden;
+    height: 20px;
+    margin-top: 6px;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.progress-bar {
+    height: 20px;
+    text-align: center;
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.82rem;
+    line-height: 20px;
+    transition: width 1.2s ease-in-out, background 0.5s;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    border-radius: 12px;
+}
+
+.progress-green {
+    background: linear-gradient(135deg, #28a745, #45d39c);
+}
+
+.progress-yellow {
+    background: linear-gradient(135deg, #ffc107, #ffdd57);
+}
+
+.progress-red {
+    background: linear-gradient(135deg, #dc3545, #ff6b6b);
+}
+
+.progress-card .mb-2,
+.progress-card .mt-1 {
+    font-size: 0.85rem;
+    color: #555;
+    margin-bottom: 0.35rem !important;
+    margin-top: 0.25rem !important;
+}
+
+/* ---------- TREND TEXT ---------- */
+.trend-value {
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+
+.trend-up {
+    color: #28a745 !important;
+}
+
+.trend-down {
+    color: #dc3545 !important;
+}
+
+.trend-stable {
+    color: #6c757d !important;
+}
+
+/* ---------- TREND INSIGHT (AI-style note) ---------- */
+.trend-insight {
+    font-size: 0.72rem;
+    color: #666;
+    font-style: italic;
+    margin-top: 0.25rem;
+    border-left: 3px solid #e0e0e0;
+    padding-left: 6px;
+}
+
+/* ---------- LEADERBOARD ---------- */
+.leaderboard-header {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #555;
+    padding: 0.2rem 0.4rem;
+    border-bottom: 1px solid #eee;
+}
+
+.col-rank { flex: 0 0 25px; }
+.col-user { flex: 2; padding-left: 0.2rem; }
+.col-points { flex: 0 0 40px; text-align: right; }
+.col-badges { flex: 1; text-align: right; }
+
+.leaderboard-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.leaderboard-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.25rem 0.4rem;
+    border-radius: 5px;
+    background: #f8f9fa;
+    font-size: 0.72rem;
+    transition: background 0.2s;
+}
+
+.leaderboard-item:hover {
+    background: #e9f2ff;
+}
+
+.leaderboard-item .col-user {
+    word-break: break-word;
+}
+
+.leaderboard-item .badge {
+    font-size: 0.62rem;
+    padding: 0.15em 0.3em;
+    white-space: nowrap;
+    margin-left: 2px;
+}
+
+/* Leaderboard title color (dark navy blue) */
+.progress-card h6.text-info,
+.progress-card h6[style*="color:#003366"] {
+    color: #003366 !important;
+}
+
+/* ---------- HIGHLIGHTS & RISKS ---------- */
+.highlights-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.highlight-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+    padding: 0.3rem 0.5rem;
+    border-radius: 6px;
+}
+
+.highlight-item.good {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.highlight-item.risk {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.highlight-item span {
+    font-weight: 600;
+}
+
+/* ---------- SUMMARY CARDS ---------- */
+.summary-card {
+  background: white;
+  border-radius: 14px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  padding: 1rem 1.2rem;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 0.3s ease-in-out;
+}
+
+.summary-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+}
+
+.summary-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #333;
+  margin-bottom: 0.5rem;
+}
+
+.summary-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #007bff;
+  margin-bottom: 0.3rem;
+}
+
+.summary-trend {
+  font-size: 0.85rem;
+  color: #555;
+}
+
+/* ---------- RESPONSIVE ---------- */
+@media (max-width: 768px) {
+  .summary-card {
+    padding: 0.8rem;
+  }
+  .summary-value {
+    font-size: 1.4rem;
+  }
+}
+.indicator-bar-bg {
+  background: #f1f3f6;
+  border-radius: 8px;
+  overflow: hidden;
+  height: 8px;
+  margin-top: 4px;
+}
+
+.indicator-bar {
+  height: 8px;
+  width: 0%;
+  border-radius: 8px;
+  transition: width 1.2s ease-in-out;
+}
+
+.indicator-card.green .indicator-bar {
+  background: linear-gradient(135deg, #28a745, #45d39c);
+}
+
+.indicator-card.yellow .indicator-bar {
+  background: linear-gradient(135deg, #ffc107, #ffdd57);
+}
+
+.indicator-card.red .indicator-bar {
+  background: linear-gradient(135deg, #dc3545, #ff6b6b);
+}
+/* ===== Dashboard Spacing & Animation Enhancements ===== */
+
+/* Add breathing room between the main KPI progress sections */
+.row.g-1.mb-1 + .row.g-1.mb-1 {
+  margin-top: 0.8rem !important;
+}
+
+/* Smoothly animated progress bars */
+.progress-bar {
+  width: 0%;
+  transition: width 1.4s cubic-bezier(0.25, 0.8, 0.25, 1), background 0.5s;
+}
+
 </style>
 
-<div class="position-absolute top-0 end-0 p-2">
-  <div id="live-clock" class="clock-widget"></div>
-</div>
-<script>
-function updateClock() {
-  const now = new Date();
-  document.getElementById("live-clock").textContent =
-    now.toLocaleString("en-US", {
-      weekday:'short', year:'numeric', month:'short', day:'numeric',
-      hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false,
-      timeZoneName:'short'
-    });
-}
-setInterval(updateClock, 1000);
-updateClock();
-</script>
-
-<div class="dashboard-header p-3 mb-3 text-white rounded-3" style="background: linear-gradient(90deg, #1e3c72, #2a5298); margin-top:0;">
+<!-- Top Section -->
+<div class="dashboard-header p-3 mb-3 text-white rounded-3" 
+     style="background: linear-gradient(90deg, #1e3c72, #2a5298); margin-top:-8px;">
   <div class="d-flex justify-content-between align-items-center">
     <div class="d-flex align-items-center">
       <div class="logo-container me-2">
@@ -158,10 +400,13 @@ updateClock();
   </div>
 </div>
 
+<!-- Welcome Card -->
 <div class="card mb-3 p-3 shadow-sm rounded-3">
   <div class="row align-items-center">
     <div class="col-md-6 col-12">
-      <h5 class="fw-semibold mb-1">👋 Welcome, <a href="{% url 'profile' %}">{{ user.first_name|default:user.username }}</a></h5>
+      <h5 class="fw-semibold mb-1">👋 Welcome, 
+        <a href="{% url 'profile' %}">{{ user.first_name|default:user.username }}</a>
+      </h5>
       <p class="text-muted mb-0" style="font-size:0.85rem;">Here’s a quick summary of your progress today.</p>
     </div>
     <div class="col-md-6 col-12 text-md-end mt-2 mt-md-0">
@@ -178,43 +423,216 @@ updateClock();
   </div>
 </div>
 
-<div class="row g-3">
+<!-- Statistics Cards -->
+<div class="row g-1 mb-1">
   {% for stat in stats %}
   <div class="col-md-3 col-sm-6">
     <a href="{{ stat.url }}" class="text-decoration-none">
-      <div class="card stat-card {% if selected_year != current_year %}past-year{% endif %}" style="background: {{ stat.bg_gradient }};">
-        <div class="mb-1"><i class="{{ stat.icon }} fa-2x icon-animate"></i></div>
-        <h4 class="fw-bold">{{ stat.value|default_if_none:0 }}</h4>
-        <p class="mb-0" style="font-size:0.85rem;">{{ stat.label }}</p>
+      <div class="card stat-card {% if selected_year != current_year %}past-year{% endif %}" 
+           style="background: {{ stat.bg_gradient }}; margin-bottom:4px; padding:0.7rem 0.9rem;">
+        <div class="mb-1" style="margin-bottom:0.25rem !important;"><i class="{{ stat.icon }} fa-2x icon-animate"></i></div>
+        <h4 class="fw-bold mb-1" style="margin-bottom:0.2rem;">{{ stat.value|default_if_none:"0" }}</h4>
+        <p class="mb-0" style="font-size:0.82rem; margin-bottom:0;">{{ stat.label }}</p>
       </div>
     </a>
   </div>
   {% endfor %}
 </div>
 
-<div class="row g-3 mt-1">
+<!-- Gamification Progress Section -->
+<div class="row g-1 mb-1">
+
+  <!-- System-wide KPI Progress -->
   <div class="col-md-6">
-    <div class="chart-card">
-      <h5 class="fw-semibold text-primary">📊 Comparative analysis of people reached per project</h5>
+    <div class="progress-card p-2 mb-1">
+      <h6 class="fw-semibold text-success mb-1" style="font-size:0.9rem;">
+        🎯 System-wide KPI Progress
+      </h6>
+      <div style="font-size:0.85rem; color:#333; margin-bottom:0.25rem;">
+        Achieved: <strong>{{ system_achieved|default:"0" }}</strong> / <strong>{{ total_indicators|default:"0" }}</strong>
+      </div>
+      <div class="progress-bar-container">
+        <div class="progress-bar 
+          {% if system_progress >= 90 %}progress-green{% elif system_progress >= 60 %}progress-yellow{% else %}progress-red{% endif %}" 
+          style="width: {{ system_progress }}%; height:18px;"></div>
+      </div>
+      <div style="font-size:0.82rem; color:#555; margin-top:0.25rem;">
+        Pending: <strong>{{ system_pending|default:"0" }}</strong>, Behind: <strong>{{ system_behind|default:"0" }}</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- User KPI Progress -->
+  <div class="col-md-6">
+    <div class="progress-card p-2 mb-1">
+      <h6 class="fw-semibold text-primary mb-1" style="font-size:0.9rem;">
+        👤 Your KPI Progress
+      </h6>
+      <div style="font-size:0.85rem; color:#333; margin-bottom:0.25rem;">
+        Achieved: <strong>{{ user_achieved|default:"0" }}</strong> / <strong>{{ user_total_indicators|default:"0" }}</strong>
+        {% if user_projects_count == 0 %}
+          <span class="text-muted" style="font-size:0.82rem;"> (You do not coordinate any project yet)</span>
+        {% endif %}
+      </div>
+      <div class="progress-bar-container">
+        <a href="{% if user_projects_count > 0 %}{{ user_kpi_url }}{% else %}#{% endif %}" class="text-decoration-none">
+          <div class="progress-bar 
+            {% if user_progress >= 90 %}progress-green{% elif user_progress >= 60 %}progress-yellow{% else %}progress-red{% endif %}" 
+            style="width: {{ user_progress|default:"0" }}%; height:18px;"></div>
+        </a>
+      </div>
+      <div style="font-size:0.82rem; color:#555; margin-top:0.25rem;">
+        Pending: <strong>{{ user_pending|default:"0" }}</strong>, Behind: <strong>{{ user_behind|default:"0" }}</strong>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ================== NEW SYSTEM INSIGHT CARDS ================== -->
+<div class="row g-2 mb-2 d-flex align-items-stretch">
+
+  <!-- System Overview -->
+  <div class="col-lg-4 col-md-12 d-flex">
+    <div class="progress-card p-2 mb-1 flex-fill">
+      <h6 class="fw-semibold text-dark mb-1" style="font-size:0.9rem;">📊 System Overview</h6>
+      
+      <!-- Overall Progress -->
+      <div style="font-size:0.85rem; color:#333;">
+        Overall Target Achievement: <strong>{{ overall_progress|default:"0" }}%</strong>
+      </div>
+
+      <!-- Progress Bar -->
+      <div class="progress-bar-container mt-1">
+        <div class="progress-bar 
+          {% if overall_progress >= 90 %}progress-green{% elif overall_progress >= 60 %}progress-yellow{% else %}progress-red{% endif %}"
+          style="width: {{ overall_progress|default:"0" }}%;"></div>
+      </div>
+
+      <!-- Trend Section -->
+      <div style="font-size:0.9rem; color:#555; margin-top:0.4rem;">
+        <strong>Trend:</strong>
+        <span style="font-size:1.05rem; font-weight:700;"
+              class="{% if overall_trend > 0 %}text-success{% elif overall_trend < 0 %}text-danger{% else %}text-secondary{% endif %}">
+          {% if overall_trend > 0 %}+{{ overall_trend }}% ↑{% elif overall_trend < 0 %}{{ overall_trend }}% ↓{% else %}No change{% endif %}
+        </span>
+      </div>
+
+      <!-- Trend Insight Message -->
+      <div style="font-size:0.72rem; color:#666; margin-top:0.2rem;">
+        {% if overall_trend > 10 %}
+          Excellent growth compared to previous period.
+        {% elif overall_trend > 0 %}
+          Slight improvement noted this month.
+        {% elif overall_trend < -10 %}
+          Performance declined — monitor closely.
+        {% elif overall_trend < 0 %}
+          Minor drop observed, needs attention.
+        {% else %}
+          Stable performance with no major change.
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Highlights & Risks -->
+  <div class="col-lg-4 col-md-12 d-flex">
+    <div class="progress-card p-2 mb-1 flex-fill">
+      <h6 class="fw-semibold text-dark mb-1" style="font-size:0.95rem;">🌟 Highlights & Risks</h6>
+      <div style="font-size:0.85rem; line-height:1.3; max-height:200px; overflow-y:auto;">
+        
+        <!-- Top 3 Highlights -->
+        {% if highlights %}
+          {% for kpi in highlights|slice:":3" %}
+            <div title="{{ kpi.name }}">
+              ✅ {{ kpi.name|truncatechars:40 }} – 
+              <span style="color:#28a745;">{{ kpi.ratio }}%</span>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="text-muted">No standout performance yet.</div>
+        {% endif %}
+
+        <hr class="my-1">
+
+        <!-- Bottom 3 Risks -->
+        {% if risks %}
+          {% for kpi in risks|slice:":3" %}
+            <div title="{{ kpi.name }}">
+              ⚠️ {{ kpi.name|truncatechars:40 }} – 
+              <span style="color:#dc3545;">{{ kpi.ratio }}%</span>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="text-muted mt-1">No critical issues detected.</div>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Leaderboard -->
+  <div class="col-lg-4 col-md-12 d-flex">
+    <div class="progress-card p-3 shadow-sm flex-fill">
+      <h6 class="fw-semibold mb-2" style="font-size:0.85rem; color:#003366;">🏅 Top Users Leaderboard</h6>
+
+      <!-- Header row -->
+      <div class="leaderboard-header d-flex mb-1">
+        <div class="col-rank text-center">#</div>
+        <div class="col-user">User</div>
+        <div class="col-points text-end">Pts</div>
+        <div class="col-badges text-end">Badge</div>
+      </div>
+
+      <!-- Users list -->
+      <div class="leaderboard-list">
+        {% for user in top_users %}
+        <div class="leaderboard-item d-flex align-items-center">
+          <div class="col-rank text-center">{{ forloop.counter }}</div>
+          <div class="col-user">{{ user.username }}</div>
+          <div class="col-points text-end">{{ user.total_points|default:"0" }}</div>
+          <div class="col-badges text-end">
+            {% for badge in user.badges %}
+            <span class="badge bg-warning text-dark">{{ badge }}</span>
+            {% endfor %}
+          </div>
+        </div>
+        {% empty %}
+        <div class="text-muted text-center mt-1">No top users yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+</div>
+<!-- =============================================================== -->
+
+
+<!-- Charts Section -->
+<div class="row g-1 mb-1">
+  <div class="col-md-6">
+    <div class="chart-card" style="padding:0.5rem; margin-bottom:4px;">
+      <h5 class="fw-semibold text-primary mb-1" style="font-size:0.9rem;">📊 Comparative analysis of people reached per project</h5>
       {% if comparative_labels %}
-        <canvas id="comparativeChart" height="260"></canvas>
+        <canvas id="comparativeChart" height="220"></canvas>
       {% else %}
-        <p class="text-muted m-2" style="font-size:0.85rem;">No comparative data available</p>
+        <p class="text-muted m-1" style="font-size:0.82rem;">No comparative data available</p>
       {% endif %}
     </div>
   </div>
   <div class="col-md-6">
-    <div class="chart-card">
-      <h5 class="fw-semibold text-success">📈 Trend analysis of people reached per month</h5>
+    <div class="chart-card" style="padding:0.5rem; margin-bottom:4px;">
+      <h5 class="fw-semibold text-success mb-1" style="font-size:0.9rem;">📈 Trend analysis of people reached per month</h5>
       {% if trend_months %}
-        <canvas id="trendChart" height="260"></canvas>
+        <canvas id="trendChart" height="220"></canvas>
       {% else %}
-        <p class="text-muted m-2" style="font-size:0.85rem;">No trend data available</p>
+        <p class="text-muted m-1" style="font-size:0.82rem;">No trend data available</p>
       {% endif %}
     </div>
   </div>
 </div>
 
+<!-- Indicators Section -->
 <div class="card p-3 shadow-lg rounded-3 mt-2">
   <h5 class="fw-semibold text-warning">🔄 Key Indicators</h5>
   <div class="mb-2">
@@ -229,6 +647,7 @@ updateClock();
   </div>
 </div>
 
+<!-- Quick Actions -->
 <div class="card p-3 shadow-lg rounded-3 mt-2">
   <h5 class="fw-semibold text-success">⚡ Quick Actions</h5>
   <div class="d-flex flex-row flex-wrap gap-2 mt-2">
@@ -253,15 +672,17 @@ updateClock();
   </div>
 </div>
 
+<!-- Chart.js Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.0"></script>
+
 <script>
 const actualColor = {% if selected_year == current_year %}"#007bff"{% else %}"#ffc107"{% endif %};
 const targetColor = {% if selected_year == current_year %}"#28a745"{% else %}"#ffca28"{% endif %};
 
 const compLabels = {{ comparative_labels|default:"[]"|safe }};
-const compActuals = {{ comparative_actuals|default:"[]"|safe }}.map(v => parseInt(v)||0);
-const compTargets = {{ comparative_targets|default:"[]"|safe }}.map(v => parseInt(v)||0);
+const compActuals = {{ comparative_actuals|default:"[]"|safe }};
+const compTargets = {{ comparative_targets|default:"[]"|safe }};
 
 if (compLabels.length) {
   new Chart(document.getElementById('comparativeChart'), {
@@ -270,13 +691,15 @@ if (compLabels.length) {
       { label: 'Actual', data: compActuals, backgroundColor: actualColor },
       { label: 'Target', data: compTargets, backgroundColor: targetColor }
     ]},
-    options: { responsive:true, plugins:{ legend:{ position:'top' }, tooltip:{ mode:'index', intersect:false }, zoom:{ zoom:{ wheel:{ enabled:true }, pinch:{ enabled:true }, mode:'x' }, pan:{ enabled:true, mode:'x' } } }, scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1 } }, x:{ stacked:false } } }
+    options: { responsive:true, plugins:{ legend:{ position:'top' }, tooltip:{ mode:'index', intersect:false },
+      zoom:{ zoom:{ wheel:{ enabled:true }, pinch:{ enabled:true }, mode:'x' }, pan:{ enabled:true, mode:'x' } } },
+      scales:{ y:{ beginAtZero:true }, x:{ stacked:false } } }
   });
 }
 
 const trendLabels = {{ trend_months|default:"[]"|safe }};
-const trendActuals = {{ trend_actuals|default:"[]"|safe }}.map(v => parseInt(v)||0);
-const trendTargets = {{ trend_targets|default:"[]"|safe }}.map(v => parseInt(v)||0);
+const trendActuals = {{ trend_actuals|default:"[]"|safe }};
+const trendTargets = {{ trend_targets|default:"[]"|safe }};
 
 if (trendLabels.length) {
   new Chart(document.getElementById('trendChart'), {
@@ -285,56 +708,89 @@ if (trendLabels.length) {
       { label: 'Actual', data: trendActuals, borderColor: actualColor, backgroundColor:'rgba(0,123,255,0.1)', tension:0.3, fill:true },
       { label: 'Target', data: trendTargets, borderColor: targetColor, backgroundColor:'rgba(40,167,69,0.1)', tension:0.3, fill:true }
     ]},
-    options: { responsive:true, plugins:{ legend:{ position:'top' }, tooltip:{ mode:'index', intersect:false }, zoom:{ zoom:{ wheel:{ enabled:true }, pinch:{ enabled:true }, mode:'x' }, pan:{ enabled:true, mode:'x' } } }, scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1 } } } }
+    options: { responsive:true, plugins:{ legend:{ position:'top' }, tooltip:{ mode:'index', intersect:false },
+      zoom:{ zoom:{ wheel:{ enabled:true }, pinch:{ enabled:true }, mode:'x' }, pan:{ enabled:true, mode:'x' } } },
+      scales:{ y:{ beginAtZero:true } } }
   });
 }
 
+// ---------- Indicator Carousel ----------
 const indicators = {{ indicators|default:"[]"|safe }};
 const carousel = document.getElementById("indicator-carousel");
+
 if (indicators.length) {
   let index = 0;
+
   function showIndicators() {
-    const oldCards = Array.from(carousel.children);
-    oldCards.forEach(c => {
-      const card = c.querySelector('.indicator-card');
-      if(card) card.classList.remove('show');
+    carousel.innerHTML = '';
+    const slice = indicators.slice(index, index + 3);
+
+    slice.forEach((ind, i) => {
+      const col = document.createElement("div");
+      col.className = "col-md-4";
+
+      const ratio = ind.target > 0 ? (ind.value / ind.target) * 100 : 0;
+      let statusClass = "red";
+      if (ratio >= 90) statusClass = "green";
+      else if (ratio >= 60) statusClass = "yellow";
+
+      const card = document.createElement("div");
+      card.className = `indicator-card h-100 ${statusClass}`;
+      const trendArrow =
+        ind.value > ind.previous_value
+          ? "⬆️"
+          : ind.value < ind.previous_value
+          ? "⬇️"
+          : "➡️";
+
+      // Card content with animated bar
+      card.innerHTML = `
+        <h6 class="fw-bold mb-1">${ind.name}</h6>
+        <p class="mb-1 small">${ind.project || ""}</p>
+        <div class="indicator-values mb-1">
+          <div>Last Month: <strong>${ind.last_month_value || 0}</strong></div>
+          <div>Cumulative: <strong>${ind.value || 0}</strong> ${trendArrow}</div>
+        </div>
+        <div class="indicator-bar-bg">
+          <div class="indicator-bar" style="width: 0%;"></div>
+        </div>
+        <p class="mb-0 mt-1"><small>Target: ${ind.target || 0}</small></p>
+      `;
+
+      col.appendChild(card);
+      carousel.appendChild(col);
+
+      // Animate appearance
+      setTimeout(() => {
+        card.classList.add('show');
+        const bar = card.querySelector('.indicator-bar');
+        bar.style.width = `${Math.min(ratio, 100)}%`;
+      }, 100 + i * 150);
     });
 
-    setTimeout(() => {
-      carousel.innerHTML = '';
-      const slice = indicators.slice(index, index+3);
-      slice.forEach((ind, i) => {
-        const col = document.createElement("div");
-        col.className = "col-md-4";
-        const ratio = ind.target > 0 ? (ind.value / ind.target) * 100 : 0;
-        let statusClass = "red";
-        if (ratio >= 90) statusClass = "green";
-        else if (ratio >= 60) statusClass = "yellow";
-
-        const card = document.createElement("div");
-        card.className = `indicator-card h-100 ${statusClass}`;
-        const trendArrow = ind.value > ind.previous_value ? "⬆️" : ind.value < ind.previous_value ? "⬇️" : "➡️";
-        card.innerHTML = `
-          <h6 class="fw-bold mb-1">${ind.name}</h6>
-          <p class="mb-1 small">${ind.project||""}</p>
-          <div class="indicator-values">
-            <div>Last Month: <strong>${ind.last_month_value||0}</strong></div>
-            <div>Cumulative: <strong>${ind.value||0}</strong> ${trendArrow}</div>
-          </div>
-          <p class="mb-0 mt-1"><small>Target: ${ind.target||0}</small></p>
-        `;
-        col.appendChild(card);
-        carousel.appendChild(col);
-
-        setTimeout(() => card.classList.add('show'), 50 + i*100);
-      });
-
-      index = (index + 3) % indicators.length;
-    }, 800);
+    index = (index + 3) % indicators.length;
   }
+
   showIndicators();
   setInterval(showIndicators, 15000);
 }
+// animate system cards
+document.addEventListener("DOMContentLoaded", () => {
+  // Smooth reveal of all progress cards
+  document.querySelectorAll(".progress-card").forEach((card, i) => {
+    setTimeout(() => card.classList.add("visible"), 150 + i * 120);
+  });
+
+  // Animate all progress bars smoothly
+  document.querySelectorAll(".progress-bar").forEach(bar => {
+    const finalWidth = bar.style.width; // get the original value like "75%"
+    bar.style.width = "0%"; // reset temporarily
+    setTimeout(() => {
+      bar.style.width = finalWidth; // animate to real value
+    }, 300);
+  });
+});
+
 </script>
 
 {% endblock %}
