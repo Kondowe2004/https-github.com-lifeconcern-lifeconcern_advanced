@@ -61,7 +61,30 @@
       {% endfor %}
     </select>
   </div>
+
+  <!-- District Filter -->
+  <div class="col-md-2">
+    <label for="district" class="form-label">District</label>
+    <select name="district" id="district" class="form-select">
+      <option value="">All</option>
+      {% for d in districts %}
+        <option value="{{ d.name }}" {% if selected_district|default_if_none:'' == d.name %}selected{% endif %}>{{ d.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- Facility Filter -->
+  <div class="col-md-2">
+    <label for="facility" class="form-label">Facility</label>
+    <select name="facility" id="facility" class="form-select">
+      <option value="">All</option>
+      {% for f in facilities %}
+        <option value="{{ f.name }}" {% if selected_facility|default_if_none:'' == f.name %}selected{% endif %}>{{ f.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
 </form>
+
 
 
 <!-- Actions: CSV, Excel, PDF, and Chart Download -->

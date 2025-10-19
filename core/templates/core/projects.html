@@ -16,12 +16,10 @@
 
 <!-- Projects List -->
 <div class="card shadow-sm p-3">
-
-  <!-- Instructional Text -->
   <div class="text-center mb-3">
     <p class="text-primary fw-semibold small mb-0">
       Click on <span class="badge bg-info text-dark">View KPIs</span> to manage indicators, entries, and targets — 
-      Use <span class="badge bg-success text-dark">Facilities</span> to link facilities to projects for mapping.
+      Use <span class="badge bg-success text-dark">Facilities</span> or <span class="badge bg-info text-dark">Districts</span> to view linked data.
     </p>
   </div>
 
@@ -100,44 +98,88 @@
                  onclick="return confirm('Are you sure you want to delete this project?');">
                 <i class="fas fa-trash-alt me-1"></i> Delete
               </a>
-              <button class="btn btn-success btn-sm btn-auto ms-1" type="button" 
+              <!-- Accordion Buttons -->
+              <button class="btn btn-success btn-sm btn-auto ms-1" type="button"
                       data-bs-toggle="collapse" 
                       data-bs-target="#facilitiesCollapse{{ project.id }}" 
-                      aria-expanded="false" 
-                      aria-controls="facilitiesCollapse{{ project.id }}">
-                <i class="fas fa-map-marker-alt me-1"></i> Manage Facilities
+                      aria-expanded="false">
+                <i class="fas fa-map-marker-alt me-1"></i> Facilities
+              </button>
+              <button class="btn btn-info btn-sm btn-auto ms-1" type="button"
+                      data-bs-toggle="collapse" 
+                      data-bs-target="#districtsCollapse{{ project.id }}" 
+                      aria-expanded="false">
+                <i class="fas fa-map me-1"></i> Districts
               </button>
             </td>
           </tr>
 
-          <!-- Collapsible Facilities Row -->
+          <!-- Accordion Wrapper for auto-close -->
           <tr class="table-light">
             <td colspan="6" class="p-0 border-0">
-              <div class="collapse" id="facilitiesCollapse{{ project.id }}">
-                <div class="p-3 border-top bg-white">
-                  <form class="facilities-form" method="post" data-project-id="{{ project.id }}">
-                    {% csrf_token %}
-                    <div class="d-flex flex-wrap gap-2 align-items-center">
-                      {% for facility in all_facilities %}
-                        <div class="form-check me-3">
-                          <input class="form-check-input" type="checkbox" 
-                                 name="facilities" value="{{ facility.id }}" 
-                                 id="facility{{ project.id }}_{{ facility.id }}"
-                                 {% if facility in project.facilities.all %}checked{% endif %}>
-                          <label class="form-check-label" for="facility{{ project.id }}_{{ facility.id }}">
-                            {{ facility.name }}
-                          </label>
+              <div class="accordion" id="accordion{{ project.id }}">
+                <!-- Facilities -->
+                <div class="accordion-item border-0">
+                  <div id="facilitiesCollapse{{ project.id }}" class="accordion-collapse collapse" data-bs-parent="#accordion{{ project.id }}">
+                    <div class="p-3 bg-white">
+                      <form class="facilities-form" method="post" data-project-id="{{ project.id }}">
+                        {% csrf_token %}
+                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                          {% for facility in all_facilities %}
+                            <div class="form-check me-3">
+                              <input class="form-check-input" type="checkbox" 
+                                     name="facilities" value="{{ facility.id }}" 
+                                     id="facility{{ project.id }}_{{ facility.id }}"
+                                     {% if facility in project.facilities.all %}checked{% endif %}>
+                              <label class="form-check-label" for="facility{{ project.id }}_{{ facility.id }}">
+                                {{ facility.name }}
+                              </label>
+                            </div>
+                          {% endfor %}
+                          <button type="submit" class="btn btn-success btn-sm ms-2">
+                            <i class="fas fa-save me-1"></i> Save Facilities
+                          </button>
                         </div>
-                      {% endfor %}
-                      <button type="submit" class="btn btn-success btn-sm ms-2">
-                        <i class="fas fa-save me-1"></i> Save Facilities
-                      </button>
+                      </form>
                     </div>
-                  </form>
+                  </div>
                 </div>
+
+                <!-- Districts -->
+                <div class="accordion-item border-0">
+                  <div id="districtsCollapse{{ project.id }}" class="accordion-collapse collapse" data-bs-parent="#accordion{{ project.id }}">
+                    <div class="p-3 bg-white">
+                      <form class="districts-form" method="post" data-project-id="{{ project.id }}">
+                        {% csrf_token %}
+                        <input type="hidden" name="districts_submit" value="1">
+                        <h6 class="fw-bold text-secondary mb-2">
+                          <i class="fas fa-map text-info me-1"></i> Linked Districts
+                        </h6>
+                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                          {% for district in all_districts %}
+                            <div class="form-check me-3">
+                              <input class="form-check-input" type="checkbox" 
+                                     name="districts" value="{{ district.id }}" 
+                                     id="district{{ project.id }}_{{ district.id }}"
+                                     {% if district.id in item.district_ids %}checked{% endif %}>
+                              <label class="form-check-label" for="district{{ project.id }}_{{ district.id }}">
+                                {{ district.name }}
+                              </label>
+                            </div>
+                          {% endfor %}
+                          <button type="submit" class="btn btn-info btn-sm ms-2">
+                            <i class="fas fa-save me-1"></i> Save Districts
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </td>
           </tr>
+
           {% endwith %}
           {% endfor %}
         </tbody>
@@ -157,13 +199,17 @@
   {% endif %}
 </div>
 
-<!-- Success Toast -->
+<!-- Success Toasts -->
 <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
   <div id="facilityToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
     <div class="d-flex">
-      <div class="toast-body">
-        Facilities updated successfully!
-      </div>
+      <div class="toast-body">Facilities updated successfully!</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
+  <div id="districtToast" class="toast align-items-center text-white bg-info border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body">Districts updated successfully!</div>
       <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
     </div>
   </div>
@@ -171,58 +217,52 @@
 
 <!-- Custom CSS -->
 <style>
-  .btn-auto {
-    width: auto !important;
-    padding-left: 0.5rem !important;
-    padding-right: 0.5rem !important;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  tbody tr {
-    transition: background-color 0.2s ease;
-  }
-
-  tbody tr:hover {
-    background-color: #e9f7ff;
-  }
+  .btn-auto { width: auto !important; padding-left: 0.5rem !important; padding-right: 0.5rem !important; display: inline-flex; align-items: center; justify-content: center; }
+  tbody tr { transition: background-color 0.2s ease; }
+  tbody tr:hover { background-color: #e9f7ff; }
+  .badge { font-size: 0.75rem; padding: 0.4em 0.6em; border-radius: 0.5rem; }
 </style>
 
-<!-- AJAX Script to save facilities -->
+<!-- AJAX Scripts -->
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-  const forms = document.querySelectorAll(".facilities-form");
-  forms.forEach(form => {
+  // Facilities AJAX
+  document.querySelectorAll(".facilities-form").forEach(form => {
     form.addEventListener("submit", function(e) {
       e.preventDefault();
       const projectId = form.dataset.projectId;
       const url = "{% url 'projects' %}";
       const csrfToken = form.querySelector('[name=csrfmiddlewaretoken]').value;
-
-      const facilities = [];
-      form.querySelectorAll('input[name="facilities"]:checked').forEach(cb => {
-        facilities.push(cb.value);
-      });
+      const facilities = Array.from(form.querySelectorAll('input[name="facilities"]:checked')).map(cb => cb.value);
 
       fetch(url, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": csrfToken,
-        },
+        headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
         body: JSON.stringify({ project_id: projectId, facilities: facilities })
-      })
-      .then(response => {
-        if(response.ok) {
-          const toastEl = document.getElementById('facilityToast');
-          const toast = new bootstrap.Toast(toastEl);
-          toast.show();
-        } else {
-          alert("Error saving facilities. Try again.");
-        }
-      })
-      .catch(err => alert("Error saving facilities: " + err));
+      }).then(r => {
+        if(r.ok) { new bootstrap.Toast(document.getElementById('facilityToast')).show(); }
+        else { alert("Error saving facilities."); }
+      }).catch(err => alert("Error saving facilities: " + err));
+    });
+  });
+
+  // Districts AJAX
+  document.querySelectorAll(".districts-form").forEach(form => {
+    form.addEventListener("submit", function(e) {
+      e.preventDefault();
+      const projectId = form.dataset.projectId;
+      const url = "{% url 'projects' %}";
+      const csrfToken = form.querySelector('[name=csrfmiddlewaretoken]').value;
+      const districts = Array.from(form.querySelectorAll('input[name="districts"]:checked')).map(cb => cb.value);
+
+      fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
+        body: JSON.stringify({ project_id: projectId, districts: districts })
+      }).then(r => {
+        if(r.ok) { new bootstrap.Toast(document.getElementById('districtToast')).show(); }
+        else { alert("Error saving districts."); }
+      }).catch(err => alert("Error saving districts: " + err));
     });
   });
 });

@@ -13,7 +13,7 @@
     <div class="mb-3">
       <label for="id_name" class="form-label">Project Name</label>
       <input type="text" name="name" id="id_name" class="form-control" 
-             value="{{ form.name.value|default_if_none:project.name }}" required>
+             value="{{ form.name.value|default_if_none:'' }}" required>
       {% if form.name.errors %}
         <div class="text-danger small mt-1">{{ form.name.errors }}</div>
       {% endif %}
@@ -22,7 +22,7 @@
     <!-- Description -->
     <div class="mb-3">
       <label for="id_description" class="form-label">Description</label>
-      <textarea name="description" id="id_description" class="form-control" rows="3">{{ form.description.value|default_if_none:project.description }}</textarea>
+      <textarea name="description" id="id_description" class="form-control" rows="3">{{ form.description.value|default_if_none:'' }}</textarea>
       {% if form.description.errors %}
         <div class="text-danger small mt-1">{{ form.description.errors }}</div>
       {% endif %}
@@ -32,7 +32,7 @@
     <div class="mb-3">
       <label for="id_start_date" class="form-label">Start Date</label>
       <input type="date" name="start_date" id="id_start_date" class="form-control" 
-             value="{{ form.start_date.value|default_if_none:project.start_date|date:'Y-m-d' }}">
+             value="{{ form.start_date.value|default_if_none:'' }}">
       {% if form.start_date.errors %}
         <div class="text-danger small mt-1">{{ form.start_date.errors }}</div>
       {% endif %}
@@ -42,7 +42,7 @@
     <div class="mb-3">
       <label for="id_end_date" class="form-label">End Date</label>
       <input type="date" name="end_date" id="id_end_date" class="form-control" 
-             value="{{ form.end_date.value|default_if_none:project.end_date|date:'Y-m-d' }}">
+             value="{{ form.end_date.value|default_if_none:'' }}">
       {% if form.end_date.errors %}
         <div class="text-danger small mt-1">{{ form.end_date.errors }}</div>
       {% endif %}
@@ -54,9 +54,7 @@
       <select name="coordinator" id="id_coordinator" class="form-select">
         <option value="">-- Select Coordinator --</option>
         {% for user in all_users %}
-          <option value="{{ user.id }}"
-            {% if form.coordinator.value|stringformat:"s" == user.id|stringformat:"s" 
-                  or (project and project.coordinator and project.coordinator.id == user.id) %}selected{% endif %}>
+          <option value="{{ user.id }}" {% if user.id|stringformat:"s" in selected_coordinator %}selected{% endif %}>
             {{ user.get_full_name|default:user.username }}{% if not user.is_active %} (Inactive){% endif %}
           </option>
         {% endfor %}
@@ -71,10 +69,8 @@
       <label for="id_main_donor" class="form-label">Main Donor</label>
       <select name="main_donor" id="id_main_donor" class="form-select">
         <option value="">-- Select Main Donor --</option>
-        {% for donor in all_donors %}
-          <option value="{{ donor.id }}"
-            {% if form.main_donor.value|stringformat:"s" == donor.id|stringformat:"s" 
-                  or (project and project.main_donor and project.main_donor.id == donor.id) %}selected{% endif %}>
+        {% for donor in all_donors|dictsort:"name" %}
+          <option value="{{ donor.id }}" {% if donor.id|stringformat:"s" in selected_main_donor %}selected{% endif %}>
             {{ donor.name }}
           </option>
         {% endfor %}
@@ -88,10 +84,8 @@
     <div class="mb-3">
       <label for="id_additional_donors" class="form-label">Additional Donors</label>
       <select name="donors" id="id_additional_donors" class="form-select" multiple size="6">
-        {% for donor in all_donors %}
-          <option value="{{ donor.id }}"
-            {% if donor.id|stringformat:"s" in form.donors.value|stringformat:"s" 
-                  or (project and donor in project.donors.all) %}selected{% endif %}>
+        {% for donor in all_donors|dictsort:"name" %}
+          <option value="{{ donor.id }}" {% if donor.id|stringformat:"s" in selected_donors %}selected{% endif %}>
             {{ donor.name }}
           </option>
         {% endfor %}
@@ -109,15 +103,30 @@
         {% for facility in all_facilities %}
           <div class="form-check me-3">
             <input class="form-check-input" type="checkbox" name="facilities" value="{{ facility.id }}"
-              id="facility{{ facility.id }}"
-              {% if (form.facilities.value and facility.id|stringformat:"s" in form.facilities.value) 
-                    or (project and facility in project.facilities.all) %}checked{% endif %}>
+              id="facility{{ facility.id }}" {% if facility.id|stringformat:"s" in selected_facility_ids %}checked{% endif %}>
             <label class="form-check-label" for="facility{{ facility.id }}">{{ facility.name }}</label>
           </div>
         {% endfor %}
       </div>
       {% if form.facilities.errors %}
         <div class="text-danger small mt-1">{{ form.facilities.errors }}</div>
+      {% endif %}
+    </div>
+
+    <!-- Districts Multi-select -->
+    <div class="mb-3">
+      <label class="form-label">Districts</label>
+      <div class="d-flex flex-wrap gap-2">
+        {% for district in all_districts %}
+          <div class="form-check me-3">
+            <input class="form-check-input" type="checkbox" name="districts" value="{{ district.id }}"
+              id="district{{ district.id }}" {% if district.id|stringformat:"s" in selected_district_ids %}checked{% endif %}>
+            <label class="form-check-label" for="district{{ district.id }}">{{ district.name }}</label>
+          </div>
+        {% endfor %}
+      </div>
+      {% if form.districts.errors %}
+        <div class="text-danger small mt-1">{{ form.districts.errors }}</div>
       {% endif %}
     </div>
 
@@ -130,9 +139,7 @@
 
     <!-- Submit Buttons -->
     <div>
-      <button type="submit" class="btn btn-primary">
-        {% if project %}💾 Save Changes{% else %}➕ Add Project{% endif %}
-      </button>
+      <button type="submit" class="btn btn-primary">{% if project %}💾 Save Changes{% else %}➕ Add Project{% endif %}</button>
       <a href="{% url 'projects' %}" class="btn btn-secondary ms-2">Cancel</a>
     </div>
   </form>

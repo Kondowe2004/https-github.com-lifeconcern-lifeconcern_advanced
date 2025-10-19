@@ -377,6 +377,235 @@
   transition: width 1.4s cubic-bezier(0.25, 0.8, 0.25, 1), background 0.5s;
 }
 
+/* ===== Dashboard Core Styles ===== */
+.dashboard-section {
+  background-color: #f5f6fa;
+  padding: 1rem 0;
+}
+
+/* --- KPI Cards Layout --- */
+.kpi-card {
+  border: none;
+  border-radius: 1rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  background-color: #fff;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+/* --- KPI Card Header --- */
+.kpi-card .card-header {
+  font-weight: 600;
+  font-size: 0.95rem;
+  border-bottom: none;
+  border-radius: 1rem 1rem 0 0;
+  padding: 0.6rem 1rem;
+}
+
+/* --- KPI Card Body --- */
+.kpi-card .card-body {
+  padding: 0.75rem 1rem;
+}
+
+/* --- KPI Mini Blocks (inside card) --- */
+.kpi-mini {
+  background-color: #f8f9fa;
+  border-radius: 0.75rem;
+  padding: 0.5rem;
+  transition: background 0.2s ease;
+}
+
+.kpi-mini:hover {
+  background-color: #eef3ff;
+}
+
+.kpi-mini i {
+  display: block;
+  font-size: 1.2rem;
+  margin-bottom: 0.25rem;
+}
+
+.kpi-mini h6 {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.kpi-mini p {
+  margin: 0;
+  font-size: 0.7rem;
+  color: #6c757d;
+}
+
+/* --- Consistent Height --- */
+.equal-height {
+  display: flex;
+  align-items: stretch;
+}
+
+/* --- Animation --- */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.kpi-card {
+  animation: fadeInUp 0.4s ease;
+}
+
+/* --- Responsive Adjustments --- */
+@media (max-width: 768px) {
+  .kpi-card {
+    margin-bottom: 1rem;
+  }
+  .kpi-mini h6 {
+    font-size: 0.8rem;
+  }
+  .kpi-mini p {
+    font-size: 0.65rem;
+  }
+}
+
+/* --- Number Counter Styling --- */
+.kpi-number {
+  display: inline-block;
+  font-weight: 700;
+  font-size: 1.5rem;
+}
+
+/* ===== Gender Dashboard Styles ===== */
+
+/* General container feel */
+body {
+  background-color: #f5f6fa;
+}
+
+/* Headings */
+h2.text-primary {
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* Dashboard Cards */
+.card {
+  border-radius: 1rem !important;
+  transition: all 0.25s ease-in-out;
+}
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+}
+
+/* Percentage numbers */
+.card .fs-2 {
+  font-size: 2.2rem !important;
+}
+.text-primary {
+  color: #b23b96 !important; /* soft magenta tone for female indicators */
+}
+.text-info {
+  color: #1d71b8 !important; /* calm blue for male indicators */
+}
+.text-secondary {
+  color: #666 !important; /* neutral tone */
+}
+
+/* Summary table */
+.table {
+  margin-bottom: 0;
+  border-collapse: separate !important;
+  border-spacing: 0;
+}
+.table th {
+  background-color: #f1f3f5;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 0.5px;
+}
+.table td, .table th {
+  vertical-align: middle;
+  padding: 0.75rem 1rem;
+}
+.table-striped tbody tr:nth-of-type(odd) {
+  background-color: #fafbfc;
+}
+.table-striped tbody tr:hover {
+  background-color: #eef3f8;
+}
+
+/* Narrative section */
+.card-body p {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #444;
+}
+.card-header {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 1px solid #ddd;
+}
+
+/* Soft badges (optional for future use) */
+.badge-female {
+  background-color: #f8e1ef;
+  color: #b23b96;
+}
+.badge-male {
+  background-color: #e1ecf8;
+  color: #1d71b8;
+}
+.badge-neutral {
+  background-color: #f1f1f1;
+  color: #555;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .card .fs-2 {
+    font-size: 1.8rem !important;
+  }
+  .table td, .table th {
+    font-size: 0.85rem;
+  }
+}
+/* --- Compact Dashboard Layout --- */
+.container-fluid.py-4 {
+  padding-top: 0.4rem !important;
+  padding-bottom: 0.4rem !important;
+}
+
+.row {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.progress-card,
+.card,
+.chart-card {
+  margin-top: 0.25rem !important;
+  margin-bottom: 0.25rem !important;
+}
+
+.progress-card > h6,
+.card > h5 {
+  margin-bottom: 0.3rem !important;
+}
+
+.card.mt-2,
+.card.p-3 {
+  margin-top: 0.25rem !important;
+}
+
+.mb-1, .mb-2, .mt-1, .mt-2 {
+  margin: 0 !important;
+}
+
 </style>
 
 <!-- Top Section -->
@@ -425,64 +654,191 @@
 
 <!-- Statistics Cards -->
 <div class="row g-1 mb-1">
-  {% for stat in stats %}
-  <div class="col-md-3 col-sm-6">
-    <a href="{{ stat.url }}" class="text-decoration-none">
-      <div class="card stat-card {% if selected_year != current_year %}past-year{% endif %}" 
-           style="background: {{ stat.bg_gradient }}; margin-bottom:4px; padding:0.7rem 0.9rem;">
-        <div class="mb-1" style="margin-bottom:0.25rem !important;"><i class="{{ stat.icon }} fa-2x icon-animate"></i></div>
-        <h4 class="fw-bold mb-1" style="margin-bottom:0.2rem;">{{ stat.value|default_if_none:"0" }}</h4>
-        <p class="mb-0" style="font-size:0.82rem; margin-bottom:0;">{{ stat.label }}</p>
+  {% if stats %}
+    {% for stat in stats %}
+      {% if stat.value is not none %}
+      <div class="col-md-3 col-sm-6">
+        <a href="{{ stat.url }}" class="text-decoration-none">
+          <div class="card stat-card {% if selected_year != current_year %}past-year{% endif %}" 
+               style="background: {{ stat.bg_gradient }}; margin-bottom:4px; padding:0.7rem 0.9rem;">
+            <div class="mb-1" style="margin-bottom:0.25rem !important;">
+              <i class="{{ stat.icon }} fa-2x icon-animate"></i>
+            </div>
+            <h4 class="fw-bold mb-1" style="margin-bottom:0.2rem;">
+              {{ stat.value|default_if_none:"0" }}
+            </h4>
+            <p class="mb-0" style="font-size:0.82rem; margin-bottom:0;">
+              {{ stat.label }}
+            </p>
+          </div>
+        </a>
       </div>
-    </a>
-  </div>
-  {% endfor %}
+      {% endif %}
+    {% endfor %}
+  {% else %}
+    <div class="col-12 text-center text-muted" style="font-size:0.9rem;">
+      No statistics available for this year.
+    </div>
+  {% endif %}
 </div>
 
-<!-- Gamification Progress Section -->
-<div class="row g-1 mb-1">
+
+<!-- Gamification + Districts & Facilities Section -->
+<div class="d-flex flex-wrap gap-2 mb-1">
 
   <!-- System-wide KPI Progress -->
-  <div class="col-md-6">
-    <div class="progress-card p-2 mb-1">
-      <h6 class="fw-semibold text-success mb-1" style="font-size:0.9rem;">
+  <div class="flex-fill d-flex" style="min-width:220px;">
+    <div class="progress-card p-2 shadow-sm rounded-3 d-flex flex-column w-100" style="min-height:130px;">
+      <h6 class="fw-semibold mb-1" style="font-size:0.88rem; color:#28a745;">
         🎯 System-wide KPI Progress
       </h6>
-      <div style="font-size:0.85rem; color:#333; margin-bottom:0.25rem;">
-        Achieved: <strong>{{ system_achieved|default:"0" }}</strong> / <strong>{{ total_indicators|default:"0" }}</strong>
+      <div class="flex-grow-1">
+        <div style="font-size:0.83rem; color:#333; margin-bottom:0.25rem;">
+          Achieved: <strong>{{ system_achieved|default:"0" }}</strong> / <strong>{{ total_indicators|default:"0" }}</strong>
+        </div>
+        <div class="progress-bar-container"
+             style="background:#e9ecef; border-radius:10px; height:18px; display:flex; align-items:center;">
+          <div class="progress-bar" 
+               style="width: {{ system_progress|default:0 }}%; height:12px; border-radius:10px; margin-left:1px;
+                      background: {% if system_progress >= 90 %}linear-gradient(90deg, #28a745, #85e085)
+                                {% elif system_progress >= 60 %}linear-gradient(90deg, #ffc107, #ffe066)
+                                {% else %}linear-gradient(90deg, #dc3545, #ff6b6b){% endif %};">
+          </div>
+        </div>
       </div>
-      <div class="progress-bar-container">
-        <div class="progress-bar 
-          {% if system_progress >= 90 %}progress-green{% elif system_progress >= 60 %}progress-yellow{% else %}progress-red{% endif %}" 
-          style="width: {{ system_progress }}%; height:18px;"></div>
-      </div>
-      <div style="font-size:0.82rem; color:#555; margin-top:0.25rem;">
+      <div style="font-size:0.8rem; color:#555; margin-top:0.25rem;">
         Pending: <strong>{{ system_pending|default:"0" }}</strong>, Behind: <strong>{{ system_behind|default:"0" }}</strong>
       </div>
     </div>
   </div>
 
+  <!-- Gender KPI Distribution -->
+  <div class="flex-fill d-flex" style="min-width:220px;">
+    <div class="progress-card p-2 shadow-lg rounded-4 d-flex flex-column w-100" 
+         style="min-height:140px; background:#ffffff;">
+      <h6 class="fw-semibold mb-2" style="font-size:0.9rem; color:#e83e8c;">
+        👩‍🦰 Gender KPI Distribution
+      </h6>
+      <div class="flex-grow-1 d-flex justify-content-between text-center align-items-center gap-1">
+
+        <!-- Women -->
+        <div class="flex-fill p-2 rounded-3 d-flex flex-column justify-content-center align-items-center"
+             style="background: linear-gradient(135deg,#ff3d7f,#ff6bbd); color:#fff; box-shadow: 0 4px 10px rgba(255,61,127,0.3); transition: transform 0.2s;">
+          <div class="d-flex align-items-center gap-1" style="line-height:1.1; font-size:1.25rem;">
+            <strong>{{ gender_counts.female|default:"0" }}</strong>
+            <span style="font-size:0.85rem; color:#ffd0e0;">({{ overall_gender.female_percent|floatformat:1 }}%)</span>
+          </div>
+          <div style="font-size:0.8rem; margin-top:0.25rem;">Women</div>
+        </div>
+
+        <!-- Men -->
+        <div class="flex-fill p-2 rounded-3 d-flex flex-column justify-content-center align-items-center"
+             style="background: linear-gradient(135deg,#007bff,#5ac8ff); color:#fff; box-shadow: 0 4px 10px rgba(0,123,255,0.3); transition: transform 0.2s;">
+          <div class="d-flex align-items-center gap-1" style="line-height:1.1; font-size:1.25rem;">
+            <strong>{{ gender_counts.male|default:"0" }}</strong>
+            <span style="font-size:0.85rem; color:#cce6ff;">({{ overall_gender.male_percent|floatformat:1 }}%)</span>
+          </div>
+          <div style="font-size:0.8rem; margin-top:0.25rem;">Men</div>
+        </div>
+
+        <!-- Neutral -->
+        <div class="flex-fill p-2 rounded-3 d-flex flex-column justify-content-center align-items-center"
+             style="background: linear-gradient(135deg,#dcdcdc,#a8a8a8); color:#333; box-shadow: 0 4px 10px rgba(150,150,150,0.2); transition: transform 0.2s;">
+          <div class="d-flex align-items-center gap-1" style="line-height:1.1; font-size:1.25rem;">
+            <strong>{{ gender_counts.neutral|default:"0" }}</strong>
+            <span style="font-size:0.85rem; color:#f0f0f0;">({{ overall_gender.neutral_percent|floatformat:1 }}%)</span>
+          </div>
+          <div style="font-size:0.8rem; margin-top:0.25rem;">Neutral</div>
+        </div>
+
+      </div>
+
+      <div class="text-center mt-1" style="font-size:0.82rem; color:#555;">
+        Total KPIs: <strong>{{ overall_gender.total_gender_kpis|default:"0" }}</strong>
+      </div>
+    </div>
+  </div>
+
+  <style>
+  .progress-card .flex-fill:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.15) !important;
+  }
+  </style>
+
   <!-- User KPI Progress -->
-  <div class="col-md-6">
-    <div class="progress-card p-2 mb-1">
-      <h6 class="fw-semibold text-primary mb-1" style="font-size:0.9rem;">
+  <div class="flex-fill d-flex" style="min-width:220px;">
+    <div class="progress-card p-2 shadow-sm rounded-3 d-flex flex-column w-100" style="min-height:130px;">
+      <h6 class="fw-semibold mb-1" style="font-size:0.88rem; color:#0d6efd;">
         👤 Your KPI Progress
       </h6>
-      <div style="font-size:0.85rem; color:#333; margin-bottom:0.25rem;">
-        Achieved: <strong>{{ user_achieved|default:"0" }}</strong> / <strong>{{ user_total_indicators|default:"0" }}</strong>
-        {% if user_projects_count == 0 %}
-          <span class="text-muted" style="font-size:0.82rem;"> (You do not coordinate any project yet)</span>
-        {% endif %}
+      <div class="flex-grow-1 d-flex flex-column justify-content-between">
+        <div style="font-size:0.83rem; color:#333; margin-bottom:0.25rem;">
+          Achieved: <strong>{{ user_achieved|default:"0" }}</strong> / <strong>{{ user_total_indicators|default:"0" }}</strong>
+          {% if user_projects_count == 0 %}
+            <span class="text-muted" style="font-size:0.78rem;"> (No projects coordinated)</span>
+          {% endif %}
+        </div>
+        <div class="progress-bar-container mb-1"
+             style="background:#e9ecef; border-radius:10px; height:18px; display:flex; align-items:center;">
+          <a href="{% if user_projects_count > 0 %}{{ user_kpi_url }}{% else %}#{% endif %}" class="text-decoration-none w-100">
+            <div class="progress-bar"
+                 style="width: {{ user_progress|default:"0" }}%; height:12px; border-radius:10px; margin-left:1px;
+                        background: {% if user_progress >= 90 %}linear-gradient(90deg, #0d6efd, #66b2ff)
+                                  {% elif user_progress >= 60 %}linear-gradient(90deg, #ffc107, #ffe066)
+                                  {% else %}linear-gradient(90deg, #dc3545, #ff6b6b){% endif %};">
+            </div>
+          </a>
+        </div>
+        <div style="font-size:0.8rem; color:#555;">
+          Pending: <strong>{{ user_pending|default:"0" }}</strong>, Behind: <strong>{{ user_behind|default:"0" }}</strong>
+        </div>
       </div>
-      <div class="progress-bar-container">
-        <a href="{% if user_projects_count > 0 %}{{ user_kpi_url }}{% else %}#{% endif %}" class="text-decoration-none">
-          <div class="progress-bar 
-            {% if user_progress >= 90 %}progress-green{% elif user_progress >= 60 %}progress-yellow{% else %}progress-red{% endif %}" 
-            style="width: {{ user_progress|default:"0" }}%; height:18px;"></div>
-        </a>
-      </div>
-      <div style="font-size:0.82rem; color:#555; margin-top:0.25rem;">
-        Pending: <strong>{{ user_pending|default:"0" }}</strong>, Behind: <strong>{{ user_behind|default:"0" }}</strong>
+    </div>
+  </div>
+
+  <!-- Districts & Facilities -->
+  <div class="flex-fill d-flex" style="min-width:220px;">
+    <div class="progress-card p-2 shadow-sm rounded-3 d-flex flex-column w-100" style="min-height:130px;">
+      <h6 class="fw-semibold mb-2" style="font-size:0.88rem; color:#6610f2;">
+        🗺️ Districts & Facilities
+      </h6>
+      <div class="flex-grow-1">
+        <div class="d-flex justify-content-between text-center mb-2" style="font-size:0.82rem;">
+          <div class="flex-fill mx-1 p-1 rounded" style="background: linear-gradient(135deg, #28a745, #85e085); color:#fff;">
+            <i class="bi bi-geo-alt-fill"></i>
+            <div style="font-size:1.15rem; font-weight:600;">{{ districts|length }}</div>
+            <div>Districts</div>
+          </div>
+          <div class="flex-fill mx-1 p-1 rounded" style="background: linear-gradient(135deg, #0d6efd, #66b2ff); color:#fff;">
+            <i class="bi bi-hospital-fill"></i>
+            <div style="font-size:1.15rem; font-weight:600;">{{ facilities|length }}</div>
+            <div>Facilities</div>
+          </div>
+          <div class="flex-fill mx-1 p-1 rounded" style="background: linear-gradient(135deg, #ffc107, #ffe066); color:#333;">
+            <i class="bi bi-bar-chart-fill"></i>
+            <div style="font-size:1.15rem; font-weight:600;">{{ total_coverage_percent|default:"0"|floatformat:0 }}%</div>
+            <div>Coverage</div>
+          </div>
+        </div>
+
+        <!-- District Names & Percentages Heatmap (Single Row Scrollable) -->
+        <div class="d-flex justify-content-start align-items-center gap-2 overflow-auto" 
+             style="font-size:0.76rem; white-space:nowrap; scrollbar-width:none; -ms-overflow-style:none;">
+          {% for dist in district_coverage %}
+            <div class="px-2 py-1 rounded text-center d-inline-block" style="
+              min-width:75px;
+              {% if dist.percentage >= 80 %}
+                background:#d4edda; color:#155724;
+              {% elif dist.percentage >= 50 %}
+                background:#fff3cd; color:#856404;
+              {% else %}
+                background:#f8d7da; color:#842029;
+              {% endif %}">
+              {{ dist.district.name }}: {{ dist.percentage|floatformat:0 }}%
+            </div>
+          {% endfor %}
+        </div>
       </div>
     </div>
   </div>
@@ -490,11 +846,11 @@
 </div>
 
 <!-- ================== NEW SYSTEM INSIGHT CARDS ================== -->
-<div class="row g-2 mb-2 d-flex align-items-stretch">
+<div class="row g-2 mb-0 d-flex align-items-stretch" style="margin-top:0.25rem !important; margin-bottom:0.25rem !important;">
 
   <!-- System Overview -->
   <div class="col-lg-4 col-md-12 d-flex">
-    <div class="progress-card p-2 mb-1 flex-fill">
+    <div class="progress-card p-2 mb-1 flex-fill shadow-sm rounded-3 d-flex flex-column">
       <h6 class="fw-semibold text-dark mb-1" style="font-size:0.9rem;">📊 System Overview</h6>
       
       <!-- Overall Progress -->
@@ -503,10 +859,14 @@
       </div>
 
       <!-- Progress Bar -->
-      <div class="progress-bar-container mt-1">
-        <div class="progress-bar 
-          {% if overall_progress >= 90 %}progress-green{% elif overall_progress >= 60 %}progress-yellow{% else %}progress-red{% endif %}"
-          style="width: {{ overall_progress|default:"0" }}%;"></div>
+      <div class="progress-bar-container mt-1" style="background:#e9ecef; border-radius:10px; height:12px;">
+        <div class="progress-bar" 
+            style="width: {{ overall_progress|default:"0" }}%; border-radius:10px;
+                    height:12px;
+                    background: {% if overall_progress >= 90 %}linear-gradient(90deg,#28a745,#85e085)
+                              {% elif overall_progress >= 60 %}linear-gradient(90deg,#ffc107,#ffe066)
+                              {% else %}linear-gradient(90deg,#dc3545,#ff6b6b){% endif %};">
+        </div>
       </div>
 
       <!-- Trend Section -->
@@ -519,7 +879,7 @@
       </div>
 
       <!-- Trend Insight Message -->
-      <div style="font-size:0.72rem; color:#666; margin-top:0.2rem;">
+      <div style="font-size:0.72rem; color:#666; margin-top:0.25rem;">
         {% if overall_trend > 10 %}
           Excellent growth compared to previous period.
         {% elif overall_trend > 0 %}
@@ -535,37 +895,54 @@
     </div>
   </div>
 
+
   <!-- Highlights & Risks -->
   <div class="col-lg-4 col-md-12 d-flex">
-    <div class="progress-card p-2 mb-1 flex-fill">
-      <h6 class="fw-semibold text-dark mb-1" style="font-size:0.95rem;">🌟 Highlights & Risks</h6>
-      <div style="font-size:0.85rem; line-height:1.3; max-height:200px; overflow-y:auto;">
-        
-        <!-- Top 3 Highlights -->
-        {% if highlights %}
-          {% for kpi in highlights|slice:":3" %}
-            <div title="{{ kpi.name }}">
-              ✅ {{ kpi.name|truncatechars:40 }} – 
-              <span style="color:#28a745;">{{ kpi.ratio }}%</span>
-            </div>
-          {% endfor %}
-        {% else %}
-          <div class="text-muted">No standout performance yet.</div>
-        {% endif %}
+    <div class="progress-card p-2 mb-1 flex-fill shadow-sm rounded-3 d-flex flex-column" style="min-height:180px;">
+      <h6 class="fw-semibold mb-1" style="font-size:0.88rem; color:#ff5722;">🌟 Highlights & Risks</h6>
+      <div class="flex-grow-1" style="font-size:0.78rem; overflow-y:auto;">
 
-        <hr class="my-1">
+        <!-- Highlights Container -->
+        <div id="highlights-container">
+          {% if highlights %}
+            {% for kpi in highlights %}
+              <div class="highlight-item mb-1" style="line-height:1.1; display:none;">
+                <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                  <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:500; font-size:0.78rem;">
+                    ✅ {{ kpi.name|truncatechars:45 }}
+                  </span>
+                  <span style="flex-shrink:0; margin-left:6px; text-align:right; color:#28a745; font-weight:500; font-size:0.78rem;">
+                    {{ kpi.ratio }}%
+                  </span>
+                </div>
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="text-muted">No standout performance yet.</div>
+          {% endif %}
+        </div>
 
-        <!-- Bottom 3 Risks -->
-        {% if risks %}
-          {% for kpi in risks|slice:":3" %}
-            <div title="{{ kpi.name }}">
-              ⚠️ {{ kpi.name|truncatechars:40 }} – 
-              <span style="color:#dc3545;">{{ kpi.ratio }}%</span>
-            </div>
-          {% endfor %}
-        {% else %}
-          <div class="text-muted mt-1">No critical issues detected.</div>
-        {% endif %}
+        <hr class="my-1" style="margin:0.25rem 0;">
+
+        <!-- Risks Container -->
+        <div id="risks-container">
+          {% if risks %}
+            {% for kpi in risks %}
+              <div class="risk-item mb-2" style="line-height:1.3; display:none;">
+                <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                  <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:500; font-size:0.78rem;">
+                    ⚠️ {{ kpi.name|truncatechars:45 }}
+                  </span>
+                  <span style="flex-shrink:0; margin-left:6px; text-align:right; color:#dc3545; font-weight:500; font-size:0.78rem;">
+                    {{ kpi.ratio }}%
+                  </span>
+                </div>
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="text-muted mt-1">No critical issues detected.</div>
+          {% endif %}
+        </div>
 
       </div>
     </div>
@@ -574,7 +951,9 @@
   <!-- Leaderboard -->
   <div class="col-lg-4 col-md-12 d-flex">
     <div class="progress-card p-3 shadow-sm flex-fill">
-      <h6 class="fw-semibold mb-2" style="font-size:0.85rem; color:#003366;">🏅 Top Users Leaderboard</h6>
+      <h6 class="fw-semibold mb-2 text-white p-1 rounded" style="font-size:0.85rem; background: linear-gradient(135deg,#0066cc,#0099ff);">
+        🏅 Top Users Leaderboard
+      </h6>
 
       <!-- Header row -->
       <div class="leaderboard-header d-flex mb-1">
@@ -609,7 +988,8 @@
 
 
 <!-- Charts Section -->
-<div class="row g-1 mb-1">
+<div class="row g-1 mb-0" style="margin-top:0.2rem !important; margin-bottom:0.25rem !important;">
+
   <div class="col-md-6">
     <div class="chart-card" style="padding:0.5rem; margin-bottom:4px;">
       <h5 class="fw-semibold text-primary mb-1" style="font-size:0.9rem;">📊 Comparative analysis of people reached per project</h5>
@@ -677,120 +1057,240 @@
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.0"></script>
 
 <script>
-const actualColor = {% if selected_year == current_year %}"#007bff"{% else %}"#ffc107"{% endif %};
-const targetColor = {% if selected_year == current_year %}"#28a745"{% else %}"#ffca28"{% endif %};
+document.addEventListener("DOMContentLoaded", function() {
 
-const compLabels = {{ comparative_labels|default:"[]"|safe }};
-const compActuals = {{ comparative_actuals|default:"[]"|safe }};
-const compTargets = {{ comparative_targets|default:"[]"|safe }};
+  // --- Colors ---
+  const actualColor = {% if selected_year == current_year %}"#007bff"{% else %}"#ffc107"{% endif %};
+  const targetColor = {% if selected_year == current_year %}"#28a745"{% else %}"#ffca28"{% endif %};
 
-if (compLabels.length) {
-  new Chart(document.getElementById('comparativeChart'), {
-    type: 'bar',
-    data: { labels: compLabels, datasets: [
-      { label: 'Actual', data: compActuals, backgroundColor: actualColor },
-      { label: 'Target', data: compTargets, backgroundColor: targetColor }
-    ]},
-    options: { responsive:true, plugins:{ legend:{ position:'top' }, tooltip:{ mode:'index', intersect:false },
-      zoom:{ zoom:{ wheel:{ enabled:true }, pinch:{ enabled:true }, mode:'x' }, pan:{ enabled:true, mode:'x' } } },
-      scales:{ y:{ beginAtZero:true }, x:{ stacked:false } } }
-  });
-}
+  // --- Comparative Chart ---
+  const compLabels = {{ comparative_labels|default:"[]"|safe }};
+  const compActuals = {{ comparative_actuals|default:"[]"|safe }};
+  const compTargets = {{ comparative_targets|default:"[]"|safe }};
 
-const trendLabels = {{ trend_months|default:"[]"|safe }};
-const trendActuals = {{ trend_actuals|default:"[]"|safe }};
-const trendTargets = {{ trend_targets|default:"[]"|safe }};
-
-if (trendLabels.length) {
-  new Chart(document.getElementById('trendChart'), {
-    type: 'line',
-    data: { labels: trendLabels, datasets: [
-      { label: 'Actual', data: trendActuals, borderColor: actualColor, backgroundColor:'rgba(0,123,255,0.1)', tension:0.3, fill:true },
-      { label: 'Target', data: trendTargets, borderColor: targetColor, backgroundColor:'rgba(40,167,69,0.1)', tension:0.3, fill:true }
-    ]},
-    options: { responsive:true, plugins:{ legend:{ position:'top' }, tooltip:{ mode:'index', intersect:false },
-      zoom:{ zoom:{ wheel:{ enabled:true }, pinch:{ enabled:true }, mode:'x' }, pan:{ enabled:true, mode:'x' } } },
-      scales:{ y:{ beginAtZero:true } } }
-  });
-}
-
-// ---------- Indicator Carousel ----------
-const indicators = {{ indicators|default:"[]"|safe }};
-const carousel = document.getElementById("indicator-carousel");
-
-if (indicators.length) {
-  let index = 0;
-
-  function showIndicators() {
-    carousel.innerHTML = '';
-    const slice = indicators.slice(index, index + 3);
-
-    slice.forEach((ind, i) => {
-      const col = document.createElement("div");
-      col.className = "col-md-4";
-
-      const ratio = ind.target > 0 ? (ind.value / ind.target) * 100 : 0;
-      let statusClass = "red";
-      if (ratio >= 90) statusClass = "green";
-      else if (ratio >= 60) statusClass = "yellow";
-
-      const card = document.createElement("div");
-      card.className = `indicator-card h-100 ${statusClass}`;
-      const trendArrow =
-        ind.value > ind.previous_value
-          ? "⬆️"
-          : ind.value < ind.previous_value
-          ? "⬇️"
-          : "➡️";
-
-      // Card content with animated bar
-      card.innerHTML = `
-        <h6 class="fw-bold mb-1">${ind.name}</h6>
-        <p class="mb-1 small">${ind.project || ""}</p>
-        <div class="indicator-values mb-1">
-          <div>Last Month: <strong>${ind.last_month_value || 0}</strong></div>
-          <div>Cumulative: <strong>${ind.value || 0}</strong> ${trendArrow}</div>
-        </div>
-        <div class="indicator-bar-bg">
-          <div class="indicator-bar" style="width: 0%;"></div>
-        </div>
-        <p class="mb-0 mt-1"><small>Target: ${ind.target || 0}</small></p>
-      `;
-
-      col.appendChild(card);
-      carousel.appendChild(col);
-
-      // Animate appearance
-      setTimeout(() => {
-        card.classList.add('show');
-        const bar = card.querySelector('.indicator-bar');
-        bar.style.width = `${Math.min(ratio, 100)}%`;
-      }, 100 + i * 150);
+  if (compLabels.length) {
+    new Chart(document.getElementById('comparativeChart'), {
+      type: 'bar',
+      data: { labels: compLabels, datasets: [
+        { label: 'Actual', data: compActuals, backgroundColor: actualColor },
+        { label: 'Target', data: compTargets, backgroundColor: targetColor }
+      ]},
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'top' },
+          tooltip: { mode: 'index', intersect: false },
+          zoom: {
+            zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
+            pan: { enabled: true, mode: 'x' }
+          }
+        },
+        scales: { y: { beginAtZero: true }, x: { stacked: false } }
+      }
     });
-
-    index = (index + 3) % indicators.length;
   }
 
-  showIndicators();
-  setInterval(showIndicators, 15000);
-}
-// animate system cards
-document.addEventListener("DOMContentLoaded", () => {
-  // Smooth reveal of all progress cards
+  // --- Trend Chart ---
+  const trendLabels = {{ trend_months|default:"[]"|safe }};
+  const trendActuals = {{ trend_actuals|default:"[]"|safe }};
+  const trendTargets = {{ trend_targets|default:"[]"|safe }};
+
+  if (trendLabels.length) {
+    new Chart(document.getElementById('trendChart'), {
+      type: 'line',
+      data: { labels: trendLabels, datasets: [
+        { label: 'Actual', data: trendActuals, borderColor: actualColor, backgroundColor: 'rgba(0,123,255,0.1)', tension: 0.3, fill: true },
+        { label: 'Target', data: trendTargets, borderColor: targetColor, backgroundColor: 'rgba(40,167,69,0.1)', tension: 0.3, fill: true }
+      ]},
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'top' },
+          tooltip: { mode: 'index', intersect: false },
+          zoom: {
+            zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
+            pan: { enabled: true, mode: 'x' }
+          }
+        },
+        scales: { y: { beginAtZero: true } }
+      }
+    });
+  }
+
+  // --- Indicator Carousel ---
+  const indicators = {{ indicators|default:"[]"|safe }};
+  const carousel = document.getElementById("indicator-carousel");
+
+  if (indicators.length) {
+    let index = 0;
+    function showIndicators() {
+      carousel.innerHTML = '';
+      const slice = indicators.slice(index, index + 3);
+      slice.forEach((ind, i) => {
+        const col = document.createElement("div");
+        col.className = "col-md-4";
+        const ratio = ind.target > 0 ? (ind.value / ind.target) * 100 : 0;
+        let statusClass = "red";
+        if (ratio >= 90) statusClass = "green";
+        else if (ratio >= 60) statusClass = "yellow";
+        const card = document.createElement("div");
+        card.className = `indicator-card h-100 ${statusClass}`;
+        const trendArrow = ind.value > ind.previous_value ? "⬆️" : ind.value < ind.previous_value ? "⬇️" : "➡️";
+        card.innerHTML = `
+          <h6 class="fw-bold mb-1">${ind.name}</h6>
+          <p class="mb-1 small">${ind.project || ""}</p>
+          <div class="indicator-values mb-1">
+            <div>Last Month: <strong>${ind.last_month_value || 0}</strong></div>
+            <div>Cumulative: <strong>${ind.value || 0}</strong> ${trendArrow}</div>
+          </div>
+          <div class="indicator-bar-bg">
+            <div class="indicator-bar" style="width: 0%;"></div>
+          </div>
+          <p class="mb-0 mt-1"><small>Target: ${ind.target || 0}</small></p>
+        `;
+        col.appendChild(card);
+        carousel.appendChild(col);
+        setTimeout(() => {
+          card.classList.add('show');
+          const bar = card.querySelector('.indicator-bar');
+          bar.style.width = `${Math.min(ratio, 100)}%`;
+        }, 100 + i * 150);
+      });
+      index = (index + 3) % indicators.length;
+    }
+    showIndicators();
+    setInterval(showIndicators, 15000);
+  }
+
+  // --- Animate progress cards ---
   document.querySelectorAll(".progress-card").forEach((card, i) => {
     setTimeout(() => card.classList.add("visible"), 150 + i * 120);
   });
 
-  // Animate all progress bars smoothly
+  // --- Animate progress bars ---
   document.querySelectorAll(".progress-bar").forEach(bar => {
-    const finalWidth = bar.style.width; // get the original value like "75%"
-    bar.style.width = "0%"; // reset temporarily
-    setTimeout(() => {
-      bar.style.width = finalWidth; // animate to real value
-    }, 300);
+    const finalWidth = bar.style.width;
+    bar.style.width = "0%";
+    setTimeout(() => { bar.style.width = finalWidth; }, 300);
   });
-});
+
+  // --- Count-up animation ---
+  const counters = document.querySelectorAll("#districts-facilities-card .kpi-number");
+  const speed = 200;
+  counters.forEach(counter => {
+    const targetText = counter.getAttribute('data-target') || counter.innerText;
+    const isPercent = counter.innerText.includes('%') || targetText.toString().includes('%');
+    const target = parseFloat(targetText);
+    counter.innerText = '0' + (isPercent ? '%' : '');
+    const updateCount = () => {
+      let current = parseFloat(counter.innerText.replace('%','')) || 0;
+      const increment = Math.max(target / speed, 1);
+      if (current < target) {
+        current += increment;
+        if (current > target) current = target;
+        counter.innerText = Math.ceil(current) + (isPercent ? '%' : '');
+        requestAnimationFrame(updateCount);
+      } else {
+        counter.innerText = Math.ceil(target) + (isPercent ? '%' : '');
+      }
+    };
+    updateCount();
+  });
+
+  // --- Animate bars with percentage text ---
+  function animateBarsWithPercentage() {
+    const cards = document.querySelectorAll('.progress-card');
+    cards.forEach(card => {
+      const bars = card.querySelectorAll('.flex-fill');
+      bars.forEach(bar => {
+        const percentEl = bar.querySelector('.percent-text');
+        const fillEl = bar.querySelector('.fill-bar');
+        if (!percentEl || !fillEl) return;
+        const targetPercent = parseFloat(percentEl.innerText.replace('%', '')) || 0;
+        let current = 0;
+        fillEl.style.width = '0%';
+        percentEl.innerText = '0%';
+        const interval = setInterval(() => {
+          if (current >= targetPercent) {
+            percentEl.innerText = targetPercent.toFixed(0) + '%';
+            fillEl.style.width = targetPercent + '%';
+            clearInterval(interval);
+          } else {
+            current += 1;
+            percentEl.innerText = current.toFixed(0) + '%';
+            fillEl.style.width = current + '%';
+          }
+        }, 12);
+      });
+    });
+  }
+  animateBarsWithPercentage();
+
+  // --- Hover effects ---
+  const boxes = document.querySelectorAll('.progress-card .flex-fill');
+  boxes.forEach(box => {
+    box.style.transition = 'all 0.4s ease';
+    box.addEventListener('mouseenter', () => {
+      box.style.transform = 'scale(1.05)';
+      box.style.boxShadow = '0 6px 18px rgba(0,0,0,0.12)';
+    });
+    box.addEventListener('mouseleave', () => {
+      box.style.transform = 'scale(1)';
+      box.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
+    });
+  });
+
+  // --- Highlights & Risks Rotation (10 sec) with fade ---
+  function rotateItems(containerId, itemClass, visibleCount = 3, interval = 10000) {
+    const container = document.getElementById(containerId);
+    const items = Array.from(container.getElementsByClassName(itemClass));
+    if (!items.length) return;
+
+    let startIndex = 0;
+
+    // Initialize all items for transition
+    items.forEach(item => {
+      item.style.transition = "opacity 0.5s ease";
+      item.style.opacity = 0;
+      item.style.display = "none";
+    });
+
+    function showItems() {
+      // Fade out all items
+      items.forEach(item => item.style.opacity = 0);
+      
+      setTimeout(() => {
+        // Hide all items after fade-out
+        items.forEach(item => item.style.display = "none");
+
+        // Calculate next batch
+        const endIndex = Math.min(startIndex + visibleCount, items.length);
+        const batch = items.slice(startIndex, endIndex);
+
+        // Show next batch with fade-in
+        batch.forEach(item => {
+          item.style.display = "flex";
+          setTimeout(() => { item.style.opacity = 1; }, 50); // slight delay for smooth fade
+        });
+
+        // Update startIndex for next rotation
+        startIndex += visibleCount;
+        if (startIndex >= items.length) startIndex = 0;
+      }, 500); // match fade-out duration
+    }
+
+    showItems(); // initial display
+    setInterval(showItems, interval);
+  }
+
+  // Call this for highlights and risks
+  rotateItems("highlights-container", "highlight-item", 3, 10000);
+  rotateItems("risks-container", "risk-item", 3, 10000);
+
+
+  });
 
 </script>
+
 
 {% endblock %}

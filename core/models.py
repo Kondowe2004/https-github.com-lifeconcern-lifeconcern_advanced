@@ -1,6 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
-from django.db.models.signals import post_save
+from django.db.models.signals import m2m_changed, post_save
 from django.dispatch import receiver
 from django.db.models import Sum
 from django.core.exceptions import ValidationError
@@ -8,18 +8,75 @@ import datetime
 from .utils import send_email_alert
 from simple_history.models import HistoricalRecords
 
+
+# -------------------------
+# District Model
+# -------------------------
+class District(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    region = models.CharField(max_length=100, blank=True, null=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+
+    # Optional bounding box for automatic detection
+    min_latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    max_latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    min_longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    max_longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+
+    # ✅ New field to toggle visibility / activation
+    is_active = models.BooleanField(default=True)
+
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+    def total_facilities(self):
+        return self.facilities.filter(is_active=True).count()
+
+    def total_projects(self):
+        return self.projects.count()
+
+
 # -------------------------
 # Facility Model
 # -------------------------
 class Facility(models.Model):
     name = models.CharField(max_length=255, unique=True)
+    district = models.ForeignKey(District, on_delete=models.CASCADE, related_name="facilities", null=True, blank=True)
     latitude = models.DecimalField(max_digits=9, decimal_places=6)
     longitude = models.DecimalField(max_digits=9, decimal_places=6)
+
+    # ✅ New field to toggle facility visibility
+    is_active = models.BooleanField(default=True)
 
     history = HistoricalRecords()
 
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.district.name if self.district else 'No District'})"
+
+    def location_tuple(self):
+        return (float(self.latitude), float(self.longitude))
+
+    def detect_district(self):
+        """Find which district this facility belongs to (based on bounding box)."""
+        return District.objects.filter(
+            min_latitude__lte=self.latitude,
+            max_latitude__gte=self.latitude,
+            min_longitude__lte=self.longitude,
+            max_longitude__gte=self.longitude
+        ).first()
+
+    def save(self, *args, **kwargs):
+        detected_district = self.detect_district()
+        if detected_district and self.district != detected_district:
+            self.district = detected_district
+        super().save(*args, **kwargs)
+
 
 # -------------------------
 # Donor Model
@@ -38,12 +95,14 @@ class Donor(models.Model):
     def funded_projects(self):
         return self.projects_from_form.all() if hasattr(self, 'projects_from_form') else []
 
+
 # -------------------------
 # Project Model + Manager
 # -------------------------
 class ProjectManager(models.Manager):
     def active(self):
         return self.filter(is_active=True)
+
 
 class Project(models.Model):
     name = models.CharField(max_length=200, unique=True)
@@ -57,6 +116,9 @@ class Project(models.Model):
     )
     donors = models.ManyToManyField(Donor, related_name="projects", blank=True)
     facilities = models.ManyToManyField(Facility, related_name="projects", blank=True)
+    districts = models.ManyToManyField(
+        District, related_name="projects", blank=True, editable=False
+    )  # auto-updated only
 
     coordinator = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, blank=True, related_name='coordinated_projects'
@@ -67,7 +129,6 @@ class Project(models.Model):
 
     objects = models.Manager()
     active_objects = ProjectManager()
-
     history = HistoricalRecords()
 
     def __str__(self):
@@ -86,11 +147,29 @@ class Project(models.Model):
             return "Ending Soon"
         return "Active"
 
+    def total_facilities(self):
+        return self.facilities.filter(is_active=True).count()
+
+    def total_districts(self):
+        return self.districts.filter(is_active=True).count()
+
+    @property
+    def districts_list(self):
+        """Return queryset of District objects linked via facilities."""
+        return District.objects.filter(facilities__projects=self, is_active=True).distinct()
+
+    def display_districts(self):
+        names = [d.name for d in self.districts_list if d.name]
+        return ", ".join(names) if names else "—"
+    display_districts.short_description = "Linked Districts"
+
+
 # Donor ↔ Projects for Form
 Project.add_to_class(
     "projects_from_form",
     models.ManyToManyField(Donor, related_name="projects_from_form", blank=True)
 )
+
 
 # -------------------------
 # Indicator Model + Manager
@@ -98,6 +177,7 @@ Project.add_to_class(
 class IndicatorManager(models.Manager):
     def active(self):
         return self.filter(is_active=True, project__is_active=True)
+
 
 class Indicator(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='indicators')
@@ -110,7 +190,6 @@ class Indicator(models.Model):
 
     objects = models.Manager()
     active_objects = IndicatorManager()
-
     history = HistoricalRecords()
 
     class Meta:
@@ -130,8 +209,9 @@ class Indicator(models.Model):
         self.progress = int(round((actual_total / target_value) * 100)) if target_value > 0 else 0
         self.save(update_fields=["current_value", "progress"])
 
+
 # -------------------------
-# Indicator Target Model
+# Indicator Target
 # -------------------------
 class IndicatorTarget(models.Model):
     indicator = models.ForeignKey(Indicator, on_delete=models.CASCADE, related_name='targets')
@@ -155,8 +235,9 @@ class IndicatorTarget(models.Model):
         self.full_clean()
         super().save(*args, **kwargs)
 
+
 # -------------------------
-# Monthly Entry Model
+# Monthly Entry
 # -------------------------
 class MonthlyEntry(models.Model):
     indicator = models.ForeignKey(Indicator, on_delete=models.CASCADE, related_name='entries')
@@ -179,8 +260,9 @@ class MonthlyEntry(models.Model):
         self.full_clean()
         super().save(*args, **kwargs)
 
+
 # -------------------------
-# Report Model
+# Report
 # -------------------------
 class Report(models.Model):
     title = models.CharField(max_length=255)
@@ -194,16 +276,32 @@ class Report(models.Model):
     def __str__(self):
         return f"{self.title} by {self.user.username}"
 
+
 # -------------------------
-# Safe Email Alert + Progress Update Signal
+# Signals
 # -------------------------
+@receiver(m2m_changed, sender=Project.facilities.through)
+def update_project_districts(sender, instance, action, **kwargs):
+    """Automatically update Project.districts whenever facilities change."""
+    if action in ['post_add', 'post_remove', 'post_clear']:
+        districts = District.objects.filter(facilities__projects=instance, is_active=True).distinct()
+        instance.districts.set(districts)
+
+
+@receiver(post_save, sender=Facility)
+def update_related_projects_on_facility_save(sender, instance, **kwargs):
+    """Whenever a facility's district changes, update all linked projects."""
+    related_projects = instance.projects.all()
+    for project in related_projects:
+        districts = District.objects.filter(facilities__projects=project, is_active=True).distinct()
+        project.districts.set(districts)
+
+
 @receiver(post_save, sender=MonthlyEntry)
 def handle_monthly_entry_save(sender, instance, created, **kwargs):
-    # Update progress
+    """Update progress and send email alerts."""
     if instance.indicator.is_active and instance.indicator.project.is_active:
         instance.indicator.update_progress()
-
-    # Send email safely
     if created and instance.indicator.is_active and instance.indicator.project.is_active:
         users = User.objects.all()
         recipient_list = [user.email for user in users if user.email]
@@ -217,5 +315,16 @@ def handle_monthly_entry_save(sender, instance, created, **kwargs):
         try:
             send_email_alert(subject, message, recipient_list)
         except Exception as e:
-            # Log error or silently ignore network/email issues
             print(f"[Warning] Failed to send email alert: {e}")
+
+
+# -------------------------
+# Utility: Pre-populate existing facilities
+# -------------------------
+def assign_existing_facilities_to_districts():
+    """Assign each existing facility to the correct district based on bounding box."""
+    for facility in Facility.objects.filter(district__isnull=True):
+        district = facility.detect_district()
+        if district:
+            facility.district = district
+            facility.save()

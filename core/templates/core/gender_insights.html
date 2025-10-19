@@ -1,0 +1,527 @@
+{% extends "core/base.html" %} 
+{% load static %}
+{% block title %}Gender Insights{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+
+  <!-- Header -->
+  <div class="text-center mb-3">
+    <h2 class="h3 text-primary fw-bold mb-1">Gender Insights</h2>
+    <p class="text-secondary small mb-0">{{ description|default:"Detailed overview of male and female KPIs across all units, projects, and indicators for selected months." }}</p>
+  </div>
+
+  <!-- Summary KPI Cards -->
+  <div class="row g-2 mb-4 justify-content-center">
+    <div class="col-lg-2 col-md-4 col-sm-6">
+      <div class="card shadow text-white" style="background-color:#36a2eb; min-height:75px;">
+        <div class="card-body text-center py-1">
+          <h6 class="card-title fw-semibold mb-1">Male Total</h6>
+          <p class="h6 fw-bold mb-1">{{ gender_summary.male_value|default:"0" }}</p>
+          <small>{{ gender_summary.male_percent|default:"0" }}% of total</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-2 col-md-4 col-sm-6">
+      <div class="card shadow text-white" style="background-color:#ff6384; min-height:75px;">
+        <div class="card-body text-center py-1">
+          <h6 class="card-title fw-semibold mb-1">Female Total</h6>
+          <p class="h6 fw-bold mb-1">{{ gender_summary.female_value|default:"0" }}</p>
+          <small>{{ gender_summary.female_percent|default:"0" }}% of total</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-2 col-md-4 col-sm-6">
+      <div class="card shadow text-white" style="background-color:#ffa500; min-height:75px;">
+        <div class="card-body text-center py-1">
+          <h6 class="card-title fw-semibold mb-1">Gender Bal. Ind.</h6>
+          <p class="h6 fw-bold mb-1">{{ gender_summary.female_percent|default:"0" }}%</p>
+          <small>Female Share</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <form id="filtersForm" class="mb-4" method="get">
+
+    <!-- Top row: Year & Months -->
+    <div class="row g-2 justify-content-center align-items-end mb-2">
+      <!-- Year -->
+      <div class="col-auto">
+        <label class="form-label small">Year</label>
+        <select name="year" class="form-select form-select-sm">
+          {% for y in years %}
+            <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Month From -->
+      <div class="col-auto">
+        <label class="form-label small">Month From</label>
+        <select name="month_from" class="form-select form-select-sm">
+          {% for m in months %}
+            <option value="{{ m }}" {% if m == month_from %}selected{% endif %}>{{ m|stringformat:"02d" }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Month To -->
+      <div class="col-auto">
+        <label class="form-label small">Month To</label>
+        <select name="month_to" class="form-select form-select-sm">
+          {% for m in months %}
+            <option value="{{ m }}" {% if m == month_to %}selected{% endif %}>{{ m|stringformat:"02d" }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <!-- Second row: Project, Unit, District, Facility, Indicator, Apply -->
+    <div class="row g-2 justify-content-center align-items-end">
+      <!-- Project -->
+      <div class="col-auto">
+        <label class="form-label small">Project</label>
+        <select name="project" class="form-select form-select-sm">
+          <option value="0">All Projects</option>
+          {% for p in projects %}
+            <option value="{{ p.id }}" {% if p.id == selected_project_id %}selected{% endif %}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Unit -->
+      <div class="col-auto">
+        <label class="form-label small">Unit</label>
+        <select name="unit" class="form-select form-select-sm">
+          <option value="">All Units</option>
+          {% for u in units %}
+            <option value="{{ u }}" {% if u == selected_unit %}selected{% endif %}>{{ u }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- District -->
+      <div class="col-auto">
+        <label class="form-label small">District</label>
+        <select name="district" class="form-select form-select-sm">
+          <option value="" {% if not selected_district %}selected{% endif %}>All Districts</option>
+          {% for d in districts %}
+            <option value="{{ d }}" {% if d == selected_district %}selected{% endif %}>{{ d }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Facility -->
+      <div class="col-auto">
+        <label class="form-label small">Facility</label>
+        <select name="facility" class="form-select form-select-sm">
+          <option value="">All Facilities</option>
+          {% for f in facilities %}
+            <option value="{{ f }}" {% if f == selected_facility %}selected{% endif %}>{{ f }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Indicator -->
+      <div class="col-auto">
+        <label class="form-label small">Indicator</label>
+        <select name="indicator" class="form-select form-select-sm">
+          <option value="0">All Indicators</option>
+          {% for ind in indicators %}
+            <option value="{{ ind.id }}" {% if ind.id == selected_indicator_id %}selected{% endif %}>
+              {{ ind.name|truncatechars:50 }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Apply button -->
+      <div class="col-auto">
+        <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+      </div>
+    </div>
+
+  </form>
+
+
+  <!-- Charts Tabs -->
+  <ul class="nav nav-tabs mb-3 justify-content-center" id="chartTabs" role="tablist">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-bar">Bar</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-trend">Trend</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-doughnut">Representation</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-bubble">Bubble Chart</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-heatmap">Geospatial Map</button></li>
+  </ul>
+
+  <div class="tab-content mb-4">
+    <!-- Bar Chart -->
+    <div class="tab-pane fade show active" id="tab-bar">
+      <div class="card p-3 shadow" style="height:400px;">
+        <canvas id="perMonthBar" height="400"></canvas>
+      </div>
+    </div>
+
+    <!-- Trend Chart -->
+    <div class="tab-pane fade" id="tab-trend">
+      <div class="card p-3 shadow" style="height:400px;">
+        <canvas id="trendChart" height="400"></canvas>
+      </div>
+    </div>
+
+    <!-- Doughnut -->
+    <div class="tab-pane fade" id="tab-doughnut">
+      <div class="card p-3 text-center shadow" style="height:400px;">
+        <canvas id="genderDoughnut" height="400"></canvas>
+        <div class="mt-3 fw-bold">
+          Male: {{ gender_summary.male_percent|default:"0" }}% &nbsp; • &nbsp;
+          Female: {{ gender_summary.female_percent|default:"0" }}%
+        </div>
+      </div>
+    </div>
+
+    <!-- Bubble Chart -->
+    <div class="tab-pane fade" id="tab-bubble">
+      <div class="card p-3 shadow" style="height:450px; min-height:400px;">
+        <canvas id="bubbleChart" style="width:100%; height:100%;"></canvas>
+      </div>
+    </div>
+
+    <!-- Heatmap -->
+    <div class="tab-pane fade" id="tab-heatmap">
+      <div class="card p-3 shadow" style="height:600px; min-height:450px;">
+        <div id="districtMap" style="width:100%; height:100%; min-height:400px;"></div>
+      </div>
+    </div>
+  </div>
+  <!-- Download Buttons -->
+  <div class="text-center mb-4">
+    <button class="btn btn-outline-success me-2" id="download-excel">Download Excel</button>
+    <button class="btn btn-outline-primary me-2" id="download-png">Download Charts (PNG)</button>
+  </div>
+
+  <!-- Pivot Table -->
+  <div class="card shadow p-3">
+    <h5 class="fw-bold text-primary mb-3 text-center">Gender Aggregation Pivot Table</h5>
+    <div class="table-responsive">
+      <table class="table table-bordered table-sm align-middle text-center" id="pivotTable" style="font-size:0.85rem;">
+        <thead class="table-light align-middle">
+          <tr>
+            <th>Year</th>
+            <th>Project</th>
+            <th>Indicator</th>
+            <th>Unit</th>
+            {% for m in month_labels %}<th>{{ m }}</th>{% endfor %}
+            <th>Actual Total</th>
+            <th>Target Total</th>
+            <th>% Achieved</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in pivot_rows %}
+            <tr>
+              <td>{{ row.year }}</td>
+              <td>{{ row.project }}</td>
+              <td>{{ row.indicator }}</td>
+              <td>{{ row.unit }}</td>
+              {% for cell in row.months %}<td>{{ cell|default:"0" }}</td>{% endfor %}
+              <td class="fw-bold">{{ row.actual_total|default:"0" }}</td>
+              <td class="fw-bold">{{ row.target_total|default:"0" }}</td>
+              <td class="fw-bold text-primary">{{ row.percent|default:"0" }}%</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="{{ 4|add:month_labels|length|add:3 }}" class="text-muted text-center py-4">
+                No data available for pivot table.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Scripts -->
+<script src="{% static 'assets/js/chart.min.js' %}"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<script>
+(function(){
+  const chartData = JSON.parse('{{ chart_data_json|escapejs }}');
+  const monthLabels = chartData.month_labels || [];
+  const maleMonthly = chartData.male_monthly || [];
+  const femaleMonthly = chartData.female_monthly || [];
+  const maleValue = chartData.gender_summary.male_value || 0;
+  const femaleValue = chartData.gender_summary.female_value || 0;
+  const malePercent = chartData.gender_summary.male_percent || 0;
+  const femalePercent = chartData.gender_summary.female_percent || 0;
+  const bubbleDataRaw = chartData.bubble_data || [];
+  const facilityData = chartData.facility_data || [];
+  const districtData = chartData.district_map_data || [];
+  let bubbleChart, map, geojsonLayer, lineChart;
+
+  // ---------- Use pre-aggregated District Totals ----------
+  function computeDistrictTotals() {
+    const totals = {};
+    districtData.forEach(entry => {
+      const district = entry.district;
+      if (!district) return;
+      totals[district] = {
+        male: entry.male || 0,
+        female: entry.female || 0
+      };
+    });
+    return totals;
+  }
+
+  // ---------- Determine Top District ----------
+  function getTopDistrict() {
+    const totals = computeDistrictTotals();
+    let top = null, max = 0;
+    Object.entries(totals).forEach(([district, data]) => {
+      if (data.female > max) { max = data.female; top = district; }
+    });
+    return top || 'All Districts';
+  }
+
+  // ---------- Update Top District Card ----------
+  function updateDistrictCard(districtName) {
+    const totals = computeDistrictTotals();
+    const femaleKPIs = districtName === 'All Districts'
+      ? Object.values(totals).reduce((sum, d) => sum + d.female, 0)
+      : (totals[districtName]?.female || 0);
+    const card = document.getElementById('districtCard');
+    if(card) card.textContent = `${districtName} (${femaleKPIs.toLocaleString()})`;
+  }
+
+  // ---------- Initialize Bubble Chart ----------
+  function initBubbleChart(){
+    if(bubbleChart) return;
+    const datasets = [{
+      label:'Indicators',
+      data: bubbleDataRaw.map(d => {
+        const maleVal = parseFloat(d.male) || 0;
+        const femaleVal = parseFloat(d.female) || 0;
+        let bgColor = '#800080';
+        if(femaleVal > maleVal) bgColor = '#ff6384';
+        else if(maleVal > femaleVal) bgColor = '#36a2eb';
+        return {
+          x: maleVal,
+          y: femaleVal,
+          r: Math.max(5, parseFloat(d.size)||5),
+          label: d.indicator || 'N/A',
+          backgroundColor: bgColor,
+          borderColor: '#555',
+          borderWidth: 1
+        };
+      }).filter(d => !isNaN(d.x) && !isNaN(d.y) && !isNaN(d.r))
+    }];
+
+    if(datasets[0].data.length > 0){
+      const ctx = document.getElementById('bubbleChart').getContext('2d');
+      bubbleChart = new Chart(ctx,{
+        type:'bubble',
+        data:{datasets},
+        options:{
+          responsive:true,
+          maintainAspectRatio:false,
+          layout:{padding:{top:5}},
+          plugins:{
+            title:{display:true,text:'Indicator Bubble Chart',color:'#ff0000',font:{size:18,weight:'bold'},align:'center',padding:{top:0,bottom:10}},
+            legend:{
+              display:true,position:'bottom',
+              labels:{generateLabels:()=>[
+                {text:'Female > Male', fillStyle:'#ff6384', strokeStyle:'#555', lineWidth:1},
+                {text:'Male > Female', fillStyle:'#36a2eb', strokeStyle:'#555', lineWidth:1},
+                {text:'Balanced', fillStyle:'#800080', strokeStyle:'#555', lineWidth:1},
+              ], color:'#ff0000', padding:20}
+            },
+            tooltip:{callbacks:{label:ctx=>`${ctx.raw.label}: Male ${ctx.raw.x}, Female ${ctx.raw.y}`}}
+          },
+          scales:{
+            x:{title:{display:true,text:'Male',color:'#ff0000',font:{weight:'bold'}},beginAtZero:true,ticks:{color:'#ff0000'},grid:{color:'#ffcccc'}},
+            y:{title:{display:true,text:'Female',color:'#ff0000',font:{weight:'bold'}},beginAtZero:true,ticks:{color:'#ff0000'},grid:{color:'#ffcccc'}}
+          }
+        }
+      });
+    }
+  }
+
+  // ---------- Initialize Line Comparison Chart ----------
+  function initLineChart(){
+    const trendEl = document.getElementById('lineComparison');
+    if(!trendEl || monthLabels.length === 0) return;
+    if(lineChart){ lineChart.resize(); return; }
+    lineChart = new Chart(trendEl.getContext('2d'),{
+      type:'line',
+      data:{labels:monthLabels,datasets:[
+        {label:'Female',data:femaleMonthly,borderColor:'#ff6384',fill:false,tension:0.3},
+        {label:'Male',data:maleMonthly,borderColor:'#36a2eb',fill:false,tension:0.3}
+      ]},
+      options:{
+        responsive:true,
+        maintainAspectRatio:false,
+        plugins:{
+          title:{display:true,text:'Monthly Trend'},
+          datalabels:{display:true,color:'#000'},
+          tooltip:{enabled:true}
+        },
+        scales:{y:{beginAtZero:true}}
+      },
+      plugins:[ChartDataLabels]
+    });
+  }
+
+  // ---------- Initialize Facility + District Map ----------
+  function initMap(){ 
+    if(map) return;
+    map = L.map('districtMap').setView([-12.0,34.0],6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18, attribution:'© OpenStreetMap contributors'}).addTo(map);
+
+    const districtStats = computeDistrictTotals();
+    const getColor = (male,female) => {
+      const total = male + female;
+      if(total === 0) return '#f0f0f0'; // neutral grey
+      const ratio = female / total;
+      const r = 200 + Math.floor(55*ratio);
+      const g = 200 - Math.floor(50*ratio);
+      const b = 255 - Math.floor(55*ratio);
+      return `rgb(${r},${g},${b})`;
+    };
+
+    fetch("{{ geojson_path }}").then(res => res.json()).then(geojson => {
+      geojsonLayer = L.geoJSON(geojson,{
+        style: feature => {
+          const dname = feature.properties.shapeName;
+          const stats = districtStats[dname] || {male:0,female:0};
+          return {color:'#555', weight:1, fillColor: getColor(stats.male, stats.female), fillOpacity:0.5};
+        },
+        onEachFeature: (feature, layer) => {
+          const dname = feature.properties.shapeName;
+          layer.bindTooltip(`<b>${dname}</b>`, {sticky:true});
+          layer.on('mouseover', ()=> layer.setStyle({weight:2, fillOpacity:0.7}));
+          layer.on('mouseout', ()=> geojsonLayer.resetStyle(layer));
+        }
+      }).addTo(map);
+
+      const activePoints = facilityData.filter(f=>f.lat && f.lng)
+        .map(f=>[parseFloat(f.lat), parseFloat(f.lng)])
+        .filter(p=>!isNaN(p[0]) && !isNaN(p[1]));
+      if(activePoints.length > 0) map.fitBounds(L.latLngBounds(activePoints).pad(0.15));
+
+      const facilityIcon = L.icon({iconUrl:'/static/images/marker-icon.png',iconSize:[22,30],iconAnchor:[11,30],popupAnchor:[0,-28]});
+      facilityData.forEach(f => {
+        if(!f.lat || !f.lng) return;
+        const lat = parseFloat(f.lat), lng = parseFloat(f.lng);
+        if(isNaN(lat) || isNaN(lng)) return;
+        L.marker([lat,lng], {icon: facilityIcon})
+          .bindTooltip(`<b>${f.facility}</b><br><i>${f.district}</i>`, {sticky:true})
+          .addTo(map);
+      });
+
+      const legend = L.control({position:'bottomright'});
+      legend.onAdd = function(){
+        const div = L.DomUtil.create('div','info legend');
+        div.innerHTML=`
+          <i style="background:#ffb6c1;width:18px;height:18px;display:inline-block;margin-right:5px;"></i> Female-dominant<br>
+          <i style="background:#c8c8ff;width:18px;height:18px;display:inline-block;margin-right:5px;"></i> Male-dominant<br>
+          <i style="background:#f0f0f0;width:18px;height:18px;display:inline-block;margin-right:5px;"></i> Zero/Filtered
+        `;
+        return div;
+      };
+      legend.addTo(map);
+    });
+  }
+
+  // ---------- Initialize Charts ----------
+  function initCharts(){
+    const perMonthEl = document.getElementById('perMonthBar');
+    const trendEl = document.getElementById('trendChart');
+    const doughnutEl = document.getElementById('genderDoughnut');
+
+    if(perMonthEl && monthLabels.length>0){
+      new Chart(perMonthEl.getContext('2d'),{
+        type:'bar',
+        data:{labels:monthLabels,datasets:[
+          {label:'Female',data:femaleMonthly,backgroundColor:'#ff6384'},
+          {label:'Male',data:maleMonthly,backgroundColor:'#36a2eb'}
+        ]},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'},title:{display:true,text:'Monthly Gender Comparison'},datalabels:{anchor:'end',align:'end',color:'#000'}},scales:{y:{beginAtZero:true}}},
+        plugins:[ChartDataLabels]
+      });
+    }
+
+    if(trendEl && monthLabels.length>0){
+      new Chart(trendEl.getContext('2d'),{
+        type:'line',
+        data:{labels:monthLabels,datasets:[
+          {label:'Female',data:femaleMonthly,borderColor:'#ff6384',fill:false,tension:0.3},
+          {label:'Male',data:maleMonthly,borderColor:'#36a2eb',fill:false,tension:0.3}
+        ]},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{title:{display:true,text:'Monthly Trend'},datalabels:{display:true,color:'#000'},tooltip:{enabled:true}}},
+        plugins:[ChartDataLabels]
+      });
+    }
+
+    if(doughnutEl){
+      new Chart(doughnutEl.getContext('2d'),{
+        type:'doughnut',
+        data:{labels:[`Male (${malePercent}%)`,`Female (${femalePercent}%)`],datasets:[{data:[maleValue,femaleValue],backgroundColor:['#36a2eb','#ff6384']}]},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{title:{display:true,text:'Gender Representation'},legend:{position:'bottom',labels:{font:{size:14}}},datalabels:{display:true,color:'#000',font:{weight:'bold',size:12}}}},
+        plugins:[ChartDataLabels]
+      });
+    }
+  }
+
+  // ---------- Tabs ----------
+  document.querySelectorAll('button[data-bs-toggle="tab"]').forEach(btn=>{
+    btn.addEventListener('shown.bs.tab', e=>{
+      const target = e.target.getAttribute('data-bs-target');
+      if(target === '#tab-bubble') initBubbleChart();
+      if(target === '#tab-heatmap'){ initMap(); setTimeout(()=>map.invalidateSize(),150); }
+      if(target === '#tab-line'){ initLineChart(); setTimeout(()=>{ if(lineChart) lineChart.resize(); },50); }
+    });
+  });
+
+  // ---------- Downloads ----------
+  const downloadPNG = document.getElementById('download-png');
+  if(downloadPNG){
+    downloadPNG.addEventListener('click', async ()=>{
+      const chartsDiv = document.querySelector('.tab-content');
+      const canvas = await html2canvas(chartsDiv,{backgroundColor:'#ffffff'});
+      const link=document.createElement('a');
+      link.download='Gender_Charts.png';
+      link.href=canvas.toDataURL();
+      link.click();
+    });
+  }
+
+  const downloadExcel = document.getElementById('download-excel');
+  if(downloadExcel){
+    downloadExcel.addEventListener('click', ()=>{
+      window.location.href="{% url 'download_gender_excel' %}?"+new URLSearchParams(new FormData(document.getElementById('filtersForm'))).toString();
+    });
+  }
+
+  // ---------- INIT ----------
+  const topDistrict = getTopDistrict();
+  updateDistrictCard(topDistrict);
+  initCharts();
+
+})();
+</script>
+
+<style>
+.info.legend { background: white; padding: 6px 8px; font-size: 14px; box-shadow: 0 0 15px rgba(0,0,0,0.2); border-radius: 5px; }
+.facility-label { background-color: white; padding: 2px 4px; border-radius: 3px; font-size: 12px; color: #000; font-weight: normal; pointer-events: none; }
+</style>
+
+{% endblock %}

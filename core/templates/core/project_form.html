@@ -1,18 +1,19 @@
 {% extends "core/base.html" %}
 {% load widget_tweaks %}
 
-{% block title %}{{ title }} - Life Concern{% endblock %}
+{% block title %}{% if project %}Edit Project - {{ project.name }}{% else %}Add New Project{% endif %}{% endblock %}
 
 {% block content %}
 <div class="card shadow-sm p-4 mt-4">
-  <h2 class="mb-4">{{ title }} Project</h2>
-  <form method="POST">
+  <h2 class="mb-4">{% if project %}Edit Project: {{ project.name }}{% else %}Add New Project{% endif %}</h2>
+  <form method="post">
     {% csrf_token %}
 
     <!-- Project Name -->
     <div class="mb-3">
       <label for="id_name" class="form-label">Project Name</label>
-      <input type="text" name="name" id="id_name" class="form-control" value="{{ form.name.value|default_if_none:'' }}" required>
+      <input type="text" name="name" id="id_name" class="form-control" 
+             value="{{ form.name.value|default_if_none:'' }}" required>
       {% if form.name.errors %}
         <div class="text-danger small mt-1">{{ form.name.errors }}</div>
       {% endif %}
@@ -31,7 +32,7 @@
     <div class="mb-3">
       <label for="id_start_date" class="form-label">Start Date</label>
       <input type="date" name="start_date" id="id_start_date" class="form-control" 
-             value="{{ form.start_date.value|date:'Y-m-d' }}">
+             value="{{ form.start_date.value|default_if_none:'' }}">
       {% if form.start_date.errors %}
         <div class="text-danger small mt-1">{{ form.start_date.errors }}</div>
       {% endif %}
@@ -41,7 +42,7 @@
     <div class="mb-3">
       <label for="id_end_date" class="form-label">End Date</label>
       <input type="date" name="end_date" id="id_end_date" class="form-control" 
-             value="{{ form.end_date.value|date:'Y-m-d' }}">
+             value="{{ form.end_date.value|default_if_none:'' }}">
       {% if form.end_date.errors %}
         <div class="text-danger small mt-1">{{ form.end_date.errors }}</div>
       {% endif %}
@@ -53,10 +54,8 @@
       <select name="coordinator" id="id_coordinator" class="form-select">
         <option value="">-- Select Coordinator --</option>
         {% for user in all_users %}
-          <option value="{{ user.id }}" 
-            {% if form.coordinator.value|stringformat:"s" == user.id|stringformat:"s" %}selected{% endif %}>
-            {{ user.get_full_name|default:user.username }}
-            {% if not user.is_active %} (Inactive){% endif %}
+          <option value="{{ user.id }}" {% if user.id|stringformat:"s" in selected_coordinator %}selected{% endif %}>
+            {{ user.get_full_name|default:user.username }}{% if not user.is_active %} (Inactive){% endif %}
           </option>
         {% endfor %}
       </select>
@@ -65,13 +64,13 @@
       {% endif %}
     </div>
 
-    <!-- Main Donor Selection -->
+    <!-- Main Donor -->
     <div class="mb-3">
       <label for="id_main_donor" class="form-label">Main Donor</label>
       <select name="main_donor" id="id_main_donor" class="form-select">
         <option value="">-- Select Main Donor --</option>
         {% for donor in all_donors|dictsort:"name" %}
-          <option value="{{ donor.id }}" {% if form.main_donor.value|stringformat:"s" == donor.id|stringformat:"s" %}selected{% endif %}>
+          <option value="{{ donor.id }}" {% if donor.id|stringformat:"s" in selected_main_donor %}selected{% endif %}>
             {{ donor.name }}
           </option>
         {% endfor %}
@@ -81,13 +80,12 @@
       {% endif %}
     </div>
 
-    <!-- Additional Donors Multi-select -->
+    <!-- Additional Donors -->
     <div class="mb-3">
       <label for="id_additional_donors" class="form-label">Additional Donors</label>
       <select name="donors" id="id_additional_donors" class="form-select" multiple size="6">
         {% for donor in all_donors|dictsort:"name" %}
-          <option value="{{ donor.id }}"
-            {% if donor.id|stringformat:"s" in form.donors.value|stringformat:"s" %}selected{% endif %}>
+          <option value="{{ donor.id }}" {% if donor.id|stringformat:"s" in selected_donors %}selected{% endif %}>
             {{ donor.name }}
           </option>
         {% endfor %}
@@ -104,9 +102,8 @@
       <div class="d-flex flex-wrap gap-2">
         {% for facility in all_facilities %}
           <div class="form-check me-3">
-            <input class="form-check-input" type="checkbox" name="facilities" value="{{ facility.id }}"
-              id="facility{{ facility.id }}"
-              {% if facility.id|stringformat:"s" in form.facilities.value|stringformat:"s" %}checked{% endif %}>
+            <input class="form-check-input" type="checkbox" name="facilities" value="{{ facility.id }}" id="facility{{ facility.id }}"
+              {% if facility.id|stringformat:"s" in selected_facilities %}checked{% endif %}>
             <label class="form-check-label" for="facility{{ facility.id }}">{{ facility.name }}</label>
           </div>
         {% endfor %}
@@ -116,15 +113,33 @@
       {% endif %}
     </div>
 
+    <!-- Districts Multi-select -->
+    <div class="mb-3">
+      <label class="form-label">Districts</label>
+      <div class="d-flex flex-wrap gap-2">
+        {% for district in all_districts %}
+          <div class="form-check me-3">
+            <input class="form-check-input" type="checkbox" name="districts" value="{{ district.id }}" id="district{{ district.id }}"
+              {% if district.id|stringformat:"s" in selected_districts %}checked{% endif %}>
+            <label class="form-check-label" for="district{{ district.id }}">{{ district.name }}</label>
+          </div>
+        {% endfor %}
+      </div>
+      {% if form.districts.errors %}
+        <div class="text-danger small mt-1">{{ form.districts.errors }}</div>
+      {% endif %}
+    </div>
+
     <!-- Active Checkbox -->
     <div class="form-check mb-4">
-      <input type="checkbox" name="is_active" id="id_is_active" class="form-check-input" {% if form.is_active.value %}checked{% endif %}>
+      <input type="checkbox" name="is_active" id="id_is_active" class="form-check-input"
+             {% if form.is_active.value %}checked{% elif project and project.is_active %}checked{% endif %}>
       <label for="id_is_active" class="form-check-label">Active Project</label>
     </div>
 
     <!-- Submit Button -->
     <div>
-      <button type="submit" class="btn btn-primary">{{ title }}</button>
+      <button type="submit" class="btn btn-primary">{% if project %}💾 Save Changes{% else %}➕ Add Project{% endif %}</button>
       <a href="{% url 'projects' %}" class="btn btn-secondary ms-2">Cancel</a>
     </div>
   </form>

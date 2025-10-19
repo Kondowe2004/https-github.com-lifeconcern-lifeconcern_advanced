@@ -5,6 +5,7 @@ from django.conf import settings
 import sys
 import socket
 
+
 def send_email_alert(subject, message, recipient_list):
     """
     Send an email alert to a list of recipients.
@@ -55,3 +56,26 @@ def safe_int(value, default=0):
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+def auto_assign_district_to_facilities():
+    """
+    Automatically assign existing facilities to a district if missing.
+    Call this manually after migrations.
+    Logic: pick the nearest district based on latitude/longitude or default to first district.
+    """
+
+    # Lazy import to avoid circular import
+    from .models import Facility, District
+
+    all_districts = list(District.objects.all())
+    if not all_districts:
+        print("⚠️ No districts exist. Please create districts first.")
+        return
+
+    for facility in Facility.objects.filter(district__isnull=True):
+        # Currently: assign first district as fallback
+        # You can implement nearest-distance calculation here if needed
+        facility.district = all_districts[0]
+        facility.save()
+        print(f"✅ Assigned facility '{facility.name}' to district '{facility.district.name}'")

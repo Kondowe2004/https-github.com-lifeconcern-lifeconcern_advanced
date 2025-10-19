@@ -68,24 +68,27 @@
   </div>
 </div>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Leaflet -->
+<link rel="stylesheet" href="{% static 'leaflet/leaflet.css' %}">
+<script src="{% static 'leaflet/leaflet.js' %}"></script>
 
 <script>
-var map = L.map('map').setView([0, 0], 2);
+// Initialize map
+var map = L.map('map').setView([-13.3, 34.0], 7);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
 
-var facilities = {{ facilities_json|safe }};
+var facilities = {{ facilities_json|default:"[]"|safe }};
+var activeDistricts = {{ active_districts|default:"[]"|safe }};
+var districtsGeoJSON = {{ districts_geojson|safe }}; // Preloaded from view
+var districtsLayer;
 
-// Teardrop SVG marker
+// Teardrop marker
 function createMarker(color="#00bfff"){
     return L.divIcon({
-        html: `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="40" viewBox="0 0 24 24" fill="${color}">
-                 <path d="M12 2C8.1 2 5 5.1 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7z"/>
-               </svg>`,
+        html: `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="40" viewBox="0 0 24 24" fill="${color}"><path d="M12 2C8.1 2 5 5.1 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7z"/></svg>`,
         className: "",
         iconSize: [30,40],
         iconAnchor: [15,40],
@@ -93,95 +96,135 @@ function createMarker(color="#00bfff"){
     });
 }
 
-// Add markers
-function addMarkers() {
-    map.eachLayer(layer => {
-        if(layer.options && layer.options.pane === "markerPane") map.removeLayer(layer);
+// Color scale for districts
+function getColor(count,maxCount){
+    if(count===0) return 'rgba(204,229,255,0.3)';
+    var intensity = 0.3 + 0.4*(count/maxCount);
+    return `rgba(0,31,77,${intensity})`;
+}
+
+// Draw districts immediately
+function drawDistricts(geojson){
+    if(districtsLayer) map.removeLayer(districtsLayer);
+
+    var districtCounts = {}, maxCount=0;
+    facilities.forEach(f=>{
+        var d = f.district;
+        if(d){
+            districtCounts[d] = (districtCounts[d]||0)+1;
+            if(districtCounts[d]>maxCount) maxCount=districtCounts[d];
+        }
     });
 
-    facilities.forEach(fac => {
-        var latlng = [parseFloat(fac.latitude), parseFloat(fac.longitude)];
-        var marker = L.marker(latlng, {icon: createMarker(), draggable: true}).addTo(map);
+    districtsLayer = L.geoJSON(geojson, {
+        style: function(feature){
+            var dname = feature.properties.shapeName || feature.properties.name;
+            var count = districtCounts[dname] || 0;
+            var fillColor = getColor(count,maxCount);
+            return {color:"#001f4d", fillColor:fillColor, fillOpacity:parseFloat(fillColor.split(',')[3]), weight:1};
+        },
+        onEachFeature: function(feature,layer){
+            var dname = feature.properties.shapeName || feature.properties.name || "District";
+            var count = districtCounts[dname] || 0;
+            layer.bindTooltip(`${dname} (${count})`, {permanent:false, direction:'center'});
+            layer.on('mouseover', function(){ this.setStyle({weight:2,color:'#ff6600',fillOpacity:0.7}); });
+            layer.on('mouseout', function(){
+                var fillColor = getColor(count,maxCount);
+                this.setStyle({weight:1,color:'#001f4d',fillColor:fillColor,fillOpacity:parseFloat(fillColor.split(',')[3])});
+            });
+        }
+    }).addTo(map);
 
-        // Update form coordinates when dragging marker
-        marker.on('dragend', function(e){
-            var pos = e.target.getLatLng();
-            document.getElementById("id_latitude").value = pos.lat.toFixed(6);
-            document.getElementById("id_longitude").value = pos.lng.toFixed(6);
-        });
+    addLegend(maxCount);
+}
 
-        // Total people reached
-        var totalPeople = fac.projects.reduce((sum,p)=>sum+(p.people_reached||0),0);
+// Legend
+function addLegend(maxCount){
+    if(document.querySelector('.info.legend')) document.querySelector('.info.legend').remove();
+    var legend = L.control({position:'bottomright'});
+    legend.onAdd = function(map){
+        var div = L.DomUtil.create('div','info legend');
+        var grades = [];
+        for(var i=0;i<=5;i++) grades.push(Math.round(maxCount*i/5));
+        div.innerHTML="<b>Facilities Count</b><br>";
+        for(var i=0;i<grades.length;i++){
+            var color = getColor(grades[i], maxCount);
+            div.innerHTML+='<i style="background:'+color+'; width:18px; height:18px; float:left; margin-right:5px; opacity:1;"></i> '+grades[i]+(grades[i+1]? '&ndash;'+grades[i+1]+'<br>':'+');
+        }
+        return div;
+    };
+    legend.addTo(map);
+}
 
-        // Facility label on top of marker
-        marker.bindTooltip(`${fac.name} (${totalPeople})`, {
-            permanent: true,
-            direction: 'top',  
-            offset: [0, -20],  
-            className: 'facility-label'
-        });
-
-        // Popup with Edit/Delete
-        marker.bindPopup(`
-            <div class="d-flex flex-column">
+// Facility markers
+function addMarkers(){
+    map.eachLayer(l=>{ if(l.options && l.options.icon) map.removeLayer(l); });
+    var delay=0;
+    facilities.forEach(fac=>{
+        var latlng=[parseFloat(fac.latitude),parseFloat(fac.longitude)];
+        setTimeout(()=>{
+            var marker=L.marker(latlng,{icon:createMarker(),draggable:true}).addTo(map);
+            marker.on('dragend',e=>{
+                var pos=e.target.getLatLng();
+                document.getElementById("id_latitude").value=pos.lat.toFixed(6);
+                document.getElementById("id_longitude").value=pos.lng.toFixed(6);
+            });
+            var totalPeople=fac.projects.reduce((sum,p)=>sum+(p.people_reached||0),0);
+            marker.bindTooltip(`${fac.name} (${totalPeople})`,{permanent:true,direction:'top',offset:[0,-20],className:'facility-label'});
+            marker.bindPopup(`<div class="d-flex flex-column">
+                <strong>District:</strong> ${fac.district||"-"}<br>
                 <button class="btn btn-sm btn-warning mb-1" onclick="editFacility(${fac.id}, '${fac.name}', ${latlng[0]}, ${latlng[1]}, [${fac.projects.map(p=>p.id).join(',')}])">Edit</button>
                 <button class="btn btn-sm btn-danger" onclick="deleteFacility(${fac.id})">Delete</button>
-            </div>
-        `);
+            </div>`);
+        },delay);
+        delay+=150;
     });
-
-    if(facilities.length > 0){
-        var group = L.featureGroup(facilities.map(f => L.marker([f.latitude,f.longitude])));
-        map.fitBounds(group.getBounds(), {padding:[50,50]});
+    if(facilities.length>0){
+        var group=L.featureGroup(facilities.map(f=>L.marker([f.latitude,f.longitude])));
+        map.fitBounds(group.getBounds(),{padding:[50,50]});
     }
 }
 
+drawDistricts(districtsGeoJSON); // Draw districts immediately
 addMarkers();
 
-// Edit facility function
+// Editing / form submit / delete
 function editFacility(id,name,lat,lng,projectIds){
-    document.getElementById("facility_id").value = id;
-    document.getElementById("id_name").value = name;
-    document.getElementById("id_latitude").value = lat;
-    document.getElementById("id_longitude").value = lng;
+    document.getElementById("facility_id").value=id;
+    document.getElementById("id_name").value=name;
+    document.getElementById("id_latitude").value=lat;
+    document.getElementById("id_longitude").value=lng;
     document.getElementById("cancelEdit").style.display="inline-block";
-
-    var select = document.getElementById("projects");
-    Array.from(select.options).forEach(opt => opt.selected = projectIds.includes(parseInt(opt.value)));
+    var select=document.getElementById("projects");
+    Array.from(select.options).forEach(opt=>opt.selected=projectIds.includes(parseInt(opt.value)));
     window.scrollTo({top:0, behavior:'smooth'});
 }
-
-// Cancel editing
 document.getElementById("cancelEdit").addEventListener("click", function(){
     document.getElementById("facilityForm").reset();
-    document.getElementById("facility_id").value = "";
+    document.getElementById("facility_id").value="";
     document.getElementById("cancelEdit").style.display="none";
-    var select = document.getElementById("projects");
+    var select=document.getElementById("projects");
     Array.from(select.options).forEach(opt=>opt.selected=false);
 });
-
-// Form submission
 document.getElementById("facilityForm").addEventListener("submit", function(e){
     e.preventDefault();
-    var formData = new FormData(this);
+    var formData=new FormData(this);
     fetch("{% url 'facilities_map' %}",{
         method:"POST",
-        headers: {"X-CSRFToken": "{{ csrf_token }}"},
-        body: formData
+        headers:{"X-CSRFToken":"{{ csrf_token }}"},
+        body:formData
     }).then(r=>r.json()).then(data=>{
         if(data.success){
-            facilities = data.facilities;
+            facilities=data.facilities;
+            activeDistricts=data.active_districts;
             addMarkers();
+            drawDistricts(districtsGeoJSON); // refresh shading
             document.getElementById("facilityForm").reset();
             document.getElementById("facility_id").value="";
             document.getElementById("cancelEdit").style.display="none";
-        } else {
-            alert("Error: "+JSON.stringify(data.errors));
-        }
+        } else { alert("Error:"+JSON.stringify(data.errors)); }
     }).catch(err=>{console.error(err); alert("Unexpected error.");});
 });
-
-// Delete facility
 function deleteFacility(id){
     if(confirm("Are you sure you want to delete this facility?")){
         fetch(`/facilities/${id}/delete/`,{
@@ -189,8 +232,9 @@ function deleteFacility(id){
             headers:{'X-CSRFToken':'{{ csrf_token }}'}
         }).then(r=>r.json()).then(data=>{
             if(data.success){
-                facilities = facilities.filter(f=>f.id!==id);
+                facilities=facilities.filter(f=>f.id!==id);
                 addMarkers();
+                drawDistricts(districtsGeoJSON);
             } else { alert("Failed to delete facility."); }
         }).catch(err=>{console.error(err); alert("Unexpected error.");});
     }
@@ -198,17 +242,9 @@ function deleteFacility(id){
 </script>
 
 <style>
-.facility-label {
-    background: white;
-    color: black;
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-weight: normal;
-    font-size: 0.85rem;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-    white-space: nowrap;
-    text-align: center;
-}
-.leaflet-popup-content button { width: 70px; margin-right:5px; }
+.facility-label { background:white;color:black;padding:2px 6px;border-radius:3px;font-weight:normal;font-size:0.85rem;box-shadow:0 1px 2px rgba(0,0,0,0.2);white-space:nowrap;text-align:center; }
+.leaflet-popup-content button { width:70px; margin-right:5px; }
+.info.legend { padding:6px 8px; font:14px Arial, Helvetica, sans-serif; background: rgba(255,255,255,0.9); box-shadow:0 0 15px rgba(0,0,0,0.2); border-radius:5px; line-height:18px; color:#555; }
+.info.legend i { display:inline-block; width:18px; height:18px; margin-right:5px; }
 </style>
 {% endblock %}

@@ -1,11 +1,13 @@
 from django.urls import path
+from django.http import HttpResponse
+from django.contrib.auth import views as auth_views
 from . import views
 
 urlpatterns = [
-    # Dashboard
+    # -------------------- Dashboard --------------------
     path('', views.dashboard, name='dashboard'),
 
-    # Projects
+    # -------------------- Projects --------------------
     path('projects/', views.projects, name='projects'),
     path('projects/add/', views.project_add, name='project_add'),
     path('projects/<int:pk>/', views.project_detail, name='project_detail'),
@@ -17,7 +19,7 @@ urlpatterns = [
     # Project KPI Bulk Actions
     path('projects/<int:project_id>/bulk-action/', views.project_bulk_action, name='project_bulk_action'),
 
-    # KPI / Indicator routes
+    # -------------------- Indicators --------------------
     path('projects/<int:project_pk>/indicators/add/', views.indicator_add, name='indicator_add'),
     path('projects/<int:project_pk>/indicators/<int:pk>/edit/', views.indicator_edit, name='indicator_edit'),
     path('projects/<int:project_pk>/indicators/<int:pk>/delete/', views.indicator_delete, name='indicator_delete'),
@@ -25,39 +27,32 @@ urlpatterns = [
     # Edit indicator targets
     path('indicators/<int:indicator_id>/targets/edit/', views.edit_indicator_targets, name='edit_indicator_targets'),
 
-    # Project KPI Export
+    # -------------------- Project Exports --------------------
     path('projects/<int:pk>/export/csv/', views.export_project_kpis, name='export_project_kpis'),
     path('projects/<int:pk>/export/excel/', views.export_project_kpis_excel, name='export_project_kpis_excel'),
 
-    # Reports
+    # -------------------- Reports --------------------
     path('reports/', views.reports, name='reports'),
     path('reports/export/', views.reports_export_csv, name='reports_export_csv'),
-
-    # Actual vs Variance Report
     path('actual-vs-variance/', views.actual_vs_variance_report, name='actual_vs_variance'),
-
-    # More Reports
     path('reports/more/', views.more_reports, name='more_reports'),
     path('reports/more/export/csv/', views.more_reports_export_csv, name='more_reports_export_csv'),
     path('reports/more/export/excel/', views.more_reports_export_excel, name='more_reports_export_excel'),
     path('reports/more/export/pdf/', views.more_reports_pdf, name='more_reports_pdf'),
     path('reports/more/filter/data/', views.pivot_filter_data_json, name='pivot_filter_data_json'),
-
-    # Monthly Trend & Performance Reports
     path('reports/more/monthly-trend/', views.monthly_trend_report, name='monthly_trend_report'),
     path('reports/monthly-performance/', views.monthly_performance_report, name='monthly_performance_report'),
 
-    # Profile
+    # -------------------- Profile --------------------
     path('profile/', views.profile, name='profile'),
 
-    # Data Story Dashboard
+    # -------------------- Data Story Dashboard --------------------
     path('data-story/', views.data_story, name='data_story'),
+    path('data-story/gender-insights/', views.gender_insights, name='gender_insights'),
+    path('data-story/gender-insights/download-excel/', views.download_gender_excel, name='download_gender_excel'),
 
     # -------------------- Facilities Map & CRUD --------------------
-    # Map view and AJAX Add/Edit handled in the same view
     path('facilities/map/', views.facilities_map, name='facilities_map'),
-
-    # Delete facility via AJAX
     path('facilities/<int:pk>/delete/', views.facility_delete, name='facility_delete'),
 
     # -------------------- Donors --------------------
@@ -66,4 +61,23 @@ urlpatterns = [
     path('donors/<int:donor_id>/', views.donor_detail, name='donor_detail'),
     path('donors/<int:donor_id>/edit/', views.donor_edit, name='donor_edit'),
     path('donors/<int:donor_id>/delete/', views.donor_delete, name='donor_delete'),
+
+    # -------------------- Authentication --------------------
+    path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
+    path('logout/', auth_views.LogoutView.as_view(template_name='registration/logged_out.html'), name='logout'),
+]
+
+# -------------------- Service Worker (Prevents 404 Error) --------------------
+def service_worker(request):
+    """
+    Handles requests for /service-worker.js to prevent 404 errors in console.
+    You can later replace this with a real PWA service worker if needed.
+    """
+    return HttpResponse(
+        "// Placeholder Service Worker — no caching active\n",
+        content_type="application/javascript"
+    )
+
+urlpatterns += [
+    path("service-worker.js", service_worker, name="service-worker"),
 ]
